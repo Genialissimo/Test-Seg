@@ -5628,7 +5628,7 @@ if modalita_solo_presenze:
 # ─────────────────────────────────────────────────────────────────
 # MODULO S-205b — Domanda per il servizio di pioniere ausiliario
 # ─────────────────────────────────────────────────────────────────
-NOME_FOGLIO_PIONIERI_AUSILIARIO = "Pionieri Ausiliario"
+NOME_FOGLIO_PIONIERI_AUSILIARIO = "Pionieri Ausiliari"
 RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO = 1
 
 PERCORSO_MODULO_S205B = os.path.join(os.path.dirname(__file__), "S-205b_I.pdf")
