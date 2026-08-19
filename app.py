@@ -5644,7 +5644,6 @@ S205B_CAMPO_APPR_SEG  = (429.4, 84.0, 575.6, 99.9)    # iniziali Segretario
 S205B_CAMPO_APPR_SS   = (428.1, 56.3, 575.6, 72.2)    # iniziali Sorvegliante Servizi
 
 OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30"]
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
 # ─────────────────────────────────────────────────────────────────
@@ -5786,7 +5785,7 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         st.markdown("#### ➕ Nuova domanda di pioniere ausiliario")
 
     with st.form(f"form_domanda_{chiave}", clear_on_submit=False):
-        opzioni_nomi = ["— Seleziona —"] + list(nomi_anagrafica)
+        opzioni_nomi = list(nomi_anagrafica)
         nome_attuale = e.get("Nome e Cognome", "")
         if nome_attuale and nome_attuale not in opzioni_nomi:
             opzioni_nomi = [nome_attuale] + opzioni_nomi
@@ -5853,8 +5852,8 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
     if invia:
         nome_pulito = (nome_scelto or "").strip()
         mese_pulito = (mese_scelto or "").strip()
-        if not nome_pulito or nome_pulito == "— Seleziona —" or not mese_pulito:
-            st.error("Seleziona un nome e cognome e un mese.")
+        if not nome_pulito or not mese_pulito:
+            st.error("Nome e cognome e Mese(i) di sono obbligatori.")
         else:
             valori = {
                 "Data": data_scelta.strftime("%d/%m/%Y"),
@@ -5869,10 +5868,9 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
                 "Inviata il": e.get("Inviata il", "") or datetime.now().strftime("%d/%m/%Y %H:%M"),
             }
             numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
-            with st.spinner("Salvo…"):
-                ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                                   RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
-                                                   valori, riga_da_aggiornare=numero_riga)
+            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                               RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
+                                               valori, riga_da_aggiornare=numero_riga)
             if ok:
                 st.cache_data.clear()
                 st.session_state.domande_editor = None
@@ -5889,9 +5887,8 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         col_si, col_no = st.columns(2)
         with col_si:
             if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
-                with st.spinner("Elimino…"):
-                    ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                                        editor["numero_riga_foglio"])
+                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                                    editor["numero_riga_foglio"])
                 if ok:
                     st.cache_data.clear()
                     st.session_state.domande_editor = None
@@ -5907,15 +5904,8 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
                 st.rerun()
 
 
-
 def mostra_domande_pioniere_ausiliario():
     st.title("📝 Domande di pioniere ausiliario")
-
-    with st.expander("🔗 Link per l'autocompilazione (da inviare alla congregazione)"):
-        st.caption("Chiunque apra questo link può compilare e inviare la propria domanda, "
-                   "senza bisogno di accedere con Google. CCA/SEG/SS restano modificabili solo da qui.")
-        st.code("https://gestioneseg.streamlit.app/?modalita=domanda_pubblica", language=None)
-
     contenitore_pulsanti = st.container()
 
     if "domande_tabella_versione" not in st.session_state:
@@ -6014,7 +6004,7 @@ def mostra_domande_pioniere_ausiliario():
 
     riga_selezionata = df_filtrato.loc[idx_sel].to_dict() if idx_sel is not None else None
 
-    # ── Pulsanti + form (renderizzati in alto tramite il container) ──
+    # ── Pulsanti (renderizzati in alto tramite il container) ────
     with contenitore_pulsanti:
         col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
         with col_home:
@@ -6070,10 +6060,10 @@ def mostra_domande_pioniere_ausiliario():
                 on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
             )
 
-        editor = st.session_state.get("domande_editor")
-        if editor:
-            st.divider()
-            _form_domanda_pioniere(editor, nomi_anagrafica)
+    editor = st.session_state.get("domande_editor")
+    if editor:
+        _form_domanda_pioniere(editor, nomi_anagrafica)
+
 
 
 # ─────────────────────────────────────────────────────────────────
