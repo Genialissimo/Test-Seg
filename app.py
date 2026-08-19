@@ -5795,7 +5795,7 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         opzioni_mesi = [f"{MESI_ITALIANI[m]} {a}" for a, m in _domande_mesi_anno_teocratico()]
         mese_attuale = e.get("Mese di", "")
         if mese_attuale and mese_attuale not in opzioni_mesi:
-            opzioni_mesi = [mese_attuale] + opzioni_mesi  # conserva un valore storico fuori dall'anno corrente
+            opzioni_mesi = [mese_attuale] + opzioni_mesi
 
         if modo == "modifica":
             indice_mese = opzioni_mesi.index(mese_attuale) if mese_attuale in opzioni_mesi else 0
@@ -5906,28 +5906,27 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
 
 def mostra_domande_pioniere_ausiliario():
     st.title("📝 Domande di pioniere ausiliario")
-    contenitore_pulsanti = st.container()
 
     if "domande_tabella_versione" not in st.session_state:
         st.session_state.domande_tabella_versione = 0
 
     if not collegato:
-        with contenitore_pulsanti:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
+        if st.button("🏠 Home", key="home_da_domande_err1", use_container_width=True, on_click=vai_a_home_reset_domande):
+            pass
         st.warning("⚠️ Nessun foglio dati collegato.")
         return
 
     if not os.path.exists(PERCORSO_MODULO_S205B):
-        with contenitore_pulsanti:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
+        if st.button("🏠 Home", key="home_da_domande_err2", use_container_width=True, on_click=vai_a_home_reset_domande):
+            pass
         st.error("Modulo S-205b non trovato: metti il file «S-205b_I.pdf» nella stessa cartella di app.py.")
         return
 
     df_domande, err = leggi_foglio_come_df(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
                                             RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO)
     if err:
-        with contenitore_pulsanti:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
+        if st.button("🏠 Home", key="home_da_domande_err3", use_container_width=True, on_click=vai_a_home_reset_domande):
+            pass
         st.error(err)
         return
 
@@ -5939,7 +5938,23 @@ def mostra_domande_pioniere_ausiliario():
             df_att = df_anagrafica[df_anagrafica["Attivi / Inattivi"].apply(categoria_stato_proclamatore) == "A"]
         nomi_anagrafica = sorted({n.strip() for n in df_att["Cognome e Nome"].astype(str) if n.strip()})
 
-    # ── Filtro mese (anno teocratico) ──────────────────────────
+    # ── Pulsante Home e Tasto singolo "+ Compila" in alto ────────
+    if st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande):
+        pass
+
+    if st.button("➕ Compila", key="btn_compila_nuovo", use_container_width=True, disabled=sola_lettura()):
+        st.session_state.domande_editor = {"modo": "nuovo"}
+        st.session_state.domande_conferma_elimina = None
+        st.rerun()
+
+    # ── Form posizionato SUBITO SOTTO il tasto Compila ───────────
+    editor = st.session_state.get("domande_editor")
+    if editor:
+        st.divider()
+        _form_domanda_pioniere(editor, nomi_anagrafica)
+        st.divider()
+
+    # ── Filtri (Mese e Stato) ────────────────────────────────────
     mesi_disponibili = _domande_mesi_anno_teocratico()
     oggi = date.today()
     indice_mese_default = mesi_disponibili.index((oggi.year, oggi.month)) \
@@ -5953,28 +5968,10 @@ def mostra_domande_pioniere_ausiliario():
     )
     etichetta_mese_scelto = f"{MESI_ITALIANI[mese_scelto_tupla[1]]} {mese_scelto_tupla[0]}"
 
-    # ── Filtro stato ─────────────────────────────────────────────
     filtro_stato = st.radio("Stato", ["Tutte", "🟢 Approvate", "🔴 Da approvare"],
                              horizontal=True, key="domande_filtro_stato")
 
-    # ── Pulsanti (renderizzati in alto tramite il container) ────
-    with contenitore_pulsanti:
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
-        with col_home:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
-                      on_click=vai_a_home_reset_domande)
-        with col_nuovo:
-            etichetta_nuovo = "✏️ Modifica" if 'riga_selezionata' in locals() and riga_selezionata is not None else "➕ Compila"
-            # Nota: spostiamo la logica del form subito sotto i pulsanti usando lo stato
-            if st.button("➕ Compila / ✏️ Modifica", key="domande_apri_form", use_container_width=True,
-                         disabled=sola_lettura()):
-                # Gestiamo l'apertura nel blocco sottostante tramite session_state
-                pass
-        with col_esporta:
-            pass # Verrà gestito sotto dopo aver calcolato la riga selezionata
-
-    # Gestione click pulsante compila/modifica tramite session_state associato al bottone o riga
-    # (Usiamo la logica originaria integrata subito dopo i pulsanti)
+    st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra.")
 
     # ── Preparazione dati + griglia ─────────────────────────────
     df_domande = df_domande.reset_index(drop=True)
@@ -5992,60 +5989,6 @@ def mostra_domande_pioniere_ausiliario():
             df_filtrato = df_filtrato[df_filtrato["_n_approvazioni"] < 3]
     df_filtrato = df_filtrato.reset_index(drop=True)
 
-    idx_sel = None
-    
-    # Ridisegniamo i pulsanti con i dati aggiornati della riga selezionata
-    with contenitore_pulsanti:
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
-        with col_home:
-            st.button("🏠 Home", key="home_da_domande_2", use_container_width=True,
-                      on_click=vai_a_home_reset_domande)
-        with col_nuovo:
-            pass # Gestito sotto con la tabella
-
-    # Per mantenere la reattività corretta della tabella e dei pulsanti nello stesso flusso:
-    # Mostriamo prima i pulsanti di azione, poi il form (se attivo), poi la tabella in basso.
-    
-    # Ricreiamo il blocco pulito dei pulsanti di comando:
-    with st.container():
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
-        with col_home:
-            st.button("🏠 Home", key="home_da_domande_fin", use_container_width=True, on_click=vai_a_home_reset_domande)
-        with col_nuovo:
-            pass # Gestito subito dopo leggendo la selezione
-        with col_esporta:
-            pass
-        with col_zip:
-            pass
-
-    # Per semplicità e coerenza visiva perfetta (Pulsanti -> Form -> Tabella):
-    # Ripristiniamo l'ordine logico di Streamlit: Pulsanti in alto, Form subito sotto, Tabella in fondo.
-    
-    # Svuotiamo il contenitore iniziale e inseriamo tutto in sequenza:
-    with contenitore_pulsanti:
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
-        with col_home:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
-            
-        # Determiniamo se c'è una riga selezionata temporaneamente leggendo la chiave della tabella precedente o gestendola via session_state
-        # Lasciando il form subito sotto i pulsanti:
-        
-        btn_nuovo_cliccato = st.button("➕ Compila", key="btn_compila_nuovo", use_container_width=True, disabled=sola_lettura())
-        if btn_nuovo_cliccato:
-            st.session_state.domande_editor = {"modo": "nuovo"}
-            st.session_state.domande_conferma_elimina = None
-            st.rerun()
-
-    # ── Form posizionato SUBITO SOTTO i pulsanti ─────────────────
-    editor = st.session_state.get("domande_editor")
-    if editor:
-        st.divider()
-        _form_domanda_pioniere(editor, nomi_anagrafica)
-        st.divider()
-
-    st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra.")
-
-    # ── Griglia / Tabella in basso ──────────────────────────────
     idx_sel = None
     if df_filtrato.empty:
         st.info("Nessuna domanda trovata con questi filtri.")
@@ -6118,10 +6061,6 @@ def mostra_domande_pioniere_ausiliario():
             mime="application/zip", key="download_domande_zip", use_container_width=True,
             on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
         )
-
-
-
-
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
