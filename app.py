@@ -5888,7 +5888,7 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
                    "L'operazione non è reversibile.")
         col_si, col_no = st.columns(2)
         with col_si:
-                if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
+            if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
                 with st.spinner("Elimino…"):
                     ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
                                                         editor["numero_riga_foglio"])
