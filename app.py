@@ -5643,7 +5643,7 @@ S205B_CAMPO_APPR_CCA  = (428.1, 112.1, 575.5, 128.0)  # iniziali Coordinatore Co
 S205B_CAMPO_APPR_SEG  = (429.4, 84.0, 575.6, 99.9)    # iniziali Segretario
 S205B_CAMPO_APPR_SS   = (428.1, 56.3, 575.6, 72.2)    # iniziali Sorvegliante Servizi
 
-OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30]
+OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30"]
 
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
