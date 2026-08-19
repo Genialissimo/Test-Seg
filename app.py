@@ -5746,10 +5746,19 @@ def genera_zip_s205b(righe: list) -> bytes:
 
 
 def _domande_mesi_anno_teocratico() -> list:
-    """Lista dei 12 mesi (anno, mese) dell'anno teocratico corrente, da Settembre ad Agosto."""
+    """Lista dei mesi (anno, mese) di DUE anni teocratici consecutivi (24 mesi),
+    da Settembre dell'anno teocratico corrente ad Agosto di quello successivo.
+    Così il mese in corso è sempre in elenco, insieme a tutto il prossimo anno
+    di servizio (utile soprattutto a luglio/agosto, quando si programma già settembre)."""
     oggi = date.today()
     anno_teo = oggi.year if oggi.month >= 9 else oggi.year - 1
-    return [(anno_teo, m) for m in range(9, 13)] + [(anno_teo + 1, m) for m in range(1, 9)]
+    mesi = []
+    for offset in (0, 1):
+        anno_base = anno_teo + offset
+        mesi += [(anno_base, m) for m in range(9, 13)]
+        mesi += [(anno_base + 1, m) for m in range(1, 9)]
+    return mesi
+
 
 
 def _domande_calcola_stato(riga: dict) -> tuple:
