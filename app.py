@@ -5643,7 +5643,7 @@ S205B_CAMPO_APPR_CCA  = (428.1, 112.1, 575.5, 128.0)  # iniziali Coordinatore Co
 S205B_CAMPO_APPR_SEG  = (429.4, 84.0, 575.6, 99.9)    # iniziali Segretario
 S205B_CAMPO_APPR_SS   = (428.1, 56.3, 575.6, 72.2)    # iniziali Sorvegliante Servizi
 
-OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30"]
+OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30]
 
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
@@ -5974,17 +5974,15 @@ def mostra_domande_pioniere_ausiliario():
             df_filtrato = df_filtrato[df_filtrato["_n_approvazioni"] < 3]
     df_filtrato = df_filtrato.reset_index(drop=True)
 
-    st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
-               "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
-
+    # ── Gestione selezione tabella ─────────────────────────────
     idx_sel = None
-    if df_filtrato.empty:
-        st.info("Nessuna domanda trovata con questi filtri.")
-    else:
-        colonne_mostrate = [c for c in ["_stato_label", "Nome e Cognome", "Mese di", "Ore", "T/I",
-                                         "Data", "CCA", "SEG", "SS", "Inviata il"]
-                             if c in df_filtrato.columns]
-        chiave_tabella = f"domande_tabella_{st.session_state.domande_tabella_versione}"
+    colonne_mostrate = [c for c in ["_stato_label", "Nome e Cognome", "Mese di", "Ore", "T/I",
+                                     "Data", "CCA", "SEG", "SS", "Inviata il"]
+                         if c in df_filtrato.columns]
+    
+    chiave_tabella = f"domande_tabella_{st.session_state.domande_tabella_versione}"
+
+    if not df_filtrato.empty:
         evento = st.dataframe(
             df_filtrato[colonne_mostrate],
             hide_index=True,
@@ -6005,24 +6003,16 @@ def mostra_domande_pioniere_ausiliario():
 
     riga_selezionata = df_filtrato.loc[idx_sel].to_dict() if idx_sel is not None else None
 
-    # ── Pulsanti (renderizzati in alto tramite il container) ────
+    # ── BLOCCO PULSANTI IN ALTO (Tasto FISSO: + Compila) ─────────
     with contenitore_pulsanti:
         col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
         with col_home:
             st.button("🏠 Home", key="home_da_domande", use_container_width=True,
                       on_click=vai_a_home_reset_domande)
         with col_nuovo:
-            etichetta_nuovo = "✏️ Modifica" if riga_selezionata is not None else "➕ Compila"
-            if st.button(etichetta_nuovo, key="domande_apri_form", use_container_width=True,
+            if st.button("➕ Compila", key="domande_apri_form", use_container_width=True,
                          disabled=sola_lettura()):
-                if riga_selezionata is not None:
-                    st.session_state.domande_editor = {
-                        "modo": "modifica",
-                        "riga": riga_selezionata,
-                        "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
-                    }
-                else:
-                    st.session_state.domande_editor = {"modo": "nuovo"}
+                st.session_state.domande_editor = {"modo": "nuovo"}
                 st.session_state.domande_conferma_elimina = None
         with col_esporta:
             esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True,
@@ -6061,9 +6051,18 @@ def mostra_domande_pioniere_ausiliario():
                 on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
             )
 
+    # ── IL FORM SI APRE QUI: SUBITO SOTTO I TASTI ────────────────
     editor = st.session_state.get("domande_editor")
     if editor:
+        st.markdown("---")
         _form_domanda_pioniere(editor, nomi_anagrafica)
+        st.markdown("---")
+
+    if df_filtrato.empty:
+        st.info("Nessuna domanda trovata con questi filtri.")
+    else:
+        st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
+                   "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
 
 
 # ─────────────────────────────────────────────────────────────────
