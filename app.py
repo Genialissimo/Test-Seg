@@ -2379,7 +2379,7 @@ def mostra_home():
         "🙌 Adunanze": [
             ("🙌", "bg-green",  "Presenti alle adunanze", "Registra e monitora le presenze alle due adunanze.", "presenze", ""),
         ],
-        i"📝 Domande": [
+        "📝 Domande": [
             ("📝", "bg-amber", "Domande di pioniere ausiliario",
              "Compila, archivia ed esporta le domande S-205b.", "domande_pionieri", ""),
         ],
