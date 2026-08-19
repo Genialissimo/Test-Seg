@@ -5785,7 +5785,7 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         st.markdown("#### ➕ Nuova domanda di pioniere ausiliario")
 
     with st.form(f"form_domanda_{chiave}", clear_on_submit=False):
-        opzioni_nomi = list(nomi_anagrafica)
+        opzioni_nomi = ["— Seleziona —"] + list(nomi_anagrafica)
         nome_attuale = e.get("Nome e Cognome", "")
         if nome_attuale and nome_attuale not in opzioni_nomi:
             opzioni_nomi = [nome_attuale] + opzioni_nomi
@@ -5852,8 +5852,8 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
     if invia:
         nome_pulito = (nome_scelto or "").strip()
         mese_pulito = (mese_scelto or "").strip()
-        if not nome_pulito or not mese_pulito:
-            st.error("Nome e cognome e Mese(i) di sono obbligatori.")
+        if not nome_pulito or nome_pulito == "— Seleziona —" or not mese_pulito:
+            st.error("Seleziona un nome e cognome e un mese.")
         else:
             valori = {
                 "Data": data_scelta.strftime("%d/%m/%Y"),
@@ -6060,9 +6060,11 @@ def mostra_domande_pioniere_ausiliario():
                 on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
             )
 
+    # ── Form posizionato in basso, sotto tutti i pulsanti ───────
     editor = st.session_state.get("domande_editor")
     if editor:
         _form_domanda_pioniere(editor, nomi_anagrafica)
+
 
 
 
