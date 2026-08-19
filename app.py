@@ -6507,7 +6507,6 @@ def mostra_domande_pioniere_ausiliario():
                    "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
 
 
-
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
@@ -6537,4 +6536,12 @@ elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
 else:
     mostra_home()
+
+# ─────────────────────────────────────────────────────────────────
+# GESTIONE MODALE GLOBALE
+# ─────────────────────────────────────────────────────────────────
+if st.session_state.get("open_modal", False):
+    modal_form()
+
+
 
