@@ -5910,6 +5910,7 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
                 st.rerun()
 
 
+
 def mostra_domande_pioniere_ausiliario():
     st.title("📝 Domande di pioniere ausiliario")
     contenitore_pulsanti = st.container()
