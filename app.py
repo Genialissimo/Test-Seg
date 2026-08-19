@@ -2379,6 +2379,10 @@ def mostra_home():
         "🙌 Adunanze": [
             ("🙌", "bg-green",  "Presenti alle adunanze", "Registra e monitora le presenze alle due adunanze.", "presenze", ""),
         ],
+        i"📝 Domande": [
+            ("📝", "bg-amber", "Domande di pioniere ausiliario",
+             "Compila, archivia ed esporta le domande S-205b.", "domande_pionieri", ""),
+        ],
         "⚙️ Impostazioni": lista_impostazioni,
     }
 
@@ -5647,6 +5651,8 @@ elif st.session_state.pagina == "impostazioni":
     mostra_impostazioni()
 elif st.session_state.pagina == "utenti":
     mostra_gestione_utenti()
+elif st.session_state.pagina == "domande_pionieri":
+    mostra_domande_pioniere_ausiliario()
 else:
     mostra_home()
 
