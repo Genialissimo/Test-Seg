@@ -5955,35 +5955,8 @@ def mostra_domande_pioniere_ausiliario():
             df_att = df_anagrafica[df_anagrafica["Attivi / Inattivi"].apply(categoria_stato_proclamatore) == "A"]
         nomi_anagrafica = sorted({n.strip() for n in df_att["Cognome e Nome"].astype(str) if n.strip()})
 
-    # Conteggio rapido per il pulsante ZIP nei tasti in alto
-    df_domande_temp = df_domande.reset_index(drop=True)
-    n_zip = len(df_domande_temp) if not df_domande_temp.empty else 0
-
-    # ── 1. BARRA PULSANTI IN ALTO (SEMPRE IN CIMA) ────────────────────────
-    with contenitore_pulsanti:
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
-        with col_home:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
-                      on_click=vai_a_home_reset_domande)
-        with col_nuovo:
-            if st.button("➕ Compila", key="domande_apri_form", use_container_width=True,
-                         disabled=sola_lettura()):
-                st.session_state.domande_editor = {"modo": "nuovo"}
-                st.session_state.domande_conferma_elimina = None
-        with col_esporta:
-            esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True)
-        with col_zip:
-            zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
-                                  use_container_width=True, disabled=n_zip == 0)
-
-    # ── 2. IL FORM COMPARE QUI: SUBITO SOTTO I TASTI ──────────────────────
-    editor = st.session_state.get("domande_editor")
-    if editor:
-        st.markdown("---")
-        _form_domanda_pioniere(editor, nomi_anagrafica)
-        st.markdown("---")
-
-    # ── 3. FILTRI (Mese e Stato) ─────────────────────────────────────────
+    # ── 1. FILTRI (Mese e Stato) — calcolati PRIMA dei pulsanti perché il
+    #    pulsante "Compila/Modifica" deve sapere se una riga è selezionata ──
     mesi_disponibili = _domande_mesi_anno_teocratico()
     oggi = date.today()
     indice_mese_default = mesi_disponibili.index((oggi.year, oggi.month)) \
@@ -6045,44 +6018,73 @@ def mostra_domande_pioniere_ausiliario():
 
     riga_selezionata = df_filtrato.loc[idx_sel].to_dict() if idx_sel is not None else None
 
-    # Gestione eventi click pulsanti Esporta / ZIP
-    if esporta_click:
-        if riga_selezionata is not None:
-            with st.spinner("Compilo il modulo…"):
-                pdf_bytes = genera_pdf_s205b(riga_selezionata)
-            st.session_state.domande_pdf_pronto = (pdf_bytes, riga_selezionata.get("Nome e Cognome", "domanda"))
-        else:
-            st.warning("⚠️ Seleziona prima una riga dalla tabella per poter esportare il PDF.")
-
-    if zip_click and not df_filtrato.empty:
-        righe_zip = df_filtrato.to_dict("records")
-        with st.spinner("Compilo tutte le domande…"):
-            zip_bytes = genera_zip_s205b(righe_zip)
-        st.session_state.domande_zip_pronto = (zip_bytes, etichetta_mese_scelto)
-
-    if st.session_state.get("domande_pdf_pronto"):
-        pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
-        st.download_button(
-            "⬇️ Scarica PDF", data=pdf_bytes,
-            file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
-            mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
-            on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
-        )
-
-    if st.session_state.get("domande_zip_pronto"):
-        zip_bytes, etichetta_zip = st.session_state.domande_zip_pronto
-        st.download_button(
-            "⬇️ Scarica ZIP", data=zip_bytes,
-            file_name=f"Domande_{_s205b_nome_file_sicuro(etichetta_zip)}.zip",
-            mime="application/zip", key="download_domande_zip", use_container_width=True,
-            on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
-        )
-
     if df_filtrato.empty:
         st.info("Nessuna domanda trovata con questi filtri.")
     else:
         st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
                    "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
+
+    # ── 2. PULSANTI + FORM — scritti ORA nel container dichiarato in cima,
+    #    quindi appaiono comunque sopra i filtri e la griglia ──────────────
+    with contenitore_pulsanti:
+        n_zip = len(df_filtrato) if not df_filtrato.empty else 0
+        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        with col_home:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
+                      on_click=vai_a_home_reset_domande)
+        with col_nuovo:
+            etichetta_nuovo = "✏️ Modifica" if riga_selezionata is not None else "➕ Compila"
+            if st.button(etichetta_nuovo, key="domande_apri_form", use_container_width=True,
+                         disabled=sola_lettura()):
+                if riga_selezionata is not None:
+                    st.session_state.domande_editor = {
+                        "modo": "modifica",
+                        "riga": riga_selezionata,
+                        "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
+                    }
+                else:
+                    st.session_state.domande_editor = {"modo": "nuovo"}
+                st.session_state.domande_conferma_elimina = None
+        with col_esporta:
+            esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True,
+                                      disabled=riga_selezionata is None)
+        with col_zip:
+            zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
+                                  use_container_width=True, disabled=n_zip == 0)
+
+        if esporta_click and riga_selezionata is not None:
+            with st.spinner("Compilo il modulo…"):
+                pdf_bytes = genera_pdf_s205b(riga_selezionata)
+            st.session_state.domande_pdf_pronto = (pdf_bytes, riga_selezionata.get("Nome e Cognome", "domanda"))
+
+        if zip_click and not df_filtrato.empty:
+            righe_zip = df_filtrato.to_dict("records")
+            with st.spinner("Compilo tutte le domande…"):
+                zip_bytes = genera_zip_s205b(righe_zip)
+            st.session_state.domande_zip_pronto = (zip_bytes, etichetta_mese_scelto)
+
+        if st.session_state.get("domande_pdf_pronto"):
+            pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
+            st.download_button(
+                "⬇️ Scarica PDF", data=pdf_bytes,
+                file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
+                mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
+                on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
+            )
+
+        if st.session_state.get("domande_zip_pronto"):
+            zip_bytes, etichetta_zip = st.session_state.domande_zip_pronto
+            st.download_button(
+                "⬇️ Scarica ZIP", data=zip_bytes,
+                file_name=f"Domande_{_s205b_nome_file_sicuro(etichetta_zip)}.zip",
+                mime="application/zip", key="download_domande_zip", use_container_width=True,
+                on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
+            )
+
+        editor = st.session_state.get("domande_editor")
+        if editor:
+            st.divider()
+            _form_domanda_pioniere(editor, nomi_anagrafica)
 
 
 
