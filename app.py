@@ -5625,6 +5625,484 @@ if modalita_solo_presenze:
     mostra_presenze_adunanze()
     st.stop()
 
+    
+# ─────────────────────────────────────────────────────────────────
+# PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
+# ─────────────────────────────────────────────────────────────────
+
+def _s205b_testo(c: rl_canvas.Canvas, testo: str, rect: tuple,
+                  font_name: str = "Helvetica", font_size: float = 10.5, pad_sx: float = 3.0):
+    """Scrive un testo allineato a sinistra, appoggiato sopra la riga puntinata del modulo."""
+    if not testo:
+        return
+    x0, y0, x1, y1 = rect
+    y = y0 + (y1 - y0 - font_size) / 2 + 2.2
+    c.setFont(font_name, font_size)
+    c.drawString(x0 + pad_sx, y, testo)
+
+
+def _s205b_testo_centrato(c: rl_canvas.Canvas, testo: str, rect: tuple,
+                           font_name: str = "Helvetica", font_size: float = 10.0):
+    """Scrive un testo centrato orizzontalmente (usato per le iniziali di approvazione)."""
+    if not testo:
+        return
+    x0, y0, x1, y1 = rect
+    largo = c.stringWidth(testo, font_name, font_size)
+    x = (x0 + x1) / 2 - largo / 2
+    y = y0 + (y1 - y0 - font_size) / 2 + 2.2
+    c.setFont(font_name, font_size)
+    c.drawString(x, y, testo)
+
+
+def _s205b_segna_casella(c: rl_canvas.Canvas, rect: tuple,
+                          font_name: str = "Helvetica-Bold", font_size: float = 12.0):
+    x0, y0, x1, y1 = rect
+    testo = "X"
+    largo = c.stringWidth(testo, font_name, font_size)
+    x = (x0 + x1) / 2 - largo / 2
+    y = (y0 + y1) / 2 - font_size * 0.36
+    c.setFont(font_name, font_size)
+    c.drawString(x, y, testo)
+
+
+def genera_pdf_s205b(riga: dict) -> bytes:
+    """Compila il modulo S-205b a partire da una riga del foglio 'Pionieri Ausiliario'."""
+    nome = str(riga.get("Nome e Cognome", "")).strip()
+    mese = str(riga.get("Mese di", "")).strip()
+    ore = str(riga.get("Ore", "")).strip()
+    data_val = str(riga.get("Data", "")).strip()
+    firma = str(riga.get("Firma", "")).strip() or nome
+    continuativo = str(riga.get("T/I", "")).strip().upper() == "I"
+
+    if mese and ore:
+        mese_completo = f"{mese} (ore {ore})"
+    else:
+        mese_completo = mese or (f"(ore {ore})" if ore else "")
+
+    buf = io.BytesIO()
+    c = rl_canvas.Canvas(buf, pagesize=(S205B_PAGE_W, S205B_PAGE_H))
+
+    _s205b_testo(c, mese_completo, S205B_CAMPO_MESE, font_size=10.5)
+    if continuativo:
+        _s205b_segna_casella(c, S205B_CASELLA_CONT)
+    _s205b_testo(c, data_val, S205B_CAMPO_DATA, font_size=10.5)
+    _s205b_testo(c, firma, S205B_CAMPO_FIRMA, font_size=10.5)
+    _s205b_testo(c, nome, S205B_CAMPO_NOME, font_size=10.5)
+    _s205b_testo_centrato(c, str(riga.get("CCA", "")).strip(), S205B_CAMPO_APPR_CCA)
+    _s205b_testo_centrato(c, str(riga.get("SEG", "")).strip(), S205B_CAMPO_APPR_SEG)
+    _s205b_testo_centrato(c, str(riga.get("SS", "")).strip(), S205B_CAMPO_APPR_SS)
+
+    c.save()
+    buf.seek(0)
+
+    overlay_reader = PdfReader(buf)
+    template_reader = PdfReader(PERCORSO_MODULO_S205B)
+    writer = PdfWriter()
+
+    pagina = template_reader.pages[0]
+    pagina.merge_page(overlay_reader.pages[0])
+    if "/Annots" in pagina:
+        del pagina["/Annots"]
+    writer.add_page(pagina)
+
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
+
+
+def _s205b_nome_file_sicuro(nome: str) -> str:
+    return _s21_nome_file_sicuro(nome)
+
+
+def genera_zip_s205b(righe: list) -> bytes:
+    """Genera uno ZIP con una S-205b compilata per ciascuna riga passata."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for riga in righe:
+            pdf_bytes = genera_pdf_s205b(riga)
+            nome_file = _s205b_nome_file_sicuro(str(riga.get("Nome e Cognome", "senza_nome"))) + ".pdf"
+            zf.writestr(nome_file, pdf_bytes)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def _domande_mesi_anno_teocratico() -> list:
+    """Lista dei 12 mesi (anno, mese) dell'anno teocratico corrente, da Settembre ad Agosto."""
+    oggi = date.today()
+    anno_teo = oggi.year if oggi.month >= 9 else oggi.year - 1
+    return [(anno_teo, m) for m in range(9, 13)] + [(anno_teo + 1, m) for m in range(1, 9)]
+
+
+def _domande_calcola_stato(riga: dict) -> tuple:
+    """Ritorna (etichetta, n_approvazioni) in base a quante fra CCA/SEG/SS sono compilate."""
+    n = sum(1 for col in ("CCA", "SEG", "SS") if str(riga.get(col, "")).strip())
+    if n >= 3:
+        return "🟢 Approvata", n
+    if n >= 1:
+        return "🟡 Parziale", n
+    return "🔴 Da approvare", n
+
+
+def _domande_filtra_per_mese(df: pd.DataFrame, etichetta_mese: str) -> pd.DataFrame:
+    if not etichetta_mese or df.empty or "Mese di" not in df.columns:
+        return df
+    return df[df["Mese di"].astype(str).str.contains(etichetta_mese, case=False, na=False, regex=False)]
+
+
+def vai_a_home_reset_domande():
+    for chiave in ("domande_editor", "domande_conferma_elimina", "domande_pdf_pronto", "domande_zip_pronto"):
+        st.session_state.pop(chiave, None)
+    vai_a("home")
+
+
+def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
+    modo = editor.get("modo")
+    e = editor.get("riga", {}) if modo == "modifica" else {}
+    chiave = editor.get("numero_riga_foglio", "nuovo")
+    bloccato = sola_lettura()
+
+    if modo == "modifica":
+        st.markdown(f"#### ✏️ Modifica domanda — {e.get('Nome e Cognome', '')}")
+    else:
+        st.markdown("#### ➕ Nuova domanda di pioniere ausiliario")
+
+    with st.form(f"form_domanda_{chiave}", clear_on_submit=False):
+        opzioni_nomi = list(nomi_anagrafica)
+        nome_attuale = e.get("Nome e Cognome", "")
+        if nome_attuale and nome_attuale not in opzioni_nomi:
+            opzioni_nomi = [nome_attuale] + opzioni_nomi
+        indice_nome = opzioni_nomi.index(nome_attuale) if nome_attuale in opzioni_nomi else 0
+        nome_scelto = st.selectbox("Nome e Cognome *", opzioni_nomi, index=indice_nome, disabled=bloccato)
+
+        opzioni_mesi = [f"{MESI_ITALIANI[m]} {a}" for a, m in _domande_mesi_anno_teocratico()]
+        mese_attuale = e.get("Mese di", "")
+        if mese_attuale and mese_attuale not in opzioni_mesi:
+            opzioni_mesi = [mese_attuale] + opzioni_mesi  # conserva un valore storico fuori dall'anno corrente
+
+        if modo == "modifica":
+            indice_mese = opzioni_mesi.index(mese_attuale) if mese_attuale in opzioni_mesi else 0
+        else:
+            mese_odierno = f"{MESI_ITALIANI[date.today().month]} {date.today().year}"
+            indice_mese = opzioni_mesi.index(mese_odierno) if mese_odierno in opzioni_mesi else 0
+
+        mese_scelto = st.selectbox("Mese di *", opzioni_mesi, index=indice_mese, disabled=bloccato)
+
+        ore_correnti = e.get("Ore", "") or OPZIONI_ORE_PIONIERE_AUSILIARIO[0]
+        if ore_correnti not in OPZIONI_ORE_PIONIERE_AUSILIARIO:
+            ore_correnti = OPZIONI_ORE_PIONIERE_AUSILIARIO[0]
+        ore_scelte = st.selectbox("Requisito delle ore", OPZIONI_ORE_PIONIERE_AUSILIARIO,
+                                   index=OPZIONI_ORE_PIONIERE_AUSILIARIO.index(ore_correnti),
+                                   disabled=bloccato)
+
+        continuativo = st.checkbox(
+            "Continua fino a diversa comunicazione (pioniere ausiliario continuativo)",
+            value=str(e.get("T/I", "")).strip().upper() == "I", disabled=bloccato,
+        )
+
+        try:
+            data_default = datetime.strptime(e.get("Data", ""), "%d/%m/%Y").date()
+        except Exception:
+            data_default = date.today()
+        data_scelta = st.date_input("Data *", value=data_default, format="DD/MM/YYYY", disabled=bloccato)
+
+        st.markdown("**Approvazione del comitato di servizio** _(bastano le iniziali)_")
+        col_cca, col_seg, col_ss = st.columns(3)
+        with col_cca:
+            cca = st.text_input("CCA", value=e.get("CCA", ""), disabled=bloccato)
+        with col_seg:
+            seg = st.text_input("SEG", value=e.get("SEG", ""), disabled=bloccato)
+        with col_ss:
+            ss = st.text_input("SS", value=e.get("SS", ""), disabled=bloccato)
+
+        col_salva, col_annulla, col_elimina = st.columns(3)
+        with col_salva:
+            invia = st.form_submit_button("✔ Salva", type="primary", use_container_width=True, disabled=bloccato)
+        with col_annulla:
+            annulla = st.form_submit_button("✖ Annulla", use_container_width=True)
+        with col_elimina:
+            elimina = st.form_submit_button("🗑️ Elimina", use_container_width=True,
+                                            disabled=(bloccato or modo != "modifica"))
+
+    if annulla:
+        st.session_state.domande_editor = None
+        st.rerun()
+
+    if elimina and modo == "modifica":
+        st.session_state.domande_conferma_elimina = editor
+        st.rerun()
+
+    if invia:
+        nome_pulito = (nome_scelto or "").strip()
+        mese_pulito = (mese_scelto or "").strip()
+        if not nome_pulito or not mese_pulito:
+            st.error("Nome e cognome e Mese(i) di sono obbligatori.")
+        else:
+            valori = {
+                "Data": data_scelta.strftime("%d/%m/%Y"),
+                "Mese di": mese_pulito,
+                "T/I": "I" if continuativo else "T",
+                "Ore": ore_scelte,
+                "Firma": nome_pulito,
+                "Nome e Cognome": nome_pulito,
+                "CCA": cca.strip(),
+                "SEG": seg.strip(),
+                "SS": ss.strip(),
+                "Inviata il": e.get("Inviata il", "") or datetime.now().strftime("%d/%m/%Y %H:%M"),
+            }
+            numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
+            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                               RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
+                                               valori, riga_da_aggiornare=numero_riga)
+            if ok:
+                st.cache_data.clear()
+                st.session_state.domande_editor = None
+                st.session_state.domande_tabella_versione = st.session_state.get("domande_tabella_versione", 0) + 1
+                st.success(f"✔ Domanda di «{nome_pulito}» salvata correttamente.")
+                st.rerun()
+            else:
+                st.error(err_salva)
+
+    conferma = st.session_state.get("domande_conferma_elimina")
+    if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
+        st.warning(f"Confermi l'eliminazione della domanda di «{e.get('Nome e Cognome', '')}»? "
+                   "L'operazione non è reversibile.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
+                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                                    editor["numero_riga_foglio"])
+                if ok:
+                    st.cache_data.clear()
+                    st.session_state.domande_editor = None
+                    st.session_state.domande_conferma_elimina = None
+                    st.session_state.domande_tabella_versione = st.session_state.get("domande_tabella_versione", 0) + 1
+                    st.success("✔ Domanda eliminata.")
+                    st.rerun()
+                else:
+                    st.error(err_elim)
+        with col_no:
+            if st.button("No, annulla", key="domande_conf_no", use_container_width=True):
+                st.session_state.domande_conferma_elimina = None
+                st.rerun()
+
+    if elimina and modo == "modifica":
+        st.session_state.domande_conferma_elimina = editor
+        st.rerun()
+
+    if invia:
+        nome_pulito = (nome_scelto or "").strip()
+        mese_pulito = (mese_scelto or "").strip()
+        if not nome_pulito or not mese_pulito:
+            st.error("Nome e cognome e Mese(i) di sono obbligatori.")
+        else:
+            valori = {
+                "Data": data_scelta.strftime("%d/%m/%Y"),
+                "Mese di": mese_pulito,
+                "T/I": "I" if continuativo else "T",
+                "Ore": ore_scelte,
+                "Firma": nome_pulito,
+                "Nome e Cognome": nome_pulito,
+                "CCA": cca.strip(),
+                "SEG": seg.strip(),
+                "SS": ss.strip(),
+                "Inviata il": e.get("Inviata il", "") or datetime.now().strftime("%d/%m/%Y %H:%M"),
+            }
+            numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
+            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                               RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
+                                               valori, riga_da_aggiornare=numero_riga)
+            if ok:
+                st.cache_data.clear()
+                st.session_state.domande_editor = None
+                st.session_state.domande_tabella_versione = st.session_state.get("domande_tabella_versione", 0) + 1
+                st.success(f"✔ Domanda di «{nome_pulito}» salvata correttamente.")
+                st.rerun()
+            else:
+                st.error(err_salva)
+
+    conferma = st.session_state.get("domande_conferma_elimina")
+    if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
+        st.warning(f"Confermi l'eliminazione della domanda di «{e.get('Nome e Cognome', '')}»? "
+                   "L'operazione non è reversibile.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
+                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                                    editor["numero_riga_foglio"])
+                if ok:
+                    st.cache_data.clear()
+                    st.session_state.domande_editor = None
+                    st.session_state.domande_conferma_elimina = None
+                    st.session_state.domande_tabella_versione = st.session_state.get("domande_tabella_versione", 0) + 1
+                    st.success("✔ Domanda eliminata.")
+                    st.rerun()
+                else:
+                    st.error(err_elim)
+        with col_no:
+            if st.button("No, annulla", key="domande_conf_no", use_container_width=True):
+                st.session_state.domande_conferma_elimina = None
+                st.rerun()
+
+
+def mostra_domande_pioniere_ausiliario():
+    st.title("📝 Domande di pioniere ausiliario")
+    contenitore_pulsanti = st.container()
+
+    if "domande_tabella_versione" not in st.session_state:
+        st.session_state.domande_tabella_versione = 0
+
+    if not collegato:
+        with contenitore_pulsanti:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
+        st.warning("⚠️ Nessun foglio dati collegato.")
+        return
+
+    if not os.path.exists(PERCORSO_MODULO_S205B):
+        with contenitore_pulsanti:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
+        st.error("Modulo S-205b non trovato: metti il file «S-205b_I.pdf» nella stessa cartella di app.py.")
+        return
+
+    df_domande, err = leggi_foglio_come_df(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                            RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO)
+    if err:
+        with contenitore_pulsanti:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
+        st.error(err)
+        return
+
+    df_anagrafica, _ = leggi_foglio_come_df(workbook, NOME_FOGLIO_ANAGRAFICA, RIGA_INTESTAZIONE_ANAGRAFICA)
+    nomi_anagrafica = []
+    if df_anagrafica is not None and not df_anagrafica.empty and "Cognome e Nome" in df_anagrafica.columns:
+        df_att = df_anagrafica
+        if "Attivi / Inattivi" in df_anagrafica.columns:
+            df_att = df_anagrafica[df_anagrafica["Attivi / Inattivi"].apply(categoria_stato_proclamatore) == "A"]
+        nomi_anagrafica = sorted({n.strip() for n in df_att["Cognome e Nome"].astype(str) if n.strip()})
+
+    # ── Filtro mese (anno teocratico) ──────────────────────────
+    mesi_disponibili = _domande_mesi_anno_teocratico()
+    oggi = date.today()
+    indice_mese_default = mesi_disponibili.index((oggi.year, oggi.month)) \
+        if (oggi.year, oggi.month) in mesi_disponibili else len(mesi_disponibili) - 1
+    mese_scelto_tupla = st.selectbox(
+        "Mese anno teocratico",
+        mesi_disponibili,
+        index=indice_mese_default,
+        format_func=lambda am: f"{MESI_ITALIANI[am[1]]} {am[0]}",
+        key="domande_mese_scelto",
+    )
+    etichetta_mese_scelto = f"{MESI_ITALIANI[mese_scelto_tupla[1]]} {mese_scelto_tupla[0]}"
+
+    # ── Filtro stato ─────────────────────────────────────────────
+    filtro_stato = st.radio("Stato", ["Tutte", "🟢 Approvate", "🔴 Da approvare"],
+                             horizontal=True, key="domande_filtro_stato")
+
+    # ── Preparazione dati + griglia ─────────────────────────────
+    df_domande = df_domande.reset_index(drop=True)
+    if not df_domande.empty:
+        df_domande["_riga_foglio"] = RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO + 1 + df_domande.index
+        stati = df_domande.apply(lambda r: _domande_calcola_stato(r.to_dict()), axis=1)
+        df_domande["_stato_label"] = [s[0] for s in stati]
+        df_domande["_n_approvazioni"] = [s[1] for s in stati]
+
+    df_filtrato = _domande_filtra_per_mese(df_domande, etichetta_mese_scelto)
+    if "_n_approvazioni" in df_filtrato.columns:
+        if filtro_stato == "🟢 Approvate":
+            df_filtrato = df_filtrato[df_filtrato["_n_approvazioni"] >= 3]
+        elif filtro_stato == "🔴 Da approvare":
+            df_filtrato = df_filtrato[df_filtrato["_n_approvazioni"] < 3]
+    df_filtrato = df_filtrato.reset_index(drop=True)
+
+    st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
+               "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
+
+    idx_sel = None
+    if df_filtrato.empty:
+        st.info("Nessuna domanda trovata con questi filtri.")
+    else:
+        colonne_mostrate = [c for c in ["_stato_label", "Nome e Cognome", "Mese di", "Ore", "T/I",
+                                         "Data", "CCA", "SEG", "SS", "Inviata il"]
+                             if c in df_filtrato.columns]
+        chiave_tabella = f"domande_tabella_{st.session_state.domande_tabella_versione}"
+        evento = st.dataframe(
+            df_filtrato[colonne_mostrate],
+            hide_index=True,
+            use_container_width=True,
+            on_select="rerun",
+            selection_mode="single-row",
+            key=chiave_tabella,
+            column_config={
+                "_stato_label": st.column_config.TextColumn("Stato", width="small"),
+                "Ore": st.column_config.TextColumn(width="small"),
+                "T/I": st.column_config.TextColumn(width="small"),
+                "Data": st.column_config.TextColumn(width="small"),
+            },
+        )
+        righe_sel = evento.selection.rows if evento and evento.selection else []
+        if righe_sel and righe_sel[0] < len(df_filtrato):
+            idx_sel = righe_sel[0]
+
+    riga_selezionata = df_filtrato.loc[idx_sel].to_dict() if idx_sel is not None else None
+
+    # ── Pulsanti (renderizzati in alto tramite il container) ────
+    with contenitore_pulsanti:
+        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        with col_home:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
+                      on_click=vai_a_home_reset_domande)
+        with col_nuovo:
+            etichetta_nuovo = "✏️ Modifica" if riga_selezionata is not None else "➕ Compila"
+            if st.button(etichetta_nuovo, key="domande_apri_form", use_container_width=True,
+                         disabled=sola_lettura()):
+                if riga_selezionata is not None:
+                    st.session_state.domande_editor = {
+                        "modo": "modifica",
+                        "riga": riga_selezionata,
+                        "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
+                    }
+                else:
+                    st.session_state.domande_editor = {"modo": "nuovo"}
+                st.session_state.domande_conferma_elimina = None
+        with col_esporta:
+            esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True,
+                                      disabled=riga_selezionata is None)
+        with col_zip:
+            n_zip = len(df_filtrato) if not df_filtrato.empty else 0
+            zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
+                                  use_container_width=True, disabled=n_zip == 0)
+
+        if esporta_click and riga_selezionata is not None:
+            with st.spinner("Compilo il modulo…"):
+                pdf_bytes = genera_pdf_s205b(riga_selezionata)
+            st.session_state.domande_pdf_pronto = (pdf_bytes, riga_selezionata.get("Nome e Cognome", "domanda"))
+
+        if zip_click and not df_filtrato.empty:
+            righe_zip = df_filtrato.to_dict("records")
+            with st.spinner("Compilo tutte le domande…"):
+                zip_bytes = genera_zip_s205b(righe_zip)
+            st.session_state.domande_zip_pronto = (zip_bytes, etichetta_mese_scelto)
+
+        if st.session_state.get("domande_pdf_pronto"):
+            pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
+            st.download_button(
+                "⬇️ Scarica PDF", data=pdf_bytes,
+                file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
+                mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
+                on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
+            )
+
+        if st.session_state.get("domande_zip_pronto"):
+            zip_bytes, etichetta_zip = st.session_state.domande_zip_pronto
+            st.download_button(
+                "⬇️ Scarica ZIP", data=zip_bytes,
+                file_name=f"Domande_{_s205b_nome_file_sicuro(etichetta_zip)}.zip",
+                mime="application/zip", key="download_domande_zip", use_container_width=True,
+                on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
+            )
+
+    editor = st.session_state.get("domande_editor")
+    if editor:
+        _form_domanda_pioniere(editor, nomi_anagrafica)
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
