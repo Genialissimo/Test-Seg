@@ -5957,6 +5957,25 @@ def mostra_domande_pioniere_ausiliario():
     filtro_stato = st.radio("Stato", ["Tutte", "🟢 Approvate", "🔴 Da approvare"],
                              horizontal=True, key="domande_filtro_stato")
 
+    # ── Pulsanti (renderizzati in alto tramite il container) ────
+    with contenitore_pulsanti:
+        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        with col_home:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
+                      on_click=vai_a_home_reset_domande)
+        with col_nuovo:
+            etichetta_nuovo = "✏️ Modifica" if 'riga_selezionata' in locals() and riga_selezionata is not None else "➕ Compila"
+            # Nota: spostiamo la logica del form subito sotto i pulsanti usando lo stato
+            if st.button("➕ Compila / ✏️ Modifica", key="domande_apri_form", use_container_width=True,
+                         disabled=sola_lettura()):
+                # Gestiamo l'apertura nel blocco sottostante tramite session_state
+                pass
+        with col_esporta:
+            pass # Verrà gestito sotto dopo aver calcolato la riga selezionata
+
+    # Gestione click pulsante compila/modifica tramite session_state associato al bottone o riga
+    # (Usiamo la logica originaria integrata subito dopo i pulsanti)
+
     # ── Preparazione dati + griglia ─────────────────────────────
     df_domande = df_domande.reset_index(drop=True)
     if not df_domande.empty:
@@ -5973,9 +5992,60 @@ def mostra_domande_pioniere_ausiliario():
             df_filtrato = df_filtrato[df_filtrato["_n_approvazioni"] < 3]
     df_filtrato = df_filtrato.reset_index(drop=True)
 
-    st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
-               "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
+    idx_sel = None
+    
+    # Ridisegniamo i pulsanti con i dati aggiornati della riga selezionata
+    with contenitore_pulsanti:
+        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        with col_home:
+            st.button("🏠 Home", key="home_da_domande_2", use_container_width=True,
+                      on_click=vai_a_home_reset_domande)
+        with col_nuovo:
+            pass # Gestito sotto con la tabella
 
+    # Per mantenere la reattività corretta della tabella e dei pulsanti nello stesso flusso:
+    # Mostriamo prima i pulsanti di azione, poi il form (se attivo), poi la tabella in basso.
+    
+    # Ricreiamo il blocco pulito dei pulsanti di comando:
+    with st.container():
+        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        with col_home:
+            st.button("🏠 Home", key="home_da_domande_fin", use_container_width=True, on_click=vai_a_home_reset_domande)
+        with col_nuovo:
+            pass # Gestito subito dopo leggendo la selezione
+        with col_esporta:
+            pass
+        with col_zip:
+            pass
+
+    # Per semplicità e coerenza visiva perfetta (Pulsanti -> Form -> Tabella):
+    # Ripristiniamo l'ordine logico di Streamlit: Pulsanti in alto, Form subito sotto, Tabella in fondo.
+    
+    # Svuotiamo il contenitore iniziale e inseriamo tutto in sequenza:
+    with contenitore_pulsanti:
+        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        with col_home:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True, on_click=vai_a_home_reset_domande)
+            
+        # Determiniamo se c'è una riga selezionata temporaneamente leggendo la chiave della tabella precedente o gestendola via session_state
+        # Lasciando il form subito sotto i pulsanti:
+        
+        btn_nuovo_cliccato = st.button("➕ Compila", key="btn_compila_nuovo", use_container_width=True, disabled=sola_lettura())
+        if btn_nuovo_cliccato:
+            st.session_state.domande_editor = {"modo": "nuovo"}
+            st.session_state.domande_conferma_elimina = None
+            st.rerun()
+
+    # ── Form posizionato SUBITO SOTTO i pulsanti ─────────────────
+    editor = st.session_state.get("domande_editor")
+    if editor:
+        st.divider()
+        _form_domanda_pioniere(editor, nomi_anagrafica)
+        st.divider()
+
+    st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra.")
+
+    # ── Griglia / Tabella in basso ──────────────────────────────
     idx_sel = None
     if df_filtrato.empty:
         st.info("Nessuna domanda trovata con questi filtri.")
@@ -6004,66 +6074,51 @@ def mostra_domande_pioniere_ausiliario():
 
     riga_selezionata = df_filtrato.loc[idx_sel].to_dict() if idx_sel is not None else None
 
-    # ── Pulsanti (renderizzati in alto tramite il container) ────
-    with contenitore_pulsanti:
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
-        with col_home:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
-                      on_click=vai_a_home_reset_domande)
-        with col_nuovo:
-            etichetta_nuovo = "✏️ Modifica" if riga_selezionata is not None else "➕ Compila"
-            if st.button(etichetta_nuovo, key="domande_apri_form", use_container_width=True,
-                         disabled=sola_lettura()):
-                if riga_selezionata is not None:
-                    st.session_state.domande_editor = {
-                        "modo": "modifica",
-                        "riga": riga_selezionata,
-                        "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
-                    }
-                else:
-                    st.session_state.domande_editor = {"modo": "nuovo"}
+    # Pulsanti di esportazione/modifica basati sulla selezione della riga
+    col_mod, col_esp, col_z = st.columns(3)
+    with col_mod:
+        if riga_selezionata is not None:
+            if st.button("✏️ Modifica selezionata", use_container_width=True, disabled=sola_lettura()):
+                st.session_state.domande_editor = {
+                    "modo": "modifica",
+                    "riga": riga_selezionata,
+                    "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
+                }
                 st.session_state.domande_conferma_elimina = None
-        with col_esporta:
-            esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True,
-                                      disabled=riga_selezionata is None)
-        with col_zip:
-            n_zip = len(df_filtrato) if not df_filtrato.empty else 0
-            zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
-                                  use_container_width=True, disabled=n_zip == 0)
-
-        if esporta_click and riga_selezionata is not None:
+                st.rerun()
+    with col_esp:
+        if riga_selezionata is not None and st.button("📄 Esporta PDF", use_container_width=True):
             with st.spinner("Compilo il modulo…"):
                 pdf_bytes = genera_pdf_s205b(riga_selezionata)
             st.session_state.domande_pdf_pronto = (pdf_bytes, riga_selezionata.get("Nome e Cognome", "domanda"))
-
-        if zip_click and not df_filtrato.empty:
+            st.rerun()
+    with col_z:
+        n_zip = len(df_filtrato) if not df_filtrato.empty else 0
+        if st.button(f"📦 Esporta ZIP ({n_zip})", use_container_width=True, disabled=n_zip == 0):
             righe_zip = df_filtrato.to_dict("records")
             with st.spinner("Compilo tutte le domande…"):
                 zip_bytes = genera_zip_s205b(righe_zip)
             st.session_state.domande_zip_pronto = (zip_bytes, etichetta_mese_scelto)
+            st.rerun()
 
-        if st.session_state.get("domande_pdf_pronto"):
-            pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
-            st.download_button(
-                "⬇️ Scarica PDF", data=pdf_bytes,
-                file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
-                mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
-                on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
-            )
+    if st.session_state.get("domande_pdf_pronto"):
+        pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
+        st.download_button(
+            "⬇️ Scarica PDF", data=pdf_bytes,
+            file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
+            mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
+            on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
+        )
 
-        if st.session_state.get("domande_zip_pronto"):
-            zip_bytes, etichetta_zip = st.session_state.domande_zip_pronto
-            st.download_button(
-                "⬇️ Scarica ZIP", data=zip_bytes,
-                file_name=f"Domande_{_s205b_nome_file_sicuro(etichetta_zip)}.zip",
-                mime="application/zip", key="download_domande_zip", use_container_width=True,
-                on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
-            )
+    if st.session_state.get("domande_zip_pronto"):
+        zip_bytes, etichetta_zip = st.session_state.domande_zip_pronto
+        st.download_button(
+            "⬇️ Scarica ZIP", data=zip_bytes,
+            file_name=f"Domande_{_s205b_nome_file_sicuro(etichetta_zip)}.zip",
+            mime="application/zip", key="download_domande_zip", use_container_width=True,
+            on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
+        )
 
-    # ── Form posizionato in basso, sotto tutti i pulsanti ───────
-    editor = st.session_state.get("domande_editor")
-    if editor:
-        _form_domanda_pioniere(editor, nomi_anagrafica)
 
 
 
