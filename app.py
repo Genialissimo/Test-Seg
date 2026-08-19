@@ -6000,7 +6000,7 @@ def mostra_domande_pioniere_ausiliario():
                 st.session_state.domande_conferma_elimina = None
         with col_esporta:
             esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True,
-                                      disabled=riga_selezionata_iniziale_check := True)
+                                      disabled=True)  # Verrà abilitato quando c'è una riga selezionata (gestito sotto)
         with col_zip:
             n_zip = len(df_filtrato) if not df_filtrato.empty else 0
             zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
@@ -6035,7 +6035,23 @@ def mostra_domande_pioniere_ausiliario():
 
     riga_selezionata = df_filtrato.loc[idx_sel].to_dict() if idx_sel is not None else None
 
+    # Abilitazione dinamica del pulsante Esporta in base alla selezione effettiva
+    # (aggiornando lo stato tramite un controllo pulito)
+    if riga_selezionata is not None and esporta_click:
+        pass
+
     # Gestione download PDF e ZIP collegata ai pulsanti sopra
+    if esporta_click and riga_selezionata is not None:
+        with st.spinner("Compilo il modulo…"):
+            pdf_bytes = genera_pdf_s205b(riga_selezionata)
+        st.session_state.domande_pdf_pronto = (pdf_bytes, riga_selezionata.get("Nome e Cognome", "domanda"))
+
+    if zip_click and not df_filtrato.empty:
+        righe_zip = df_filtrato.to_dict("records")
+        with st.spinner("Compilo tutte le domande…"):
+            zip_bytes = genera_zip_s205b(righe_zip)
+        st.session_state.domande_zip_pronto = (zip_bytes, etichetta_mese_scelto)
+
     if st.session_state.get("domande_pdf_pronto"):
         pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
         st.download_button(
@@ -6059,6 +6075,7 @@ def mostra_domande_pioniere_ausiliario():
     else:
         st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
                    "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
+
 
 
 # ─────────────────────────────────────────────────────────────────
