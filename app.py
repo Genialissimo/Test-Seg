@@ -6077,7 +6077,6 @@ def mostra_domande_pioniere_ausiliario():
 
 
 
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
 # ─────────────────────────────────────────────────────────────────
@@ -6219,7 +6218,7 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         st.markdown("#### ➕ Nuova domanda di pioniere ausiliario")
 
     with st.form(f"form_domanda_{chiave}", clear_on_submit=False):
-        opzioni_nomi = list(nomi_anagrafica)
+        opzioni_nomi = ["— Seleziona —"] + list(nomi_anagrafica)
         nome_attuale = e.get("Nome e Cognome", "")
         if nome_attuale and nome_attuale not in opzioni_nomi:
             opzioni_nomi = [nome_attuale] + opzioni_nomi
@@ -6286,8 +6285,8 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
     if invia:
         nome_pulito = (nome_scelto or "").strip()
         mese_pulito = (mese_scelto or "").strip()
-        if not nome_pulito or not mese_pulito:
-            st.error("Nome e cognome e Mese(i) di sono obbligatori.")
+        if not nome_pulito or nome_pulito == "— Seleziona —" or not mese_pulito:
+            st.error("Seleziona un nome e cognome e un mese.")
         else:
             valori = {
                 "Data": data_scelta.strftime("%d/%m/%Y"),
@@ -6302,9 +6301,10 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
                 "Inviata il": e.get("Inviata il", "") or datetime.now().strftime("%d/%m/%Y %H:%M"),
             }
             numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
-            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                               RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
-                                               valori, riga_da_aggiornare=numero_riga)
+            with st.spinner("Salvo…"):
+                ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                                   RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
+                                                   valori, riga_da_aggiornare=numero_riga)
             if ok:
                 st.cache_data.clear()
                 st.session_state.domande_editor = None
@@ -6321,8 +6321,9 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         col_si, col_no = st.columns(2)
         with col_si:
             if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
-                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                                    editor["numero_riga_foglio"])
+                with st.spinner("Elimino…"):
+                    ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                                        editor["numero_riga_foglio"])
                 if ok:
                     st.cache_data.clear()
                     st.session_state.domande_editor = None
@@ -6340,13 +6341,16 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
 
 def mostra_domande_pioniere_ausiliario():
     st.title("📝 Domande di pioniere ausiliario")
+
+    with st.expander("🔗 Link per l'autocompilazione (da inviare alla congregazione)"):
+        st.caption("Chiunque apra questo link può compilare e inviare la propria domanda, "
+                   "senza bisogno di accedere con Google. CCA/SEG/SS restano modificabili solo da qui.")
+        st.code("https://gestioneseg.streamlit.app/?modalita=domanda_pubblica", language=None)
+
     contenitore_pulsanti = st.container()
 
     if "domande_tabella_versione" not in st.session_state:
         st.session_state.domande_tabella_versione = 0
-
-    if "domande_nuovo" not in st.session_state:
-        st.session_state.domande_nuovo = False
 
     if not collegato:
         with contenitore_pulsanti:
@@ -6376,41 +6380,11 @@ def mostra_domande_pioniere_ausiliario():
             df_att = df_anagrafica[df_anagrafica["Attivi / Inattivi"].apply(categoria_stato_proclamatore) == "A"]
         nomi_anagrafica = sorted({n.strip() for n in df_att["Cognome e Nome"].astype(str) if n.strip()})
 
-    df_domande_temp = df_domande.reset_index(drop=True)
-    n_zip = len(df_domande_temp) if not df_domande_temp.empty else 0
-
-    # ── 1. BARRA PULSANTI IN ALTO (FISSA IN CIMA) ────────────────────────
-    with contenitore_pulsanti:
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
-        with col_home:
-            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
-                      on_click=vai_a_home_reset_domande)
-        with col_nuovo:
-            if st.button("➕ Compila", key="domande_apri_form", use_container_width=True,
-                         disabled=sola_lettura()):
-                st.session_state.domande_nuovo = True
-                st.session_state.domande_editor = {"modo": "nuovo"}
-                st.session_state.domande_conferma_elimina = None
-                st.rerun()
-        with col_esporta:
-            esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True)
-        with col_zip:
-            zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
-                                  use_container_width=True, disabled=n_zip == 0)
-
-    # ── 2. SE IL FLAG NUOVO È ATTIVO, APRIAMO IL FORM SUBITO SOTTO I TASTI ──
-    if st.session_state.domande_nuovo:
-        st.subheader("➕ Nuova domanda di pioniere ausiliario")
-        editor = {"modo": "nuovo"}
-        _form_domanda_pioniere(editor, nomi_anagrafica)
-        return  # Interrompiamo il flusso così sotto non compaiono filtri o tabelle
-
-    # ── 3. FILTRI (Mese e Stato) — MOSTRATI SOLO SE NON SI È IN MODALITÀ NUOVO ──
+    # ── Filtro mese (anno teocratico) ──────────────────────────
     mesi_disponibili = _domande_mesi_anno_teocratico()
     oggi = date.today()
     indice_mese_default = mesi_disponibili.index((oggi.year, oggi.month)) \
         if (oggi.year, oggi.month) in mesi_disponibili else len(mesi_disponibili) - 1
-
     mese_scelto_tupla = st.selectbox(
         "Mese anno teocratico",
         mesi_disponibili,
@@ -6420,10 +6394,11 @@ def mostra_domande_pioniere_ausiliario():
     )
     etichetta_mese_scelto = f"{MESI_ITALIANI[mese_scelto_tupla[1]]} {mese_scelto_tupla[0]}"
 
+    # ── Filtro stato ─────────────────────────────────────────────
     filtro_stato = st.radio("Stato", ["Tutte", "🟢 Approvate", "🔴 Da approvare"],
                              horizontal=True, key="domande_filtro_stato")
 
-    # ── 4. PREPARAZIONE DATI E TABELLA ───────────────────────────────────
+    # ── Preparazione dati + griglia ─────────────────────────────
     df_domande = df_domande.reset_index(drop=True)
     if not df_domande.empty:
         df_domande["_riga_foglio"] = RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO + 1 + df_domande.index
@@ -6439,14 +6414,17 @@ def mostra_domande_pioniere_ausiliario():
             df_filtrato = df_filtrato[df_filtrato["_n_approvazioni"] < 3]
     df_filtrato = df_filtrato.reset_index(drop=True)
 
-    idx_sel = None
-    colonne_mostrate = [c for c in ["_stato_label", "Nome e Cognome", "Mese di", "Ore", "T/I",
-                                     "Data", "CCA", "SEG", "SS", "Inviata il"]
-                         if c in df_filtrato.columns]
-    
-    chiave_tabella = f"domande_tabella_{st.session_state.domande_tabella_versione}"
+    st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
+               "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
 
-    if not df_filtrato.empty:
+    idx_sel = None
+    if df_filtrato.empty:
+        st.info("Nessuna domanda trovata con questi filtri.")
+    else:
+        colonne_mostrate = [c for c in ["_stato_label", "Nome e Cognome", "Mese di", "Ore", "T/I",
+                                         "Data", "CCA", "SEG", "SS", "Inviata il"]
+                             if c in df_filtrato.columns]
+        chiave_tabella = f"domande_tabella_{st.session_state.domande_tabella_versione}"
         evento = st.dataframe(
             df_filtrato[colonne_mostrate],
             hide_index=True,
@@ -6467,44 +6445,68 @@ def mostra_domande_pioniere_ausiliario():
 
     riga_selezionata = df_filtrato.loc[idx_sel].to_dict() if idx_sel is not None else None
 
-    # Gestione eventi click pulsanti Esporta / ZIP
-    if esporta_click:
-        if riga_selezionata is not None:
+    # ── Pulsanti + form (renderizzati in alto tramite il container) ──
+    with contenitore_pulsanti:
+        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        with col_home:
+            st.button("🏠 Home", key="home_da_domande", use_container_width=True,
+                      on_click=vai_a_home_reset_domande)
+        with col_nuovo:
+            etichetta_nuovo = "✏️ Modifica" if riga_selezionata is not None else "➕ Compila"
+            if st.button(etichetta_nuovo, key="domande_apri_form", use_container_width=True,
+                         disabled=sola_lettura()):
+                if riga_selezionata is not None:
+                    st.session_state.domande_editor = {
+                        "modo": "modifica",
+                        "riga": riga_selezionata,
+                        "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
+                    }
+                else:
+                    st.session_state.domande_editor = {"modo": "nuovo"}
+                st.session_state.domande_conferma_elimina = None
+        with col_esporta:
+            esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True,
+                                      disabled=riga_selezionata is None)
+        with col_zip:
+            n_zip = len(df_filtrato) if not df_filtrato.empty else 0
+            zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
+                                  use_container_width=True, disabled=n_zip == 0)
+
+        if esporta_click and riga_selezionata is not None:
             with st.spinner("Compilo il modulo…"):
                 pdf_bytes = genera_pdf_s205b(riga_selezionata)
             st.session_state.domande_pdf_pronto = (pdf_bytes, riga_selezionata.get("Nome e Cognome", "domanda"))
-        else:
-            st.warning("⚠️ Seleziona prima una riga dalla tabella per poter esportare il PDF.")
 
-    if zip_click and not df_filtrato.empty:
-        righe_zip = df_filtrato.to_dict("records")
-        with st.spinner("Compilo tutte le domande…"):
-            zip_bytes = genera_zip_s205b(righe_zip)
-        st.session_state.domande_zip_pronto = (zip_bytes, etichetta_mese_scelto)
+        if zip_click and not df_filtrato.empty:
+            righe_zip = df_filtrato.to_dict("records")
+            with st.spinner("Compilo tutte le domande…"):
+                zip_bytes = genera_zip_s205b(righe_zip)
+            st.session_state.domande_zip_pronto = (zip_bytes, etichetta_mese_scelto)
 
-    if st.session_state.get("domande_pdf_pronto"):
-        pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
-        st.download_button(
-            "⬇️ Scarica PDF", data=pdf_bytes,
-            file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
-            mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
-            on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
-        )
+        if st.session_state.get("domande_pdf_pronto"):
+            pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
+            st.download_button(
+                "⬇️ Scarica PDF", data=pdf_bytes,
+                file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
+                mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
+                on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
+            )
 
-    if st.session_state.get("domande_zip_pronto"):
-        zip_bytes, etichetta_zip = st.session_state.domande_zip_pronto
-        st.download_button(
-            "⬇️ Scarica ZIP", data=zip_bytes,
-            file_name=f"Domande_{_s205b_nome_file_sicuro(etichetta_zip)}.zip",
-            mime="application/zip", key="download_domande_zip", use_container_width=True,
-            on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
-        )
+        if st.session_state.get("domande_zip_pronto"):
+            zip_bytes, etichetta_zip = st.session_state.domande_zip_pronto
+            st.download_button(
+                "⬇️ Scarica ZIP", data=zip_bytes,
+                file_name=f"Domande_{_s205b_nome_file_sicuro(etichetta_zip)}.zip",
+                mime="application/zip", key="download_domande_zip", use_container_width=True,
+                on_click=lambda: st.session_state.pop("domande_zip_pronto", None),
+            )
 
-    if df_filtrato.empty:
-        st.info("Nessuna domanda trovata con questi filtri.")
-    else:
-        st.caption("La tabella mostra le domande del mese e dello stato selezionati sopra. "
-                   "Il pulsante ZIP esporta esattamente le domande visibili qui sotto.")
+        editor = st.session_state.get("domande_editor")
+        if editor:
+            st.divider()
+            _form_domanda_pioniere(editor, nomi_anagrafica)
+
+
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -6537,11 +6539,6 @@ elif st.session_state.pagina == "domande_pionieri":
 else:
     mostra_home()
 
-# ─────────────────────────────────────────────────────────────────
-# GESTIONE MODALE GLOBALE
-# ─────────────────────────────────────────────────────────────────
-if st.session_state.get("open_modal", False):
-    modal_form()
 
 
 
