@@ -5626,6 +5626,26 @@ if modalita_solo_presenze:
     st.stop()
 
 # ─────────────────────────────────────────────────────────────────
+# MODULO S-205b — Domanda per il servizio di pioniere ausiliario
+# ─────────────────────────────────────────────────────────────────
+NOME_FOGLIO_PIONIERI_AUSILIARIO = "Pionieri Ausiliario"
+RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO = 1
+
+PERCORSO_MODULO_S205B = os.path.join(os.path.dirname(__file__), "S-205b_I.pdf")
+S205B_PAGE_W, S205B_PAGE_H = 612.0, 396.0
+
+S205B_CAMPO_MESE      = (83.6, 297.6, 575.8, 315.3)   # "Mese(i) di ..."
+S205B_CASELLA_CONT    = (34.7, 279.4, 54.4, 297.1)    # checkbox "fino a diversa comunicazione"
+S205B_CAMPO_DATA      = (63.0, 230.0, 216.6, 246.0)   # "Data:"
+S205B_CAMPO_FIRMA     = (277.4, 230.0, 575.1, 246.0)  # "(Firma del richiedente)"
+S205B_CAMPO_NOME      = (277.4, 192.5, 575.6, 208.4)  # "(Nome e cognome in stampatello)"
+S205B_CAMPO_APPR_CCA  = (428.1, 112.1, 575.5, 128.0)  # iniziali Coordinatore Corpo Anziani
+S205B_CAMPO_APPR_SEG  = (429.4, 84.0, 575.6, 99.9)    # iniziali Segretario
+S205B_CAMPO_APPR_SS   = (428.1, 56.3, 575.6, 72.2)    # iniziali Sorvegliante Servizi
+
+OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30"]
+
+# ─────────────────────────────────────────────────────────────────
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
 # ─────────────────────────────────────────────────────────────────
 
