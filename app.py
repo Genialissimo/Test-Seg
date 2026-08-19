@@ -5869,9 +5869,10 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
                 "Inviata il": e.get("Inviata il", "") or datetime.now().strftime("%d/%m/%Y %H:%M"),
             }
             numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
-            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                               RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
-                                               valori, riga_da_aggiornare=numero_riga)
+            with st.spinner("Salvo…"):
+                ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                                   RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
+                                                   valori, riga_da_aggiornare=numero_riga)
             if ok:
                 st.cache_data.clear()
                 st.session_state.domande_editor = None
@@ -5887,9 +5888,10 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
                    "L'operazione non è reversibile.")
         col_si, col_no = st.columns(2)
         with col_si:
-            if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
-                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                                    editor["numero_riga_foglio"])
+                if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
+                with st.spinner("Elimino…"):
+                    ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
+                                                        editor["numero_riga_foglio"])
                 if ok:
                     st.cache_data.clear()
                     st.session_state.domande_editor = None
