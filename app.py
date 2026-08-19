@@ -6087,10 +6087,6 @@ def mostra_domande_pioniere_ausiliario():
 
 
 
-
-
-
-
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
