@@ -5625,7 +5625,6 @@ if modalita_solo_presenze:
     mostra_presenze_adunanze()
     st.stop()
 
-    
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
 # ─────────────────────────────────────────────────────────────────
@@ -5826,64 +5825,6 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
     if annulla:
         st.session_state.domande_editor = None
         st.rerun()
-
-    if elimina and modo == "modifica":
-        st.session_state.domande_conferma_elimina = editor
-        st.rerun()
-
-    if invia:
-        nome_pulito = (nome_scelto or "").strip()
-        mese_pulito = (mese_scelto or "").strip()
-        if not nome_pulito or not mese_pulito:
-            st.error("Nome e cognome e Mese(i) di sono obbligatori.")
-        else:
-            valori = {
-                "Data": data_scelta.strftime("%d/%m/%Y"),
-                "Mese di": mese_pulito,
-                "T/I": "I" if continuativo else "T",
-                "Ore": ore_scelte,
-                "Firma": nome_pulito,
-                "Nome e Cognome": nome_pulito,
-                "CCA": cca.strip(),
-                "SEG": seg.strip(),
-                "SS": ss.strip(),
-                "Inviata il": e.get("Inviata il", "") or datetime.now().strftime("%d/%m/%Y %H:%M"),
-            }
-            numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
-            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                               RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO,
-                                               valori, riga_da_aggiornare=numero_riga)
-            if ok:
-                st.cache_data.clear()
-                st.session_state.domande_editor = None
-                st.session_state.domande_tabella_versione = st.session_state.get("domande_tabella_versione", 0) + 1
-                st.success(f"✔ Domanda di «{nome_pulito}» salvata correttamente.")
-                st.rerun()
-            else:
-                st.error(err_salva)
-
-    conferma = st.session_state.get("domande_conferma_elimina")
-    if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
-        st.warning(f"Confermi l'eliminazione della domanda di «{e.get('Nome e Cognome', '')}»? "
-                   "L'operazione non è reversibile.")
-        col_si, col_no = st.columns(2)
-        with col_si:
-            if st.button("✔ Sì, elimina", key="domande_conf_si", type="primary", use_container_width=True):
-                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO,
-                                                    editor["numero_riga_foglio"])
-                if ok:
-                    st.cache_data.clear()
-                    st.session_state.domande_editor = None
-                    st.session_state.domande_conferma_elimina = None
-                    st.session_state.domande_tabella_versione = st.session_state.get("domande_tabella_versione", 0) + 1
-                    st.success("✔ Domanda eliminata.")
-                    st.rerun()
-                else:
-                    st.error(err_elim)
-        with col_no:
-            if st.button("No, annulla", key="domande_conf_no", use_container_width=True):
-                st.session_state.domande_conferma_elimina = None
-                st.rerun()
 
     if elimina and modo == "modifica":
         st.session_state.domande_conferma_elimina = editor
