@@ -38,6 +38,16 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Titoli più piccoli in tutta l'app (Streamlit li rende parecchio grandi
+#    di default su mobile) ────────────────────────────────────────────────
+st.markdown("""
+<style>
+h1 { font-size: 1.5rem !important; }
+h2 { font-size: 1.25rem !important; }
+h3 { font-size: 1.1rem !important; }
+</style>
+""", unsafe_allow_html=True)
+
 # ==============================================================================
 # 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
 # ==============================================================================
@@ -5819,7 +5829,8 @@ def _domande_filtra_per_mese(df: pd.DataFrame, etichetta_mese: str) -> pd.DataFr
 
 
 def vai_a_home_reset_domande():
-    for chiave in ("domande_editor", "domande_conferma_elimina", "domande_pdf_pronto", "domande_zip_pronto"):
+    for chiave in ("domande_editor", "domande_conferma_elimina", "domande_pdf_pronto",
+                   "domande_zip_pronto", "domande_menu_aperto"):
         st.session_state.pop(chiave, None)
     vai_a("home")
 
@@ -6070,29 +6081,37 @@ def mostra_domande_pioniere_ausiliario():
     #    quindi appaiono comunque sopra i filtri e la griglia ──────────────
     with contenitore_pulsanti:
         n_zip = len(df_filtrato) if not df_filtrato.empty else 0
-        col_home, col_nuovo, col_esporta, col_zip = st.columns(4)
+        col_home, col_menu = st.columns(2)
         with col_home:
             st.button("🏠 Home", key="home_da_domande", use_container_width=True,
                       on_click=vai_a_home_reset_domande)
-        with col_nuovo:
+        with col_menu:
+            if st.button("⋯", key="toggle_menu_domande", use_container_width=True):
+                st.session_state.domande_menu_aperto = not st.session_state.get(
+                    "domande_menu_aperto", False)
+
+        apri_form_click = esporta_click = zip_click = False
+        if st.session_state.get("domande_menu_aperto"):
             etichetta_nuovo = "✏️ Modifica" if riga_selezionata is not None else "➕ Compila"
-            if st.button(etichetta_nuovo, key="domande_apri_form", use_container_width=True,
-                         disabled=sola_lettura()):
-                if riga_selezionata is not None:
-                    st.session_state.domande_editor = {
-                        "modo": "modifica",
-                        "riga": riga_selezionata,
-                        "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
-                    }
-                else:
-                    st.session_state.domande_editor = {"modo": "nuovo"}
-                st.session_state.domande_conferma_elimina = None
-        with col_esporta:
+            apri_form_click = st.button(etichetta_nuovo, key="domande_apri_form",
+                                        use_container_width=True, disabled=sola_lettura())
             esporta_click = st.button("📄 Esporta", key="domande_esporta", use_container_width=True,
                                       disabled=riga_selezionata is None)
-        with col_zip:
             zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
                                   use_container_width=True, disabled=n_zip == 0)
+            if apri_form_click or esporta_click or zip_click:
+                st.session_state.domande_menu_aperto = False
+
+        if apri_form_click:
+            if riga_selezionata is not None:
+                st.session_state.domande_editor = {
+                    "modo": "modifica",
+                    "riga": riga_selezionata,
+                    "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
+                }
+            else:
+                st.session_state.domande_editor = {"modo": "nuovo"}
+            st.session_state.domande_conferma_elimina = None
 
         if esporta_click and riga_selezionata is not None:
             with st.spinner("Compilo il modulo…"):
