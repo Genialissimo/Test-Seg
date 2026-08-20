@@ -8,7 +8,6 @@ import io
 import os
 import re
 import zipfile
-import base64
 
 import pandas as pd
 import streamlit as st
@@ -6108,10 +6107,11 @@ def mostra_domande_pioniere_ausiliario():
 
         if st.session_state.get("domande_pdf_pronto"):
             pdf_bytes, nome_file = st.session_state.domande_pdf_pronto
-            pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
-            st.link_button(
-                "👁️ Visualizza e condividi", f"data:application/pdf;base64,{pdf_base64}",
-                use_container_width=True,
+            st.download_button(
+                "⬇️ Scarica PDF", data=pdf_bytes,
+                file_name=f"S-205b_{_s205b_nome_file_sicuro(nome_file)}.pdf",
+                mime="application/pdf", key="download_domanda_pdf", use_container_width=True,
+                on_click=lambda: st.session_state.pop("domande_pdf_pronto", None),
             )
 
         if st.session_state.get("domande_zip_pronto"):
