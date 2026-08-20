@@ -2292,6 +2292,25 @@ def mostra_home():
             badge_rapporti = ""
             badge_anagrafica = ""
 
+    # ─────────────────────────────────────────────────────────────────
+    # Domande di pioniere ausiliario da approvare (di qualsiasi mese, per il post-it)
+    # ─────────────────────────────────────────────────────────────────
+    n_domande_da_approvare_tot = None
+    if collegato:
+        try:
+            df_domande_home, err_domande_home = leggi_foglio_come_df(
+                workbook, NOME_FOGLIO_PIONIERI_AUSILIARIO, RIGA_INTESTAZIONE_PIONIERI_AUSILIARIO)
+            if not err_domande_home:
+                if df_domande_home.empty:
+                    n_domande_da_approvare_tot = 0
+                else:
+                    n_domande_da_approvare_tot = sum(
+                        1 for _, r in df_domande_home.iterrows()
+                        if _domande_calcola_stato(r.to_dict())[1] < 3
+                    )
+        except Exception:
+            n_domande_da_approvare_tot = None
+
     promemoria = []
 
     # ─────────────────────────────────────────────────────────────────
@@ -2339,6 +2358,14 @@ def mostra_home():
     elif isinstance(esito_presenze_adunanza, tuple) and esito_presenze_adunanza[0] is False:
         _, data_mancante, giorno_mancante = esito_presenze_adunanza
         promemoria.append(("dot-red", f"Presenze adunanza non inserite per {giorno_mancante} {data_mancante}."))
+
+    # Segnalazione 4: Domande di pioniere ausiliario da approvare (qualsiasi mese)
+    if n_domande_da_approvare_tot is not None and n_domande_da_approvare_tot > 0:
+        dot_cls_dom = "dot-yellow" if n_domande_da_approvare_tot < 5 else "dot-red"
+        testo_domande = "1 domanda di pioniere ausiliario da approvare." if n_domande_da_approvare_tot == 1 \
+            else f"{n_domande_da_approvare_tot} domande di pioniere ausiliario da approvare."
+        promemoria.append((dot_cls_dom, testo_domande))
+    # Se non ce n'è nessuna da approvare (di nessun mese), non si scrive nulla.
 
     righe_html = "".join(
         f'<div class="promemoria-riga"><span class="dot {dot_cls}"></span>'
@@ -5760,6 +5787,20 @@ def _domande_mesi_anno_teocratico() -> list:
     return mesi
 
 
+def _domande_mese_riferimento() -> tuple:
+    """Il mese 'di riferimento' da proporre come default: le domande si presentano
+    in anticipo per il mese successivo, quindi fino al giorno 10 del mese si
+    considera ancora quello corrente; dall'11 in poi si passa già al mese dopo."""
+    oggi = date.today()
+    if oggi.day <= 10:
+        return (oggi.year, oggi.month)
+    anno, mese = oggi.year, oggi.month + 1
+    if mese > 12:
+        mese = 1
+        anno += 1
+    return (anno, mese)
+
+
 
 def _domande_calcola_stato(riga: dict) -> tuple:
     """Ritorna (etichetta, n_approvazioni) in base a quante fra CCA/SEG/SS sono compilate."""
@@ -5815,8 +5856,9 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         if modo == "modifica":
             indice_mese = opzioni_mesi.index(mese_attuale) if mese_attuale in opzioni_mesi else 0
         else:
-            mese_odierno = f"{MESI_ITALIANI[date.today().month]} {date.today().year}"
-            indice_mese = opzioni_mesi.index(mese_odierno) if mese_odierno in opzioni_mesi else 0
+            anno_rif, mese_rif = _domande_mese_riferimento()
+            mese_riferimento_lbl = f"{MESI_ITALIANI[mese_rif]} {anno_rif}"
+            indice_mese = opzioni_mesi.index(mese_riferimento_lbl) if mese_riferimento_lbl in opzioni_mesi else 0
 
         mese_scelto = st.selectbox("Mese di *", opzioni_mesi, index=indice_mese, disabled=bloccato)
 
@@ -5958,9 +6000,9 @@ def mostra_domande_pioniere_ausiliario():
     # ── 1. FILTRI (Mese e Stato) — calcolati PRIMA dei pulsanti perché il
     #    pulsante "Compila/Modifica" deve sapere se una riga è selezionata ──
     mesi_disponibili = _domande_mesi_anno_teocratico()
-    oggi = date.today()
-    indice_mese_default = mesi_disponibili.index((oggi.year, oggi.month)) \
-        if (oggi.year, oggi.month) in mesi_disponibili else len(mesi_disponibili) - 1
+    mese_riferimento = _domande_mese_riferimento()
+    indice_mese_default = mesi_disponibili.index(mese_riferimento) \
+        if mese_riferimento in mesi_disponibili else len(mesi_disponibili) - 1
 
     mese_scelto_tupla = st.selectbox(
         "Mese anno teocratico",
