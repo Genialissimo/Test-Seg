@@ -5742,19 +5742,43 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
                 indice_inizio_sezione = inizio
                 break
 
-        # Se esiste, trova dove finisce (il prossimo titolo di sezione pionieri, o la fine doc)
+        # Se esiste, trova dove finisce: ci fermiamo alla prima riga VUOTA dopo
+        # l'intestazione (è esattamente il confine che scriviamo noi stessi dopo
+        # l'elenco dei nomi), oppure al titolo di un'altra sezione pionieri.
+        # Se non troviamo nessuno dei due entro un margine ragionevole, NON
+        # tocchiamo il documento — meglio fallire che rischiare di cancellare
+        # annunci non correlati che vengono dopo.
+        LIMITE_PARAGRAFI_SEZIONE = 60
         indice_fine_sezione = None
+        errore_confine = None
         if indice_inizio_sezione is not None:
             dopo_inizio = False
-            for testo, inizio, _fine in paragrafi:
+            contatore = 0
+            for testo, inizio, fine in paragrafi:
                 if inizio == indice_inizio_sezione:
                     dopo_inizio = True
                     continue
-                if dopo_inizio and testo.strip().startswith(prefisso_intestazione):
+                if not dopo_inizio:
+                    continue
+                contatore += 1
+                if testo.strip().startswith(prefisso_intestazione):
                     indice_fine_sezione = inizio
                     break
+                if testo.strip() == "":
+                    indice_fine_sezione = fine
+                    break
+                if contatore > LIMITE_PARAGRAFI_SEZIONE:
+                    break
             if indice_fine_sezione is None:
-                indice_fine_sezione = elementi[-1]["endIndex"] - 1
+                errore_confine = (
+                    f"Non riesco a determinare con sicurezza dove finisce la sezione "
+                    f"già presente di «{etichetta_mese}»: per non rischiare di cancellare "
+                    f"altri annunci non ho modificato il documento. Elimina a mano la "
+                    f"vecchia sezione «{intestazione_sezione}» e riprova."
+                )
+
+        if errore_confine:
+            return False, errore_confine
 
         # Se è una sezione nuova, va inserita subito sotto l'intestazione "Annunci"
         indice_dopo_annunci = None
