@@ -5685,7 +5685,7 @@ OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30"]
 
 # ID del documento Google "Annunci" — si trova nell'URL del documento, nella parte
 # tra /d/ e /edit, es: https://docs.google.com/document/d/QUESTO_È_L_ID/edit
-ID_DOCUMENTO_ANNUNCI = "INCOLLA_QUI_L_ID_DEL_DOCUMENTO"
+ID_DOCUMENTO_ANNUNCI = "17A7jd9TessIvfCsc3wrlbSKNBvFrD50TkhpQCrfwhpI"
 
 
 @st.cache_resource(show_spinner=False)
