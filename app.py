@@ -5708,8 +5708,10 @@ def _lunghezza_utf16(testo: str) -> int:
 def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tuple:
     """Scrive/aggiorna nel documento 'Annunci' la sezione con l'elenco dei pionieri
     ausiliari approvati del mese indicato. Se esiste già una sezione per quel mese
-    la sostituisce sul posto (stessa posizione), altrimenti la inserisce in cima al
-    documento. Il resto del contenuto (altri annunci, altri mesi) non viene mai
+    la sostituisce sul posto (stessa posizione), altrimenti la inserisce subito sotto
+    l'intestazione "Annunci". Il testo viene forzato a carattere 14, allineato a
+    sinistra, non ereditando lo stile (spesso enorme/centrato) del punto in cui viene
+    inserito. Il resto del contenuto (altri annunci, altri mesi) non viene mai
     toccato. Ritorna (ok, errore)."""
     if not ID_DOCUMENTO_ANNUNCI or ID_DOCUMENTO_ANNUNCI.startswith("INCOLLA"):
         return False, "ID del documento Annunci non configurato (costante ID_DOCUMENTO_ANNUNCI)."
@@ -5754,20 +5756,51 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
             if indice_fine_sezione is None:
                 indice_fine_sezione = elementi[-1]["endIndex"] - 1
 
+        # Se è una sezione nuova, va inserita subito sotto l'intestazione "Annunci"
+        indice_dopo_annunci = None
+        for testo, _inizio, fine in paragrafi:
+            testo_pulito = testo.strip().rstrip(":：").strip()
+            if testo_pulito.lower() == "annunci":
+                indice_dopo_annunci = fine
+                break
+
         corpo_elenco = "\n".join(nomi_ordinati) if nomi_ordinati else "(nessuno approvato per questo mese)"
         testo_sezione = f"{intestazione_sezione}\n{corpo_elenco}\n\n"
 
         richieste = []
-        indice_scrittura = indice_inizio_sezione if indice_inizio_sezione is not None else 1
         if indice_inizio_sezione is not None:
+            indice_scrittura = indice_inizio_sezione
             richieste.append({
                 "deleteContentRange": {
                     "range": {"startIndex": indice_inizio_sezione, "endIndex": indice_fine_sezione}
                 }
             })
+        else:
+            indice_scrittura = indice_dopo_annunci if indice_dopo_annunci is not None else 1
+
         richieste.append({
             "insertText": {"location": {"index": indice_scrittura}, "text": testo_sezione}
         })
+
+        lunghezza_blocco = _lunghezza_utf16(testo_sezione)
+        # Reimposta lo stile del paragrafo (allineamento a sinistra, testo normale,
+        # non l'eventuale stile "Titolo" ereditato dal punto d'inserimento)
+        richieste.append({
+            "updateParagraphStyle": {
+                "range": {"startIndex": indice_scrittura, "endIndex": indice_scrittura + lunghezza_blocco},
+                "paragraphStyle": {"alignment": "START", "namedStyleType": "NORMAL_TEXT"},
+                "fields": "alignment,namedStyleType",
+            }
+        })
+        # Carattere 14, non grassetto, su tutto il blocco inserito
+        richieste.append({
+            "updateTextStyle": {
+                "range": {"startIndex": indice_scrittura, "endIndex": indice_scrittura + lunghezza_blocco},
+                "textStyle": {"fontSize": {"magnitude": 14, "unit": "PT"}, "bold": False},
+                "fields": "fontSize,bold",
+            }
+        })
+        # Solo l'intestazione della sezione in grassetto
         richieste.append({
             "updateTextStyle": {
                 "range": {
