@@ -56,6 +56,7 @@ NOME_FOGLIO_UTENTI = "Utenti"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/documents",
 ]
 
 @st.cache_resource(show_spinner=False)
@@ -5682,6 +5683,109 @@ S205B_CAMPO_APPR_SS   = (428.1, 56.3, 575.6, 72.2)    # iniziali Sorvegliante Se
 
 OPZIONI_ORE_PIONIERE_AUSILIARIO = ["15", "30"]
 
+# ID del documento Google "Annunci" — si trova nell'URL del documento, nella parte
+# tra /d/ e /edit, es: https://docs.google.com/document/d/QUESTO_È_L_ID/edit
+ID_DOCUMENTO_ANNUNCI = "INCOLLA_QUI_L_ID_DEL_DOCUMENTO"
+
+
+@st.cache_resource(show_spinner=False)
+def get_docs_service():
+    """Autentica verso Google Docs con lo stesso account di servizio già usato per i fogli."""
+    from googleapiclient.discovery import build
+    credenziali = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=SCOPES
+    )
+    return build("docs", "v1", credentials=credenziali)
+
+
+def _lunghezza_utf16(testo: str) -> int:
+    """Google Docs conta gli indici in unità UTF-16: le emoji occupano 2 unità,
+    mentre len() di Python le conta come 1 carattere solo. Serve per calcolare
+    correttamente dove finisce l'intestazione quando la mettiamo in grassetto."""
+    return len(testo.encode("utf-16-le")) // 2
+
+
+def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tuple:
+    """Scrive/aggiorna nel documento 'Annunci' la sezione con l'elenco dei pionieri
+    ausiliari approvati del mese indicato. Se esiste già una sezione per quel mese
+    la sostituisce sul posto (stessa posizione), altrimenti la inserisce in cima al
+    documento. Il resto del contenuto (altri annunci, altri mesi) non viene mai
+    toccato. Ritorna (ok, errore)."""
+    if not ID_DOCUMENTO_ANNUNCI or ID_DOCUMENTO_ANNUNCI.startswith("INCOLLA"):
+        return False, "ID del documento Annunci non configurato (costante ID_DOCUMENTO_ANNUNCI)."
+    try:
+        servizio = get_docs_service()
+        prefisso_intestazione = "📋 Pionieri ausiliari del mese di"
+        intestazione_sezione = f"{prefisso_intestazione} {etichetta_mese}"
+
+        documento = servizio.documents().get(documentId=ID_DOCUMENTO_ANNUNCI).execute()
+        elementi = documento.get("body", {}).get("content", [])
+
+        paragrafi = []
+        for el in elementi:
+            par = el.get("paragraph")
+            if not par:
+                continue
+            testo = "".join(
+                r.get("textRun", {}).get("content", "")
+                for r in par.get("elements", [])
+                if "textRun" in r
+            )
+            paragrafi.append((testo, el["startIndex"], el["endIndex"]))
+
+        # Cerca se esiste già una sezione per questo identico mese
+        indice_inizio_sezione = None
+        for testo, inizio, _fine in paragrafi:
+            if testo.strip() == intestazione_sezione.strip():
+                indice_inizio_sezione = inizio
+                break
+
+        # Se esiste, trova dove finisce (il prossimo titolo di sezione pionieri, o la fine doc)
+        indice_fine_sezione = None
+        if indice_inizio_sezione is not None:
+            dopo_inizio = False
+            for testo, inizio, _fine in paragrafi:
+                if inizio == indice_inizio_sezione:
+                    dopo_inizio = True
+                    continue
+                if dopo_inizio and testo.strip().startswith(prefisso_intestazione):
+                    indice_fine_sezione = inizio
+                    break
+            if indice_fine_sezione is None:
+                indice_fine_sezione = elementi[-1]["endIndex"] - 1
+
+        corpo_elenco = "\n".join(nomi_ordinati) if nomi_ordinati else "(nessuno approvato per questo mese)"
+        testo_sezione = f"{intestazione_sezione}\n{corpo_elenco}\n\n"
+
+        richieste = []
+        indice_scrittura = indice_inizio_sezione if indice_inizio_sezione is not None else 1
+        if indice_inizio_sezione is not None:
+            richieste.append({
+                "deleteContentRange": {
+                    "range": {"startIndex": indice_inizio_sezione, "endIndex": indice_fine_sezione}
+                }
+            })
+        richieste.append({
+            "insertText": {"location": {"index": indice_scrittura}, "text": testo_sezione}
+        })
+        richieste.append({
+            "updateTextStyle": {
+                "range": {
+                    "startIndex": indice_scrittura,
+                    "endIndex": indice_scrittura + _lunghezza_utf16(intestazione_sezione),
+                },
+                "textStyle": {"bold": True},
+                "fields": "bold",
+            }
+        })
+
+        servizio.documents().batchUpdate(
+            documentId=ID_DOCUMENTO_ANNUNCI, body={"requests": richieste}
+        ).execute()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
 # ─────────────────────────────────────────────────────────────────
@@ -6090,7 +6194,7 @@ def mostra_domande_pioniere_ausiliario():
                 st.session_state.domande_menu_aperto = not st.session_state.get(
                     "domande_menu_aperto", False)
 
-        apri_form_click = esporta_click = zip_click = False
+        apri_form_click = esporta_click = zip_click = annunci_click = False
         if st.session_state.get("domande_menu_aperto"):
             etichetta_nuovo = "✏️ Modifica" if riga_selezionata is not None else "➕ Compila"
             apri_form_click = st.button(etichetta_nuovo, key="domande_apri_form",
@@ -6099,7 +6203,9 @@ def mostra_domande_pioniere_ausiliario():
                                       disabled=riga_selezionata is None)
             zip_click = st.button(f"📦 ZIP ({n_zip})", key="domande_esporta_zip",
                                   use_container_width=True, disabled=n_zip == 0)
-            if apri_form_click or esporta_click or zip_click:
+            annunci_click = st.button("📤 Esporta in Annunci", key="domande_esporta_annunci",
+                                      use_container_width=True, disabled=n_zip == 0)
+            if apri_form_click or esporta_click or zip_click or annunci_click:
                 st.session_state.domande_menu_aperto = False
 
         if apri_form_click:
@@ -6117,6 +6223,20 @@ def mostra_domande_pioniere_ausiliario():
             with st.spinner("Compilo il modulo…"):
                 pdf_bytes = genera_pdf_s205b(riga_selezionata)
             st.session_state.domande_pdf_pronto = (pdf_bytes, riga_selezionata.get("Nome e Cognome", "domanda"))
+
+        if annunci_click and not df_filtrato.empty:
+            df_approvate = df_filtrato[df_filtrato["_n_approvazioni"] >= 3] \
+                if "_n_approvazioni" in df_filtrato.columns else df_filtrato.iloc[0:0]
+            nomi_approvati = sorted(
+                n.strip() for n in df_approvate["Nome e Cognome"].astype(str) if n.strip()
+            )
+            with st.spinner("Scrivo su Annunci…"):
+                ok_annunci, err_annunci = esporta_domande_in_annunci(nomi_approvati, etichetta_mese_scelto)
+            if ok_annunci:
+                st.success(f"✔ Elenco di {etichetta_mese_scelto} scritto su Annunci "
+                           f"({len(nomi_approvati)} approvati).")
+            else:
+                st.error(f"Errore nell'esportazione su Annunci: {err_annunci}")
 
         if zip_click and not df_filtrato.empty:
             righe_zip = df_filtrato.to_dict("records")
