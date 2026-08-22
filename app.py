@@ -1700,6 +1700,51 @@ def elimina_riga_foglio(_workbook, nome_foglio: str, riga_da_eliminare: int):
         return False, f"Errore durante l'eliminazione: {e}"
 
 
+def archivia_rapporti_consegnati(_workbook) -> tuple:
+    """Sposta i rapporti consegnati dal foglio 'Risposte del modulo 9' (dalla riga
+    10 in poi, colonne A-K) al foglio 'Tutti' (in coda, prima riga libera), forzando
+    la colonna C (mese) come testo puro (es. "2026-07"), poi elimina quelle stesse
+    righe da 'Risposte del modulo 9'. La cancellazione avviene SOLO se la copia in
+    'Tutti' è andata a buon fine, per non rischiare di perdere dati. Ritorna
+    (ok, messaggio_o_errore)."""
+    RIGA_INIZIO_ARCHIVIO = 10
+    NUMERO_COLONNE = 11  # A..K
+    try:
+        ws_risposte = _workbook.worksheet(NOME_FOGLIO_RISPOSTE)
+        valori_risposte = ws_risposte.get_all_values()
+        ultima_riga = len(valori_risposte)
+
+        if ultima_riga < RIGA_INIZIO_ARCHIVIO:
+            return True, "Nessun rapporto da archiviare: non ci sono righe dopo l'intestazione."
+
+        righe_grezze = valori_risposte[RIGA_INIZIO_ARCHIVIO - 1:ultima_riga]
+
+        righe_da_scrivere = []
+        for riga in righe_grezze:
+            riga_completa = (list(riga) + [""] * NUMERO_COLONNE)[:NUMERO_COLONNE]
+            # Colonna C (indice 2, il mese) forzata a testo puro con l'apice,
+            # come quando lo si digita a mano in Sheets: es. '2026-07
+            if riga_completa[2]:
+                riga_completa[2] = "'" + str(riga_completa[2]).lstrip("'")
+            righe_da_scrivere.append(riga_completa)
+
+        ws_tutti = _workbook.worksheet(NOME_FOGLIO_TUTTI)
+        ws_tutti.append_rows(righe_da_scrivere, value_input_option="USER_ENTERED")
+    except Exception as e:
+        return False, (f"Errore durante la copia in «Tutti»: {e}. Nessuna riga è stata "
+                       f"toccata in «Risposte del modulo 9».")
+
+    try:
+        ws_risposte.delete_rows(RIGA_INIZIO_ARCHIVIO, ultima_riga)
+    except Exception as e:
+        return False, (f"I {len(righe_da_scrivere)} rapporti sono stati copiati in «Tutti», ma non "
+                       f"sono riuscito a eliminarli da «Risposte del modulo 9»: {e}. Attenzione: "
+                       f"potresti trovarli duplicati, controlla ed elimina a mano le righe da "
+                       f"{RIGA_INIZIO_ARCHIVIO} a {ultima_riga} in «Risposte del modulo 9» se necessario.")
+
+    return True, f"{len(righe_da_scrivere)} rapporti spostati in archivio."
+
+
 def salva_riga_tutti(_workbook, riga_foglio: int, nuova_grezza: list):
     try:
         ws = _workbook.worksheet(NOME_FOGLIO_TUTTI)
@@ -2553,8 +2598,42 @@ def _form_modifica_rapporto_consegnato(dati_selezione: dict):
 
 def mostra_registrazioni():
     st.title("Rapporti consegnati")
-    st.button("🏠 Torna alla Home", key="home_da_registrazioni", use_container_width=True,
-              on_click=vai_a, args=("home",))
+
+    col_home, col_menu = st.columns(2)
+    with col_home:
+        st.button("🏠 Home", key="home_da_registrazioni", use_container_width=True,
+                  on_click=vai_a, args=("home",))
+    with col_menu:
+        if st.button("⋯", key="toggle_menu_registrazioni", use_container_width=True):
+            st.session_state.registrazioni_menu_aperto = not st.session_state.get(
+                "registrazioni_menu_aperto", False)
+
+    if st.session_state.get("registrazioni_menu_aperto") and collegato:
+        if st.button("🗄️ Sposta i rapporti in archivio", key="apri_conferma_archivio",
+                     use_container_width=True, disabled=sola_lettura()):
+            st.session_state.conferma_archivio_rapporti = True
+            st.session_state.registrazioni_menu_aperto = False
+            st.rerun()
+
+    if st.session_state.get("conferma_archivio_rapporti") and collegato:
+        st.warning("Sei sicuro di voler spostare i rapporti consegnati in archivio? "
+                   "L'operazione non è reversibile.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✔ Sì", key="archivio_si", type="primary", use_container_width=True):
+                with st.spinner("Sposto i rapporti in archivio…"):
+                    ok_arch, msg_arch = archivia_rapporti_consegnati(workbook)
+                st.session_state.conferma_archivio_rapporti = False
+                if ok_arch:
+                    st.cache_data.clear()
+                    st.success(f"✔ {msg_arch}")
+                else:
+                    st.error(msg_arch)
+                st.rerun()
+        with col_no:
+            if st.button("No", key="archivio_no", use_container_width=True):
+                st.session_state.conferma_archivio_rapporti = False
+                st.rerun()
 
     if not collegato:
         st.warning("⚠️  Nessun foglio dati collegato.")
