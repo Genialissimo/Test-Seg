@@ -5792,6 +5792,7 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
         testo_sezione = f"{intestazione_sezione}\n{corpo_elenco}\n\n"
 
         richieste = []
+        ultimo_indice_valido = elementi[-1]["endIndex"] - 1 if elementi else 1
         if indice_inizio_sezione is not None:
             indice_scrittura = indice_inizio_sezione
             richieste.append({
@@ -5801,6 +5802,7 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
             })
         else:
             indice_scrittura = indice_dopo_annunci if indice_dopo_annunci is not None else 1
+            indice_scrittura = max(1, min(indice_scrittura, ultimo_indice_valido))
 
         richieste.append({
             "insertText": {"location": {"index": indice_scrittura}, "text": testo_sezione}
