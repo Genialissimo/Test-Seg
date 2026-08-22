@@ -2226,6 +2226,7 @@ def mostra_home():
 
     esito_presenze_adunanza = None
     nomi_mancanti_rapporto_mese = None  # None = non calcolabile; lista = proclamatori attivi senza rapporto del mese
+    info_mese_archiviato = None  # (mese, n_archiviati, n_attivi) quando i rapporti sono già stati spostati in Tutti
 
     if collegato:
         try:
@@ -2255,13 +2256,37 @@ def mostra_home():
                     else:
                         nomi_consegnati_home = set()
 
-                    conteggio_consegnati_home = len(nomi_consegnati_home)
-                    completo = conteggio_attivi_home > 0 and conteggio_consegnati_home >= conteggio_attivi_home
-                    cls_badge = "hud-green" if completo else "hud-red"
-                    badge_rapporti = f'<span class="hud-badge {cls_badge}">{conteggio_consegnati_home} / {conteggio_attivi_home}</span>'
+                    if not df_risposte_home.empty:
+                        # I rapporti stanno ancora arrivando in "Risposte del modulo 9":
+                        # il conteggio si basa su quello, come sempre.
+                        conteggio_consegnati_home = len(nomi_consegnati_home)
+                        completo = conteggio_attivi_home > 0 and conteggio_consegnati_home >= conteggio_attivi_home
+                        cls_badge = "hud-green" if completo else "hud-red"
+                        badge_rapporti = f'<span class="hud-badge {cls_badge}">{conteggio_consegnati_home} / {conteggio_attivi_home}</span>'
 
-                    # Proclamatori attivi che non compaiono ancora in "Risposte del modulo 9" (colonna B) per questo mese
-                    nomi_mancanti_rapporto_mese = sorted(nomi_attivi_home - nomi_consegnati_home)
+                        # Proclamatori attivi che non compaiono ancora in "Risposte del modulo 9" per questo mese
+                        nomi_mancanti_rapporto_mese = sorted(nomi_attivi_home - nomi_consegnati_home)
+                    elif (not err_tutti_home and not df_tutti_home.empty
+                          and "Mese" in df_tutti_home.columns and "Cognome e Nome" in df_tutti_home.columns):
+                        # "Risposte del modulo 9" è vuoto: i rapporti sono probabilmente
+                        # già stati spostati in archivio con "Sposta i rapporti in
+                        # archivio". Controlliamo l'ultimo mese presente in "Tutti"
+                        # invece di segnalare per errore che mancano tutti.
+                        mesi_presenti_tutti = df_tutti_home["Mese"].astype(str).str.strip()
+                        mesi_presenti_tutti = mesi_presenti_tutti[mesi_presenti_tutti != ""]
+                        if not mesi_presenti_tutti.empty:
+                            ultimo_mese_tutti = sorted(mesi_presenti_tutti.unique())[-1]
+                            nomi_archiviati_home = set(
+                                df_tutti_home.loc[
+                                    df_tutti_home["Mese"].astype(str).str.strip() == ultimo_mese_tutti,
+                                    "Cognome e Nome"
+                                ].astype(str).str.strip()
+                            ) & nomi_attivi_home
+                            conteggio_archiviati_home = len(nomi_archiviati_home)
+                            cls_badge = "hud-green" if conteggio_archiviati_home >= conteggio_attivi_home else "hud-yellow"
+                            badge_rapporti = (f'<span class="hud-badge {cls_badge}">'
+                                              f'{conteggio_archiviati_home} / {conteggio_attivi_home}</span>')
+                            info_mese_archiviato = (ultimo_mese_tutti, conteggio_archiviati_home, conteggio_attivi_home)
 
                 colonne_obbligatorie = ["ID", "Cognome e Nome", "Data Nascita", "Sesso", "Tipo", "A/U", "Gruppo", "Attivi / Inattivi"]
                 if "Attivi / Inattivi" in df_anagrafica_home.columns:
@@ -2372,17 +2397,29 @@ def mostra_home():
 
     # ─────────────────────────────────────────────────────────────────
     # Segnalazione: Rapporto del mese corrente (da Anagrafica attivi + foglio
-    # "Risposte del modulo 9", colonna B) — non ancora consegnato
+    # "Risposte del modulo 9", colonna B) — non ancora consegnato. Se i
+    # rapporti sono già stati spostati in "Tutti" (Risposte vuoto), mostra
+    # invece la conferma che sono in archivio.
     # ─────────────────────────────────────────────────────────────────
-    n_mancanti_mese = len(nomi_mancanti_rapporto_mese) if nomi_mancanti_rapporto_mese else 0
-    if n_mancanti_mese > 0:
-        dot_cls_mese = "dot-yellow" if n_mancanti_mese < 5 else "dot-red"
-        if n_mancanti_mese == 1:
-            testo_mese = "1 proclamatore non ha ancora consegnato il rapporto di questo mese."
-        else:
-            testo_mese = f"{n_mancanti_mese} proclamatori non hanno ancora consegnato il rapporto di questo mese."
-        promemoria.append((dot_cls_mese, testo_mese))
-    # Se hanno consegnato tutti (o non ci sono proclamatori attivi), non si scrive nulla.
+    if info_mese_archiviato:
+        mese_arch, n_arch, n_att = info_mese_archiviato
+        if n_att > 0 and n_arch >= n_att:
+            promemoria.append(("dot-green",
+                               f"{n_arch}/{n_att} rapporti del mese {mese_arch} sono in archivio."))
+        elif n_att > 0:
+            promemoria.append(("dot-yellow",
+                               f"{n_arch}/{n_att} rapporti del mese {mese_arch} sono in archivio "
+                               f"(gli altri non risultano né in arrivo né archiviati)."))
+    else:
+        n_mancanti_mese = len(nomi_mancanti_rapporto_mese) if nomi_mancanti_rapporto_mese else 0
+        if n_mancanti_mese > 0:
+            dot_cls_mese = "dot-yellow" if n_mancanti_mese < 5 else "dot-red"
+            if n_mancanti_mese == 1:
+                testo_mese = "1 proclamatore non ha ancora consegnato il rapporto di questo mese."
+            else:
+                testo_mese = f"{n_mancanti_mese} proclamatori non hanno ancora consegnato il rapporto di questo mese."
+            promemoria.append((dot_cls_mese, testo_mese))
+        # Se hanno consegnato tutti (o non ci sono proclamatori attivi), non si scrive nulla.
 
     # ─────────────────────────────────────────────────────────────────
     # Segnalazione 1: Rapporti dell'Anno Teocratico
