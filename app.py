@@ -5708,32 +5708,43 @@ def _lunghezza_utf16(testo: str) -> int:
 def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tuple:
     """Scrive/aggiorna nel documento 'Annunci' la sezione con l'elenco dei pionieri
     ausiliari approvati del mese indicato. Se esiste già una sezione per quel mese
-    la sostituisce sul posto (stessa posizione), altrimenti la inserisce subito sotto
-    l'intestazione "Annunci". Il testo viene forzato a carattere 14, allineato a
-    sinistra, non ereditando lo stile (spesso enorme/centrato) del punto in cui viene
-    inserito. Il resto del contenuto (altri annunci, altri mesi) non viene mai
-    toccato. Ritorna (ok, errore)."""
+    la sostituisce (stesso punto), altrimenti la inserisce subito sotto l'intestazione
+    "Annunci". Il testo viene forzato a carattere 14, allineato a sinistra. Il resto
+    del contenuto (altri annunci, altri mesi) non viene mai toccato. Non usa mai la
+    cancellazione manuale di intervalli (deleteContentRange): per sostituire una
+    sezione esistente usa "replaceAllText" di Google (trova questo testo esatto e
+    sostituiscilo), che è gestito internamente da Google ed evita i tanti vincoli e
+    le eccezioni della cancellazione manuale su documenti con elenchi, tabelle, ecc.
+    Ritorna (ok, errore)."""
     if not ID_DOCUMENTO_ANNUNCI or ID_DOCUMENTO_ANNUNCI.startswith("INCOLLA"):
         return False, "ID del documento Annunci non configurato (costante ID_DOCUMENTO_ANNUNCI)."
     try:
         servizio = get_docs_service()
         prefisso_intestazione = "📋 Pionieri ausiliari del mese di"
         intestazione_sezione = f"{prefisso_intestazione} {etichetta_mese}"
+        MARCATORE_FINE_ELENCO = "-Fine elenco-"
+        LIMITE_PARAGRAFI_SEZIONE = 60
 
-        documento = servizio.documents().get(documentId=ID_DOCUMENTO_ANNUNCI).execute()
-        elementi = documento.get("body", {}).get("content", [])
+        corpo_elenco = "\n".join(nomi_ordinati) if nomi_ordinati else "(nessuno approvato per questo mese)"
+        testo_sezione = f"{intestazione_sezione}\n{corpo_elenco}\n{MARCATORE_FINE_ELENCO}\n"
 
-        paragrafi = []
-        for el in elementi:
-            par = el.get("paragraph")
-            if not par:
-                continue
-            testo = "".join(
-                r.get("textRun", {}).get("content", "")
-                for r in par.get("elements", [])
-                if "textRun" in r
-            )
-            paragrafi.append((testo, el["startIndex"], el["endIndex"]))
+        def leggi_paragrafi():
+            documento = servizio.documents().get(documentId=ID_DOCUMENTO_ANNUNCI).execute()
+            elementi = documento.get("body", {}).get("content", [])
+            paragrafi = []
+            for el in elementi:
+                par = el.get("paragraph")
+                if not par:
+                    continue
+                testo = "".join(
+                    r.get("textRun", {}).get("content", "")
+                    for r in par.get("elements", [])
+                    if "textRun" in r
+                )
+                paragrafi.append((testo, el["startIndex"], el["endIndex"]))
+            return elementi, paragrafi
+
+        elementi, paragrafi = leggi_paragrafi()
 
         # Cerca se esiste già una sezione per questo identico mese
         indice_inizio_sezione = None
@@ -5742,18 +5753,11 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
                 indice_inizio_sezione = inizio
                 break
 
-        # Se esiste, trova dove finisce, cercando SOLO il marcatore esplicito
-        # "-Fine elenco-" (lo scriviamo sempre noi in fondo all'elenco: è l'unico
-        # confine di cui ci fidiamo). Niente più ripieghi "riga vuota": in un
-        # documento con altri annunci una riga vuota può trovarsi ovunque, anche
-        # dentro contenuti non correlati, e cercarla alla cieca rischia di
-        # cancellare roba sbagliata. Se il marcatore non c'è, NON tocchiamo il
-        # documento.
-        MARCATORE_FINE_ELENCO = "-Fine elenco-"
-        LIMITE_PARAGRAFI_SEZIONE = 60
-        indice_fine_sezione = None
-        errore_confine = None
         if indice_inizio_sezione is not None:
+            # Trova la fine cercando SOLO il marcatore esplicito "-Fine elenco-"
+            # (niente ripieghi tipo "riga vuota": in un documento con altri
+            # annunci una riga vuota può trovarsi ovunque, anche dentro
+            # contenuti non correlati). Se non c'è, non tocchiamo nulla.
             dopo_inizio = False
             contatore = 0
             indice_marcatore = None
@@ -5770,20 +5774,8 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
                 if contatore > LIMITE_PARAGRAFI_SEZIONE:
                     break
 
-            if indice_marcatore is not None:
-                indice_fine_sezione = indice_marcatore
-                # Consuma anche eventuali righe vuote subito dopo il marcatore
-                # (la spaziatura che aggiungiamo sempre noi), per non farle
-                # accumulare a ogni aggiornamento.
-                for testo2, inizio2, fine2 in paragrafi:
-                    if inizio2 < indice_fine_sezione:
-                        continue
-                    if testo2.strip() == "":
-                        indice_fine_sezione = fine2
-                    else:
-                        break
-            else:
-                errore_confine = (
+            if indice_marcatore is None:
+                return False, (
                     f"Non riesco a determinare con sicurezza dove finisce la sezione "
                     f"già presente di «{etichetta_mese}»: per non rischiare di cancellare "
                     f"altri annunci non ho modificato il documento. Elimina a mano la "
@@ -5791,70 +5783,86 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
                     f"e riprova: verrà ricreata da capo con il marcatore corretto."
                 )
 
-        if errore_confine:
-            return False, errore_confine
+            # Ricostruisce il testo ESATTO della vecchia sezione (dall'intestazione
+            # fino al marcatore incluso) da cercare e sostituire
+            testo_vecchia_sezione = ""
+            for testo, inizio, fine in paragrafi:
+                if inizio >= indice_inizio_sezione and fine <= indice_marcatore:
+                    testo_vecchia_sezione += testo
 
-        # Se è una sezione nuova, va inserita subito sotto l'intestazione "Annunci"
-        indice_dopo_annunci = None
-        for testo, _inizio, fine in paragrafi:
-            testo_pulito = testo.strip().rstrip(":：").strip()
-            if testo_pulito.lower() == "annunci":
-                indice_dopo_annunci = fine
-                break
-
-        corpo_elenco = "\n".join(nomi_ordinati) if nomi_ordinati else "(nessuno approvato per questo mese)"
-        testo_sezione = f"{intestazione_sezione}\n{corpo_elenco}\n{MARCATORE_FINE_ELENCO}\n\n"
-
-        richieste = []
-        ultimo_indice_valido = elementi[-1]["endIndex"] - 1 if elementi else 1
-        if indice_inizio_sezione is not None:
-            indice_scrittura = indice_inizio_sezione
-            richieste.append({
-                "deleteContentRange": {
-                    "range": {"startIndex": indice_inizio_sezione, "endIndex": indice_fine_sezione}
-                }
-            })
+            servizio.documents().batchUpdate(
+                documentId=ID_DOCUMENTO_ANNUNCI,
+                body={"requests": [{
+                    "replaceAllText": {
+                        "containsText": {"text": testo_vecchia_sezione, "matchCase": True},
+                        "replaceText": testo_sezione,
+                    }
+                }]},
+            ).execute()
         else:
+            # Sezione nuova: va inserita subito sotto l'intestazione "Annunci"
+            indice_dopo_annunci = None
+            for testo, _inizio, fine in paragrafi:
+                testo_pulito = testo.strip().rstrip(":：").strip()
+                if testo_pulito.lower() == "annunci":
+                    indice_dopo_annunci = fine
+                    break
+
+            ultimo_indice_valido = elementi[-1]["endIndex"] - 1 if elementi else 1
             indice_scrittura = indice_dopo_annunci if indice_dopo_annunci is not None else 1
             indice_scrittura = max(1, min(indice_scrittura, ultimo_indice_valido))
 
-        richieste.append({
-            "insertText": {"location": {"index": indice_scrittura}, "text": testo_sezione}
-        })
+            servizio.documents().batchUpdate(
+                documentId=ID_DOCUMENTO_ANNUNCI,
+                body={"requests": [{
+                    "insertText": {"location": {"index": indice_scrittura}, "text": testo_sezione + "\n"}
+                }]},
+            ).execute()
 
-        lunghezza_blocco = _lunghezza_utf16(testo_sezione)
-        # Reimposta lo stile del paragrafo (allineamento a sinistra, testo normale,
-        # non l'eventuale stile "Titolo" ereditato dal punto d'inserimento)
-        richieste.append({
-            "updateParagraphStyle": {
-                "range": {"startIndex": indice_scrittura, "endIndex": indice_scrittura + lunghezza_blocco},
-                "paragraphStyle": {"alignment": "START", "namedStyleType": "NORMAL_TEXT"},
-                "fields": "alignment,namedStyleType",
-            }
-        })
-        # Carattere 14, non grassetto, su tutto il blocco inserito
-        richieste.append({
-            "updateTextStyle": {
-                "range": {"startIndex": indice_scrittura, "endIndex": indice_scrittura + lunghezza_blocco},
-                "textStyle": {"fontSize": {"magnitude": 14, "unit": "PT"}, "bold": False},
-                "fields": "fontSize,bold",
-            }
-        })
-        # Solo l'intestazione della sezione in grassetto
-        richieste.append({
-            "updateTextStyle": {
-                "range": {
-                    "startIndex": indice_scrittura,
-                    "endIndex": indice_scrittura + _lunghezza_utf16(intestazione_sezione),
+        # Ora che il contenuto è sicuramente presente, applica la formattazione
+        # (carattere 14, allineato a sinistra, solo intestazione in grassetto),
+        # rileggendo il documento da capo per avere indici aggiornati e sicuri.
+        _, paragrafi_aggiornati = leggi_paragrafi()
+        indice_nuovo_inizio = None
+        for testo, inizio, _fine in paragrafi_aggiornati:
+            if testo.strip() == intestazione_sezione.strip():
+                indice_nuovo_inizio = inizio
+                break
+
+        if indice_nuovo_inizio is not None:
+            lunghezza_blocco = _lunghezza_utf16(testo_sezione)
+            richieste_stile = [
+                {
+                    "updateParagraphStyle": {
+                        "range": {"startIndex": indice_nuovo_inizio,
+                                  "endIndex": indice_nuovo_inizio + lunghezza_blocco},
+                        "paragraphStyle": {"alignment": "START", "namedStyleType": "NORMAL_TEXT"},
+                        "fields": "alignment,namedStyleType",
+                    }
                 },
-                "textStyle": {"bold": True},
-                "fields": "bold",
-            }
-        })
+                {
+                    "updateTextStyle": {
+                        "range": {"startIndex": indice_nuovo_inizio,
+                                  "endIndex": indice_nuovo_inizio + lunghezza_blocco},
+                        "textStyle": {"fontSize": {"magnitude": 14, "unit": "PT"}, "bold": False},
+                        "fields": "fontSize,bold",
+                    }
+                },
+                {
+                    "updateTextStyle": {
+                        "range": {
+                            "startIndex": indice_nuovo_inizio,
+                            "endIndex": indice_nuovo_inizio + _lunghezza_utf16(intestazione_sezione),
+                        },
+                        "textStyle": {"bold": True},
+                        "fields": "bold",
+                    }
+                },
+            ]
+            servizio.documents().batchUpdate(
+                documentId=ID_DOCUMENTO_ANNUNCI, body={"requests": richieste_stile}
+            ).execute()
 
-        servizio.documents().batchUpdate(
-            documentId=ID_DOCUMENTO_ANNUNCI, body={"requests": richieste}
-        ).execute()
         return True, None
     except Exception as e:
         return False, str(e)
