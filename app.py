@@ -5742,18 +5742,21 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
                 indice_inizio_sezione = inizio
                 break
 
-        # Se esiste, trova dove finisce: ci fermiamo alla prima riga VUOTA dopo
-        # l'intestazione (è esattamente il confine che scriviamo noi stessi dopo
-        # l'elenco dei nomi), oppure al titolo di un'altra sezione pionieri.
-        # Se non troviamo nessuno dei due entro un margine ragionevole, NON
-        # tocchiamo il documento — meglio fallire che rischiare di cancellare
-        # annunci non correlati che vengono dopo.
+        # Se esiste, trova dove finisce, cercando SOLO il marcatore esplicito
+        # "-Fine elenco-" (lo scriviamo sempre noi in fondo all'elenco: è l'unico
+        # confine di cui ci fidiamo). Niente più ripieghi "riga vuota": in un
+        # documento con altri annunci una riga vuota può trovarsi ovunque, anche
+        # dentro contenuti non correlati, e cercarla alla cieca rischia di
+        # cancellare roba sbagliata. Se il marcatore non c'è, NON tocchiamo il
+        # documento.
+        MARCATORE_FINE_ELENCO = "-Fine elenco-"
         LIMITE_PARAGRAFI_SEZIONE = 60
         indice_fine_sezione = None
         errore_confine = None
         if indice_inizio_sezione is not None:
             dopo_inizio = False
             contatore = 0
+            indice_marcatore = None
             for testo, inizio, fine in paragrafi:
                 if inizio == indice_inizio_sezione:
                     dopo_inizio = True
@@ -5761,20 +5764,31 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
                 if not dopo_inizio:
                     continue
                 contatore += 1
-                if testo.strip().startswith(prefisso_intestazione):
-                    indice_fine_sezione = inizio
-                    break
-                if testo.strip() == "":
-                    indice_fine_sezione = fine
+                if testo.strip() == MARCATORE_FINE_ELENCO:
+                    indice_marcatore = fine
                     break
                 if contatore > LIMITE_PARAGRAFI_SEZIONE:
                     break
-            if indice_fine_sezione is None:
+
+            if indice_marcatore is not None:
+                indice_fine_sezione = indice_marcatore
+                # Consuma anche eventuali righe vuote subito dopo il marcatore
+                # (la spaziatura che aggiungiamo sempre noi), per non farle
+                # accumulare a ogni aggiornamento.
+                for testo2, inizio2, fine2 in paragrafi:
+                    if inizio2 < indice_fine_sezione:
+                        continue
+                    if testo2.strip() == "":
+                        indice_fine_sezione = fine2
+                    else:
+                        break
+            else:
                 errore_confine = (
                     f"Non riesco a determinare con sicurezza dove finisce la sezione "
                     f"già presente di «{etichetta_mese}»: per non rischiare di cancellare "
                     f"altri annunci non ho modificato il documento. Elimina a mano la "
-                    f"vecchia sezione «{intestazione_sezione}» e riprova."
+                    f"vecchia sezione «{intestazione_sezione}» (intestazione compresa) "
+                    f"e riprova: verrà ricreata da capo con il marcatore corretto."
                 )
 
         if errore_confine:
@@ -5789,7 +5803,7 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
                 break
 
         corpo_elenco = "\n".join(nomi_ordinati) if nomi_ordinati else "(nessuno approvato per questo mese)"
-        testo_sezione = f"{intestazione_sezione}\n{corpo_elenco}\n\n"
+        testo_sezione = f"{intestazione_sezione}\n{corpo_elenco}\n{MARCATORE_FINE_ELENCO}\n\n"
 
         richieste = []
         ultimo_indice_valido = elementi[-1]["endIndex"] - 1 if elementi else 1
@@ -6295,7 +6309,10 @@ def mostra_domande_pioniere_ausiliario():
                 st.success(f"✔ Elenco di {etichetta_mese_scelto} scritto su Annunci "
                            f"({len(nomi_approvati)} approvati).")
             else:
-                st.error(f"Errore nell'esportazione su Annunci: {err_annunci}")
+                st.error("✖ Non è stato possibile trasferire l'elenco: il formato in "
+                         "Annunci è stato modificato.")
+                with st.expander("Dettagli tecnici"):
+                    st.code(str(err_annunci))
 
         if zip_click and not df_filtrato.empty:
             righe_zip = df_filtrato.to_dict("records")
