@@ -1715,7 +1715,7 @@ def archivia_rapporti_consegnati(_workbook) -> tuple:
         ultima_riga = len(valori_risposte)
 
         if ultima_riga < RIGA_INIZIO_ARCHIVIO:
-            return True, "Nessun rapporto da archiviare: non ci sono righe dopo l'intestazione."
+            return False, "Non ci sono rapporti da esportare."
 
         righe_grezze = valori_risposte[RIGA_INIZIO_ARCHIVIO - 1:ultima_riga]
 
@@ -1742,7 +1742,8 @@ def archivia_rapporti_consegnati(_workbook) -> tuple:
                        f"potresti trovarli duplicati, controlla ed elimina a mano le righe da "
                        f"{RIGA_INIZIO_ARCHIVIO} a {ultima_riga} in «Risposte del modulo 9» se necessario.")
 
-    return True, f"{len(righe_da_scrivere)} rapporti spostati in archivio."
+    n_spostati = len(righe_da_scrivere)
+    return True, f"Esportati correttamente in archivio {n_spostati}/{n_spostati} rapporti consegnati"
 
 
 def salva_riga_tutti(_workbook, riga_foglio: int, nuova_grezza: list):
