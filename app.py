@@ -2397,32 +2397,24 @@ def mostra_home():
 
     # ─────────────────────────────────────────────────────────────────
     # Segnalazione: Rapporto del mese corrente (da Anagrafica attivi + foglio
-    # "Risposte del modulo 9", colonna B) — non ancora consegnato. Se i
-    # rapporti sono già stati spostati in "Tutti" (Risposte vuoto), mostra
-    # invece la conferma che sono in archivio.
+    # "Risposte del modulo 9", colonna B). Se i rapporti sono già stati
+    # spostati in "Tutti" (Risposte vuoto), conta da lì invece. Un unico
+    # formato in entrambi i casi: pallino giallo se ne manca qualcuno,
+    # verde se sono tutti presenti.
     # ─────────────────────────────────────────────────────────────────
     if info_mese_archiviato:
         mese_arch, n_arch, n_att = info_mese_archiviato
-        if n_att > 0 and n_arch >= n_att:
-            promemoria.append(("dot-green",
-                               f"{n_arch}/{n_att} rapporti del mese {mese_arch} sono in archivio."))
-        elif n_att > 0:
-            promemoria.append(("dot-yellow",
-                               f"{n_arch}/{n_att} rapporti del mese {mese_arch} sono in archivio "
-                               f"(gli altri non risultano né in arrivo né archiviati)."))
-    else:
-        n_mancanti_mese = len(nomi_mancanti_rapporto_mese) if nomi_mancanti_rapporto_mese else 0
-        if n_mancanti_mese > 0:
-            dot_cls_mese = "dot-yellow" if n_mancanti_mese < 5 else "dot-red"
-            if n_mancanti_mese == 1:
-                testo_mese = "1 proclamatore non ha ancora consegnato il rapporto di questo mese."
-            else:
-                testo_mese = f"{n_mancanti_mese} proclamatori non hanno ancora consegnato il rapporto di questo mese."
-            promemoria.append((dot_cls_mese, testo_mese))
-        elif nomi_mancanti_rapporto_mese is not None and conteggio_attivi_home > 0:
-            promemoria.append(("dot-green",
-                               f"{conteggio_attivi_home}/{conteggio_attivi_home} rapporti consegnati questo mese."))
-        # Se non c'è nulla da controllare (non collegato, nessun attivo), non si scrive nulla.
+        if n_att > 0:
+            dot_cls_mese = "dot-green" if n_arch >= n_att else "dot-yellow"
+            promemoria.append((dot_cls_mese,
+                               f"{n_arch}/{n_att} Rapporti di servizio consegnati (mese {mese_arch})."))
+    elif nomi_mancanti_rapporto_mese is not None and conteggio_attivi_home > 0:
+        n_mancanti_mese = len(nomi_mancanti_rapporto_mese)
+        n_consegnati_mese = conteggio_attivi_home - n_mancanti_mese
+        dot_cls_mese = "dot-green" if n_mancanti_mese == 0 else "dot-yellow"
+        promemoria.append((dot_cls_mese,
+                           f"{n_consegnati_mese}/{conteggio_attivi_home} Rapporti di servizio consegnati."))
+    # Se non c'è nulla da controllare (non collegato, nessun attivo), non si scrive nulla.
 
     # ─────────────────────────────────────────────────────────────────
     # Segnalazione 1: Rapporti dell'Anno Teocratico
