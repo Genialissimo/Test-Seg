@@ -2419,7 +2419,10 @@ def mostra_home():
             else:
                 testo_mese = f"{n_mancanti_mese} proclamatori non hanno ancora consegnato il rapporto di questo mese."
             promemoria.append((dot_cls_mese, testo_mese))
-        # Se hanno consegnato tutti (o non ci sono proclamatori attivi), non si scrive nulla.
+        elif nomi_mancanti_rapporto_mese is not None and conteggio_attivi_home > 0:
+            promemoria.append(("dot-green",
+                               f"{conteggio_attivi_home}/{conteggio_attivi_home} rapporti consegnati questo mese."))
+        # Se non c'è nulla da controllare (non collegato, nessun attivo), non si scrive nulla.
 
     # ─────────────────────────────────────────────────────────────────
     # Segnalazione 1: Rapporti dell'Anno Teocratico
