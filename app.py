@@ -1521,8 +1521,75 @@ def _riepilogo_totali_generali_per_categoria(df_periodo_gruppo: pd.DataFrame) ->
         })
     return risultati
 
-def _riepilogo_totali_per_categoria_e_gruppo(df_tutti: pd.DataFrame, df_anagrafica: pd.DataFrame,
-                                              periodo: str) -> list:
+
+def _riepilogo_composizione_gruppo(df_tutti_periodo: pd.DataFrame, df_anagrafica: pd.DataFrame,
+                                    gruppo_scelto: str) -> dict:
+    """Calcola la composizione di un gruppo (o di tutta la congregazione, se
+    gruppo_scelto è 'Tutti i gruppi'): alcuni numeri sono una fotografia di
+    adesso (da Anagrafica: battezzati, inattivi), altri sono riferiti al
+    periodo scelto (da 'Tutti': pionieri, irregolari, studi biblici)."""
+    df_ana = df_anagrafica
+    if gruppo_scelto and gruppo_scelto != "Tutti i gruppi" and "Gruppo" in df_anagrafica.columns:
+        df_ana = df_anagrafica[df_anagrafica["Gruppo"].astype(str).str.strip() == gruppo_scelto]
+
+    if "Attivi / Inattivi" in df_ana.columns:
+        categorie_stato = df_ana["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
+    else:
+        categorie_stato = pd.Series(["A"] * len(df_ana), index=df_ana.index)
+
+    df_ana_no_trasferiti = df_ana[categorie_stato != "TR"]
+    n_totale_gruppo = len(df_ana_no_trasferiti)
+
+    if "Data Battesimo" in df_ana_no_trasferiti.columns:
+        battezzato = df_ana_no_trasferiti["Data Battesimo"].astype(str).str.strip() != ""
+        n_battezzati = int(battezzato.sum())
+        n_non_battezzati = n_totale_gruppo - n_battezzati
+    else:
+        n_battezzati = n_non_battezzati = 0
+
+    n_inattivi = int((categorie_stato.loc[df_ana_no_trasferiti.index] == "I").sum()) if len(df_ana_no_trasferiti) else 0
+
+    def _nomi_unici_per_tipo(parola_chiave):
+        if df_tutti_periodo.empty or "Tipo Servizio" not in df_tutti_periodo.columns:
+            return set()
+        sotto = df_tutti_periodo[df_tutti_periodo["Tipo Servizio"].str.lower().str.contains(
+            parola_chiave, na=False, regex=True)]
+        return set(sotto["Nome"].astype(str).str.strip())
+
+    n_pionieri_regolari = len(_nomi_unici_per_tipo("pioniere regolare"))
+    n_pionieri_speciali = len(_nomi_unici_per_tipo("pioniere speciale"))
+    n_missionari = len(_nomi_unici_per_tipo("missionario|rappresentante"))
+
+    n_pionieri_ausiliari = 0
+    if not df_tutti_periodo.empty and "Pioniere ausiliario" in df_tutti_periodo.columns:
+        n_pionieri_ausiliari = len(set(
+            df_tutti_periodo.loc[df_tutti_periodo["Pioniere ausiliario"] == True, "Nome"]
+            .astype(str).str.strip()
+        ))
+
+    n_irregolari = 0
+    if not df_tutti_periodo.empty and "Ha partecipato al ministero" in df_tutti_periodo.columns:
+        irregolari_righe = df_tutti_periodo[df_tutti_periodo["Ha partecipato al ministero"] == False]
+        n_irregolari = len(set(irregolari_righe["Nome"].astype(str).str.strip()))
+
+    n_studi_biblici = 0
+    if not df_tutti_periodo.empty and "Studi Biblici" in df_tutti_periodo.columns:
+        n_studi_biblici = int(sum(a_float_it(v) for v in df_tutti_periodo["Studi Biblici"]))
+
+    return {
+        "n_totale_gruppo": n_totale_gruppo,
+        "n_non_battezzati": n_non_battezzati,
+        "n_battezzati": n_battezzati,
+        "n_pionieri_regolari": n_pionieri_regolari,
+        "n_pionieri_speciali": n_pionieri_speciali,
+        "n_missionari": n_missionari,
+        "n_irregolari": n_irregolari,
+        "n_inattivi": n_inattivi,
+        "n_studi_biblici": n_studi_biblici,
+        "n_pionieri_ausiliari": n_pionieri_ausiliari,
+    }
+
+
     df_periodo = _riepilogo_filtra_dati(df_tutti, df_anagrafica, periodo, "Tutti i gruppi", "Tutti")
     if df_periodo.empty or "Gruppo" not in df_anagrafica.columns:
         return []
@@ -1571,6 +1638,7 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
                                    etichetta_gruppo: str = None, etichetta_vista: str = "Dettagliato",
                                    totali_per_categoria: list = None,
                                    comparazione_gruppi: list = None,
+                                   composizione_gruppo: dict = None,
                                    etichetta_dati_periodo: str = None) -> bytes:
     buf = io.BytesIO()
     if comparazione_gruppi is not None:
@@ -1595,7 +1663,53 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
         elementi.append(Paragraph(etichetta_dati_periodo, stile_sottotitolo))
     elementi.append(Spacer(1, 14))
 
-    if totali_per_categoria is not None:
+    if composizione_gruppo is not None:
+        dati = composizione_gruppo
+        stile_intestazione_gruppo = ParagraphStyle(
+            "IntestazioneGruppo", parent=stili["Normal"], fontSize=13, leading=17,
+            fontName="Helvetica-Bold", textColor=colors.HexColor("#1a3c6e"), spaceAfter=16,
+        )
+        soggetto = f"Il gruppo «{etichetta_gruppo}»" if etichetta_gruppo else "La congregazione"
+        elementi.append(Paragraph(
+            f"{soggetto} è composto da {dati['n_totale_gruppo']} proclamatori",
+            stile_intestazione_gruppo,
+        ))
+
+        voci = [
+            ("Proclamatori non battezzati", dati["n_non_battezzati"], "#546e7a"),
+            ("Proclamatori battezzati", dati["n_battezzati"], "#546e7a"),
+            ("Pionieri Regolari", dati["n_pionieri_regolari"], "#2e7d32"),
+            ("Pionieri Speciali", dati["n_pionieri_speciali"], "#2e7d32"),
+            ("Missionari sul campo", dati["n_missionari"], "#2e7d32"),
+            ("Irregolari", dati["n_irregolari"], "#c62828"),
+            ("Inattivi associati", dati["n_inattivi"], "#c62828"),
+            ("Numero degli studi biblici", dati["n_studi_biblici"], "#6a1b9a"),
+            ("Numero pionieri ausiliari", dati["n_pionieri_ausiliari"], "#1565c0"),
+        ]
+
+        stile_etichetta_comp = ParagraphStyle("EtichettaComposizione", parent=stili["Normal"],
+                                               fontSize=11.5, leading=16)
+        righe_composizione = []
+        for etichetta, valore, colore_hex in voci:
+            stile_numero_comp = ParagraphStyle(
+                f"NumeroComposizione_{colore_hex}_{etichetta[:3]}", parent=stili["Normal"],
+                fontSize=13, leading=16, fontName="Helvetica-Bold",
+                textColor=colors.HexColor(colore_hex), alignment=2,
+            )
+            righe_composizione.append([
+                Paragraph(etichetta, stile_etichetta_comp),
+                Paragraph(str(valore), stile_numero_comp),
+            ])
+
+        tabella_composizione = Table(righe_composizione, colWidths=[11.5 * cm, 3 * cm])
+        tabella_composizione.setStyle(TableStyle([
+            ("LINEBELOW", (0, 0), (-1, -2), 0.6, colors.HexColor("#e0e0e0")),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        elementi.append(tabella_composizione)
+    elif totali_per_categoria is not None:
         if not totali_per_categoria:
             elementi.append(Paragraph("Nessun dato trovato per i filtri selezionati.", stili["Normal"]))
         else:
@@ -3315,12 +3429,12 @@ def mostra_riepilogo_attivita():
                 elif tipo_vista == "Sintetico" and categoria_scelta == "Tutti":
                     df_periodo_gruppo = _riepilogo_filtra_dati(df_tutti, df, periodo_scelto,
                                                                 gruppo_scelto, "Tutti")
-                    totali_categoria = _riepilogo_totali_generali_per_categoria(df_periodo_gruppo)
-                    trovato_qualcosa = bool(totali_categoria)
+                    composizione = _riepilogo_composizione_gruppo(df_periodo_gruppo, df, gruppo_scelto)
+                    trovato_qualcosa = composizione["n_totale_gruppo"] > 0
                     pdf_bytes = genera_pdf_riepilogo_attivita(
                         [], periodo_scelto, categoria_scelta,
                         gruppo_scelto if gruppo_scelto != "Tutti i gruppi" else None,
-                        etichetta_vista=tipo_vista, totali_per_categoria=totali_categoria,
+                        etichetta_vista=tipo_vista, composizione_gruppo=composizione,
                         etichetta_dati_periodo=etichetta_dati_periodo,
                     )
                 else:
@@ -6677,3 +6791,7 @@ elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
 else:
     mostra_home()
+
+
+
+
