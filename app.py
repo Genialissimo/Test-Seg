@@ -630,7 +630,7 @@ def _s21_centro_box(c: rl_canvas.Canvas, box: tuple, offset: float, testo: str =
     cx = (x0 + x1) / 2
     centro_verticale_top = (top + bottom) / 2 + offset
     cy = S21_PAGE_H - centro_verticale_top - sposta
-    dimensione = font_size * 1.4
+    dimensione = font_size * 0.7
     c.saveState()
     c.setLineWidth(max(1.0, dimensione * 0.12))
     c.setLineCap(1)
