@@ -1702,7 +1702,8 @@ def _riepilogo_dettagli_gruppo(df_tutti_periodo: pd.DataFrame) -> dict:
         if sotto.empty:
             continue
         per_persona = sotto.groupby("Nome")["_studi_val"].sum()
-        lista_persone = sorted([(nome, int(v)) for nome, v in per_persona.items()], key=lambda t: t[0])
+        lista_persone = sorted(
+            [(nome, int(v)) for nome, v in per_persona.items() if v > 0], key=lambda t: t[0])
         if lista_persone:
             studi_per_categoria.append((cat, len(lista_persone), lista_persone))
 
@@ -1845,6 +1846,11 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
                 "RigaIndentataDettagli", parent=stili["Normal"], fontSize=10.5,
                 leftIndent=24, leading=14.5, spaceAfter=1, textColor=colors.HexColor("#333333"),
             )
+            stile_categoria_lista = ParagraphStyle(
+                "CategoriaListaDettagli", parent=stili["Normal"], fontSize=10.5,
+                fontName="Helvetica-Bold", leftIndent=24, leading=15, spaceBefore=4, spaceAfter=2,
+                textColor=colors.HexColor("#1565c0"),
+            )
 
             elementi.append(Paragraph(f"Attività del gruppo: {etichetta_periodo}", stile_titolo2))
 
@@ -1858,7 +1864,7 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
             # 2. Studi biblici totale + per categoria/persona
             elementi.append(Paragraph(f"Studi biblici: {dett['n_studi_totale']}", stile_riga_principale))
             for cat, n_persone, lista_persone in dett["studi_per_categoria"]:
-                elementi.append(Paragraph(f"{cat}: {n_persone}", stile_riga_indentata))
+                elementi.append(Paragraph(f"{cat}: {n_persone}", stile_categoria_lista))
                 for nome, n_studi in lista_persone:
                     elementi.append(Paragraph(f"{nome} &nbsp;&nbsp;{n_studi}", stile_riga_indentata))
 
