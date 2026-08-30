@@ -1590,6 +1590,8 @@ def _riepilogo_composizione_gruppo(df_tutti_periodo: pd.DataFrame, df_anagrafica
     }
 
 
+def _riepilogo_totali_per_categoria_e_gruppo(df_tutti: pd.DataFrame, df_anagrafica: pd.DataFrame,
+                                              periodo: str) -> list:
     df_periodo = _riepilogo_filtra_dati(df_tutti, df_anagrafica, periodo, "Tutti i gruppi", "Tutti")
     if df_periodo.empty or "Gruppo" not in df_anagrafica.columns:
         return []
@@ -1634,11 +1636,129 @@ def _riepilogo_composizione_gruppo(df_tutti_periodo: pd.DataFrame, df_anagrafica
     return risultati
 
 
+def _riepilogo_dettagli_gruppo(df_tutti_periodo: pd.DataFrame) -> dict:
+    """Calcola la sezione 'Attività del gruppo': pionieri ausiliari per mese,
+    studi biblici per categoria e persona (proclamatori e pionieri ausiliari
+    insieme sotto 'Proclamatori'), pionieri regolari sotto le 50 ore/mese di
+    media personale (ore + crediti), media di gruppo per pionieri speciali e
+    missionari (nessun nome, sezione omessa se non ce ne sono), e irregolari
+    per mese. Tutto riferito al periodo già filtrato in df_tutti_periodo."""
+    vuoto = {
+        "n_ausiliari_totale": 0, "ausiliari_per_mese": [],
+        "n_studi_totale": 0, "studi_per_categoria": [],
+        "regolari_sotto_soglia": [], "n_pionieri_regolari": 0,
+        "speciali_media_gruppo": None, "n_pionieri_speciali": 0,
+        "missionari_media_gruppo": None, "n_missionari": 0,
+        "irregolari_per_mese": [],
+    }
+    if df_tutti_periodo.empty or "Nome" not in df_tutti_periodo.columns:
+        return vuoto
+
+    df = df_tutti_periodo.copy()
+    df["Nome"] = df["Nome"].astype(str).str.strip()
+    df = df[df["Nome"] != ""]
+    if df.empty:
+        return vuoto
+    df["_mese_ord"] = df["Mese/Anno"].astype(str).str.strip() if "Mese/Anno" in df.columns else ""
+
+    def _etichetta_mese(mese_anno: str) -> str:
+        try:
+            _anno_s, mese_s = mese_anno.split("-")
+            return MESI_ITALIANI[int(mese_s)]
+        except Exception:
+            return mese_anno
+
+    def _categoria_riga(tipo_servizio) -> str:
+        ts = str(tipo_servizio).lower()
+        if "pioniere regolare" in ts:
+            return "Pionieri Regolari"
+        if "pioniere speciale" in ts:
+            return "Pionieri Speciali"
+        if "missionario" in ts or "rappresentante" in ts:
+            return "Missionari sul campo"
+        return "Proclamatori"  # include anche i mesi da pioniere ausiliario
+
+    df["_categoria"] = df["Tipo Servizio"].apply(_categoria_riga) if "Tipo Servizio" in df.columns else "Proclamatori"
+    df["_ore_val"] = df["Ore"].apply(a_float_it) if "Ore" in df.columns else 0.0
+    df["_cred_val"] = df["Cred. Ore"].apply(a_float_it) if "Cred. Ore" in df.columns else 0.0
+    df["_studi_val"] = df["Studi Biblici"].apply(a_float_it) if "Studi Biblici" in df.columns else 0.0
+
+    # 1. Pionieri ausiliari per mese
+    ausiliari_per_mese = []
+    n_ausiliari_totale = 0
+    if "Pioniere ausiliario" in df.columns:
+        df_aus = df[df["Pioniere ausiliario"] == True]
+        n_ausiliari_totale = df_aus["Nome"].nunique()
+        for mese_val in sorted(df_aus["_mese_ord"].unique()):
+            n_mese = df_aus.loc[df_aus["_mese_ord"] == mese_val, "Nome"].nunique()
+            if n_mese > 0:
+                ausiliari_per_mese.append((_etichetta_mese(mese_val), n_mese))
+
+    # 2. Studi biblici totale + per categoria/persona (Proclamatori include anche gli ausiliari)
+    n_studi_totale = int(df["_studi_val"].sum())
+    studi_per_categoria = []
+    for cat in ["Proclamatori", "Pionieri Regolari", "Pionieri Speciali", "Missionari sul campo"]:
+        sotto = df[df["_categoria"] == cat]
+        if sotto.empty:
+            continue
+        per_persona = sotto.groupby("Nome")["_studi_val"].sum()
+        lista_persone = sorted([(nome, int(v)) for nome, v in per_persona.items()], key=lambda t: t[0])
+        if lista_persone:
+            studi_per_categoria.append((cat, len(lista_persone), lista_persone))
+
+    # 3. Pionieri Regolari sotto la soglia delle 50 ore/mese di media personale
+    SOGLIA_ORE_REGOLARI = 50
+    df_reg = df[df["_categoria"] == "Pionieri Regolari"]
+    n_pionieri_regolari = df_reg["Nome"].nunique()
+    regolari_sotto_soglia = []
+    for nome, sotto in df_reg.groupby("Nome"):
+        n_mesi = len(sotto)
+        if n_mesi == 0:
+            continue
+        media = (sotto["_ore_val"].sum() + sotto["_cred_val"].sum()) / n_mesi
+        if media < SOGLIA_ORE_REGOLARI:
+            regolari_sotto_soglia.append((nome, round(media, 2)))
+    regolari_sotto_soglia.sort(key=lambda t: t[0])
+
+    # 4. Pionieri Speciali — solo media di gruppo, nessun nome
+    df_spec = df[df["_categoria"] == "Pionieri Speciali"]
+    n_pionieri_speciali = df_spec["Nome"].nunique()
+    speciali_media_gruppo = None
+    if not df_spec.empty:
+        speciali_media_gruppo = round((df_spec["_ore_val"].sum() + df_spec["_cred_val"].sum()) / len(df_spec), 2)
+
+    # 5. Missionari sul campo — solo media di gruppo, nessun nome
+    df_miss = df[df["_categoria"] == "Missionari sul campo"]
+    n_missionari = df_miss["Nome"].nunique()
+    missionari_media_gruppo = None
+    if not df_miss.empty:
+        missionari_media_gruppo = round((df_miss["_ore_val"].sum() + df_miss["_cred_val"].sum()) / len(df_miss), 2)
+
+    # 6. Irregolari per mese
+    irregolari_per_mese = []
+    if "Ha partecipato al ministero" in df.columns:
+        df_irr = df[df["Ha partecipato al ministero"] == False]
+        for mese_val in sorted(df_irr["_mese_ord"].unique()):
+            nomi = sorted(set(df_irr.loc[df_irr["_mese_ord"] == mese_val, "Nome"]))
+            if nomi:
+                irregolari_per_mese.append((_etichetta_mese(mese_val), nomi))
+
+    return {
+        "n_ausiliari_totale": n_ausiliari_totale, "ausiliari_per_mese": ausiliari_per_mese,
+        "n_studi_totale": n_studi_totale, "studi_per_categoria": studi_per_categoria,
+        "regolari_sotto_soglia": regolari_sotto_soglia, "n_pionieri_regolari": n_pionieri_regolari,
+        "speciali_media_gruppo": speciali_media_gruppo, "n_pionieri_speciali": n_pionieri_speciali,
+        "missionari_media_gruppo": missionari_media_gruppo, "n_missionari": n_missionari,
+        "irregolari_per_mese": irregolari_per_mese,
+    }
+
+
 def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichetta_categoria: str,
                                    etichetta_gruppo: str = None, etichetta_vista: str = "Dettagliato",
                                    totali_per_categoria: list = None,
                                    comparazione_gruppi: list = None,
                                    composizione_gruppo: dict = None,
+                                   dettagli_gruppo: dict = None,
                                    etichetta_dati_periodo: str = None) -> bytes:
     buf = io.BytesIO()
     if comparazione_gruppi is not None:
@@ -1709,6 +1829,76 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ]))
         elementi.append(tabella_composizione)
+
+        if dettagli_gruppo:
+            dett = dettagli_gruppo
+            stile_titolo2 = ParagraphStyle(
+                "TitoloDettagli", parent=stili["Normal"], fontSize=13, leading=17,
+                fontName="Helvetica-Bold", textColor=colors.HexColor("#1a3c6e"),
+                spaceBefore=22, spaceAfter=10,
+            )
+            stile_riga_principale = ParagraphStyle(
+                "RigaPrincipaleDettagli", parent=stili["Normal"], fontSize=11,
+                fontName="Helvetica-Bold", leftIndent=10, spaceBefore=8, spaceAfter=3, leading=15,
+            )
+            stile_riga_indentata = ParagraphStyle(
+                "RigaIndentataDettagli", parent=stili["Normal"], fontSize=10.5,
+                leftIndent=24, leading=14.5, spaceAfter=1, textColor=colors.HexColor("#333333"),
+            )
+
+            elementi.append(Paragraph(f"Attività del gruppo: {etichetta_periodo}", stile_titolo2))
+
+            # 1. Pionieri ausiliari per mese
+            elementi.append(Paragraph(
+                f"Numero dei proclamatori che hanno fatto i pionieri ausiliari: {dett['n_ausiliari_totale']}",
+                stile_riga_principale))
+            for etichetta_mese, n in dett["ausiliari_per_mese"]:
+                elementi.append(Paragraph(f"{etichetta_mese}: {n}", stile_riga_indentata))
+
+            # 2. Studi biblici totale + per categoria/persona
+            elementi.append(Paragraph(f"Studi biblici: {dett['n_studi_totale']}", stile_riga_principale))
+            for cat, n_persone, lista_persone in dett["studi_per_categoria"]:
+                elementi.append(Paragraph(f"{cat}: {n_persone}", stile_riga_indentata))
+                for nome, n_studi in lista_persone:
+                    elementi.append(Paragraph(f"{nome} &nbsp;&nbsp;{n_studi}", stile_riga_indentata))
+
+            # 3. Pionieri Regolari sotto la soglia delle 50 ore/mese
+            if dett["n_pionieri_regolari"] > 0:
+                elementi.append(Paragraph("Pionieri Regolari:", stile_riga_principale))
+                if dett["regolari_sotto_soglia"]:
+                    elementi.append(Paragraph("Sotto le 50 ore mensili di media:", stile_riga_indentata))
+                    for nome, media in dett["regolari_sotto_soglia"]:
+                        elementi.append(Paragraph(
+                            f"{nome} &nbsp;&nbsp;media {media:.2f} ore/mese".replace(".", ","),
+                            stile_riga_indentata))
+                else:
+                    elementi.append(Paragraph("Tutti sopra le 50 ore mensili di media.", stile_riga_indentata))
+
+            # 4. Pionieri Speciali — solo media di gruppo
+            if dett["n_pionieri_speciali"] > 0 and dett["speciali_media_gruppo"] is not None:
+                elementi.append(Paragraph("Pionieri Speciali:", stile_riga_principale))
+                media_txt = f"{dett['speciali_media_gruppo']:.2f}".replace(".", ",")
+                elementi.append(Paragraph(f"Media delle ore mensili (compresi i crediti): {media_txt}",
+                                          stile_riga_indentata))
+
+            # 5. Missionari sul campo — solo media di gruppo
+            if dett["n_missionari"] > 0 and dett["missionari_media_gruppo"] is not None:
+                elementi.append(Paragraph("Missionari sul campo:", stile_riga_principale))
+                media_txt = f"{dett['missionari_media_gruppo']:.2f}".replace(".", ",")
+                elementi.append(Paragraph(f"Media delle ore mensili (compresi i crediti): {media_txt}",
+                                          stile_riga_indentata))
+
+            # 6. Irregolari per mese
+            elementi.append(Paragraph("Irregolari:", stile_riga_principale))
+            if dett["irregolari_per_mese"]:
+                for etichetta_mese, nomi in dett["irregolari_per_mese"]:
+                    elementi.append(Paragraph(f"{etichetta_mese}: {', '.join(nomi)}", stile_riga_indentata))
+            else:
+                elementi.append(Paragraph("Nessuno.", stile_riga_indentata))
+
+        doc.build(elementi)
+        buf.seek(0)
+        return buf.getvalue()
     elif totali_per_categoria is not None:
         if not totali_per_categoria:
             elementi.append(Paragraph("Nessun dato trovato per i filtri selezionati.", stili["Normal"]))
@@ -3430,11 +3620,13 @@ def mostra_riepilogo_attivita():
                     df_periodo_gruppo = _riepilogo_filtra_dati(df_tutti, df, periodo_scelto,
                                                                 gruppo_scelto, "Tutti")
                     composizione = _riepilogo_composizione_gruppo(df_periodo_gruppo, df, gruppo_scelto)
+                    dettagli = _riepilogo_dettagli_gruppo(df_periodo_gruppo)
                     trovato_qualcosa = composizione["n_totale_gruppo"] > 0
                     pdf_bytes = genera_pdf_riepilogo_attivita(
                         [], periodo_scelto, categoria_scelta,
                         gruppo_scelto if gruppo_scelto != "Tutti i gruppi" else None,
                         etichetta_vista=tipo_vista, composizione_gruppo=composizione,
+                        dettagli_gruppo=dettagli,
                         etichetta_dati_periodo=etichetta_dati_periodo,
                     )
                 else:
