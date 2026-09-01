@@ -1649,7 +1649,7 @@ def _riepilogo_dettagli_gruppo(df_tutti_periodo: pd.DataFrame) -> dict:
         "regolari_sotto_soglia": [], "n_pionieri_regolari": 0,
         "speciali_media_gruppo": None, "n_pionieri_speciali": 0,
         "missionari_media_gruppo": None, "n_missionari": 0,
-        "irregolari_per_mese": [],
+        "irregolari_per_mese": [], "etichetta_intervallo_mesi": "",
     }
     if df_tutti_periodo.empty or "Nome" not in df_tutti_periodo.columns:
         return vuoto
@@ -1667,6 +1667,22 @@ def _riepilogo_dettagli_gruppo(df_tutti_periodo: pd.DataFrame) -> dict:
             return MESI_ITALIANI[int(mese_s)]
         except Exception:
             return mese_anno
+
+    def _etichetta_mese_anno(mese_anno: str) -> str:
+        try:
+            anno_s, mese_s = mese_anno.split("-")
+            return f"{MESI_ITALIANI[int(mese_s)]} {anno_s}"
+        except Exception:
+            return mese_anno
+
+    mesi_validi = sorted(v for v in df["_mese_ord"].unique() if v)
+    etichetta_intervallo_mesi = ""
+    if mesi_validi:
+        if len(mesi_validi) == 1:
+            etichetta_intervallo_mesi = _etichetta_mese_anno(mesi_validi[0])
+        else:
+            etichetta_intervallo_mesi = (f"{_etichetta_mese_anno(mesi_validi[0])} – "
+                                         f"{_etichetta_mese_anno(mesi_validi[-1])}")
 
     def _categoria_riga(tipo_servizio) -> str:
         ts = str(tipo_servizio).lower()
@@ -1694,16 +1710,23 @@ def _riepilogo_dettagli_gruppo(df_tutti_periodo: pd.DataFrame) -> dict:
             if n_mese > 0:
                 ausiliari_per_mese.append((_etichetta_mese(mese_val), n_mese))
 
-    # 2. Studi biblici totale + per categoria/persona (Proclamatori include anche gli ausiliari)
+    # 2. Studi biblici totale + per categoria/persona (Proclamatori include anche gli ausiliari).
+    # Il numero accanto a ogni nome è la MEDIA MENSILE (totale studi / mesi in cui risulta
+    # in quella categoria), non il totale grezzo.
     n_studi_totale = int(df["_studi_val"].sum())
     studi_per_categoria = []
     for cat in ["Proclamatori", "Pionieri Regolari", "Pionieri Speciali", "Missionari sul campo"]:
         sotto = df[df["_categoria"] == cat]
         if sotto.empty:
             continue
-        per_persona = sotto.groupby("Nome")["_studi_val"].sum()
-        lista_persone = sorted(
-            [(nome, int(v)) for nome, v in per_persona.items() if v > 0], key=lambda t: t[0])
+        lista_persone = []
+        for nome, sotto_persona in sotto.groupby("Nome"):
+            totale_persona = sotto_persona["_studi_val"].sum()
+            if totale_persona <= 0:
+                continue
+            media_persona = totale_persona / len(sotto_persona)
+            lista_persone.append((nome, round(media_persona, 1)))
+        lista_persone.sort(key=lambda t: t[0])
         if lista_persone:
             studi_per_categoria.append((cat, len(lista_persone), lista_persone))
 
@@ -1750,7 +1773,7 @@ def _riepilogo_dettagli_gruppo(df_tutti_periodo: pd.DataFrame) -> dict:
         "regolari_sotto_soglia": regolari_sotto_soglia, "n_pionieri_regolari": n_pionieri_regolari,
         "speciali_media_gruppo": speciali_media_gruppo, "n_pionieri_speciali": n_pionieri_speciali,
         "missionari_media_gruppo": missionari_media_gruppo, "n_missionari": n_missionari,
-        "irregolari_per_mese": irregolari_per_mese,
+        "irregolari_per_mese": irregolari_per_mese, "etichetta_intervallo_mesi": etichetta_intervallo_mesi,
     }
 
 
@@ -1765,6 +1788,9 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
     if comparazione_gruppi is not None:
         doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.6 * cm, bottomMargin=0.6 * cm,
                                  leftMargin=0.6 * cm, rightMargin=0.6 * cm)
+    elif composizione_gruppo is not None:
+        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.9 * cm, bottomMargin=0.9 * cm,
+                                 leftMargin=0.9 * cm, rightMargin=0.9 * cm)
     else:
         doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.5 * cm,
                                  leftMargin=1.3 * cm, rightMargin=1.3 * cm)
@@ -1809,38 +1835,53 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
         ]
 
         stile_etichetta_comp = ParagraphStyle("EtichettaComposizione", parent=stili["Normal"],
-                                               fontSize=11.5, leading=16)
-        righe_composizione = []
-        for etichetta, valore, colore_hex in voci:
+                                               fontSize=10, leading=13)
+
+        def _cella_numero(valore, colore_hex, chiave):
             stile_numero_comp = ParagraphStyle(
-                f"NumeroComposizione_{colore_hex}_{etichetta[:3]}", parent=stili["Normal"],
-                fontSize=13, leading=16, fontName="Helvetica-Bold",
+                f"NumeroComposizione_{colore_hex}_{chiave[:3]}", parent=stili["Normal"],
+                fontSize=12, leading=13, fontName="Helvetica-Bold",
                 textColor=colors.HexColor(colore_hex), alignment=2,
             )
-            righe_composizione.append([
-                Paragraph(etichetta, stile_etichetta_comp),
-                Paragraph(str(valore), stile_numero_comp),
-            ])
+            return Paragraph(str(valore), stile_numero_comp)
 
-        tabella_composizione = Table(righe_composizione, colWidths=[11.5 * cm, 3 * cm])
+        # Due colonne affiancate (sinistra / destra) per risparmiare altezza
+        meta = (len(voci) + 1) // 2
+        colonna_sx, colonna_dx = voci[:meta], voci[meta:]
+        righe_composizione = []
+        for i in range(meta):
+            et_sx, val_sx, col_sx = colonna_sx[i]
+            riga = [Paragraph(et_sx, stile_etichetta_comp), _cella_numero(val_sx, col_sx, et_sx)]
+            if i < len(colonna_dx):
+                et_dx, val_dx, col_dx = colonna_dx[i]
+                riga += [Paragraph(et_dx, stile_etichetta_comp), _cella_numero(val_dx, col_dx, et_dx)]
+            else:
+                riga += ["", ""]
+            righe_composizione.append(riga)
+
+        tabella_composizione = Table(righe_composizione,
+                                      colWidths=[6.6 * cm, 1.6 * cm, 6.6 * cm, 1.6 * cm])
         tabella_composizione.setStyle(TableStyle([
             ("LINEBELOW", (0, 0), (-1, -2), 0.6, colors.HexColor("#e0e0e0")),
-            ("TOPPADDING", (0, 0), (-1, -1), 7),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("LINEAFTER", (1, 0), (1, -1), 0.6, colors.HexColor("#e0e0e0")),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (2, 0), (2, -1), 14),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ]))
         elementi.append(tabella_composizione)
 
         if dettagli_gruppo:
             dett = dettagli_gruppo
+            etichetta_intervallo = dett.get("etichetta_intervallo_mesi") or etichetta_periodo
             stile_titolo2 = ParagraphStyle(
                 "TitoloDettagli", parent=stili["Normal"], fontSize=13, leading=17,
                 fontName="Helvetica-Bold", textColor=colors.HexColor("#1a3c6e"),
-                spaceBefore=22, spaceAfter=10,
+                spaceBefore=18, spaceAfter=8,
             )
             stile_riga_principale = ParagraphStyle(
                 "RigaPrincipaleDettagli", parent=stili["Normal"], fontSize=11,
-                fontName="Helvetica-Bold", leftIndent=10, spaceBefore=8, spaceAfter=3, leading=15,
+                fontName="Helvetica-Bold", leftIndent=10, spaceBefore=7, spaceAfter=3, leading=15,
             )
             stile_riga_indentata = ParagraphStyle(
                 "RigaIndentataDettagli", parent=stili["Normal"], fontSize=10.5,
@@ -1848,11 +1889,15 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
             )
             stile_categoria_lista = ParagraphStyle(
                 "CategoriaListaDettagli", parent=stili["Normal"], fontSize=10.5,
-                fontName="Helvetica-Bold", leftIndent=24, leading=15, spaceBefore=4, spaceAfter=2,
+                fontName="Helvetica-Bold", leading=14, spaceAfter=4,
                 textColor=colors.HexColor("#1565c0"),
             )
+            stile_persona_grid = ParagraphStyle(
+                "PersonaGrid", parent=stili["Normal"], fontSize=9.5,
+                leading=13, spaceAfter=2, textColor=colors.HexColor("#333333"),
+            )
 
-            elementi.append(Paragraph(f"Attività del gruppo: {etichetta_periodo}", stile_titolo2))
+            elementi.append(Paragraph(f"Attività del gruppo: {etichetta_intervallo}", stile_titolo2))
 
             # 1. Pionieri ausiliari per mese
             elementi.append(Paragraph(
@@ -1861,12 +1906,34 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
             for etichetta_mese, n in dett["ausiliari_per_mese"]:
                 elementi.append(Paragraph(f"{etichetta_mese}: {n}", stile_riga_indentata))
 
-            # 2. Studi biblici totale + per categoria/persona
-            elementi.append(Paragraph(f"Studi biblici: {dett['n_studi_totale']}", stile_riga_principale))
+            # 2. Studi biblici totale — intestazione con le date reali, poi griglia a colonne
+            elementi.append(Paragraph(
+                f"Numero degli studi biblici che i proclamatori hanno tenuto nei mesi da "
+                f"{etichetta_intervallo}: {dett['n_studi_totale']}",
+                stile_riga_principale))
+            celle_categorie = []
             for cat, n_persone, lista_persone in dett["studi_per_categoria"]:
-                elementi.append(Paragraph(f"{cat}: {n_persone}", stile_categoria_lista))
-                for nome, n_studi in lista_persone:
-                    elementi.append(Paragraph(f"{nome} &nbsp;&nbsp;{n_studi}", stile_riga_indentata))
+                contenuto_cella = [Paragraph(f"{cat} ({n_persone})", stile_categoria_lista)]
+                for nome, media in lista_persone:
+                    media_txt = f"{media:.1f}".replace(".", ",")
+                    contenuto_cella.append(Paragraph(f"{nome} — {media_txt}", stile_persona_grid))
+                celle_categorie.append(contenuto_cella)
+            if celle_categorie:
+                n_colonne = len(celle_categorie)
+                larghezza_totale = 17.4 * cm
+                tabella_studi = Table([celle_categorie], colWidths=[larghezza_totale / n_colonne] * n_colonne)
+                tabella_studi.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("GRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#cfe0f5")),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fbfdff")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 9),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ]))
+                elementi.append(Spacer(1, 4))
+                elementi.append(tabella_studi)
+                elementi.append(Spacer(1, 6))
 
             # 3. Pionieri Regolari sotto la soglia delle 50 ore/mese
             if dett["n_pionieri_regolari"] > 0:
@@ -6989,7 +7056,3 @@ elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
 else:
     mostra_home()
-
-
-
-
