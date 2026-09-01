@@ -1326,8 +1326,10 @@ def _riepilogo_mesi_nel_periodo(df_tutti: pd.DataFrame, periodo: str) -> list:
         return []
     df = df_tutti.copy()
     if periodo == "12 mesi":
-        oggi = datetime.now()
-        anno_teo_corrente = anno_teocratico_di(f"{oggi.year}-{oggi.month:02d}")
+        ultimo = _riepilogo_ultimo_mese_con_dati(df_tutti)
+        if not ultimo:
+            return []
+        anno_teo_corrente = anno_teocratico_di(f"{ultimo[0]}-{ultimo[1]:02d}")
         df = df[df["Mese/Anno"].apply(lambda m: anno_teocratico_di(m) == anno_teo_corrente)]
     elif periodo == "6 mesi":
         ultimo = _riepilogo_ultimo_mese_con_dati(df_tutti)
@@ -1372,8 +1374,10 @@ def _riepilogo_filtra_dati(df_tutti: pd.DataFrame, df_anagrafica: pd.DataFrame, 
         return df
 
     if periodo == "12 mesi":
-        oggi = datetime.now()
-        anno_teo_corrente = anno_teocratico_di(f"{oggi.year}-{oggi.month:02d}")
+        ultimo = _riepilogo_ultimo_mese_con_dati(df_tutti)
+        if not ultimo:
+            return df.iloc[0:0]
+        anno_teo_corrente = anno_teocratico_di(f"{ultimo[0]}-{ultimo[1]:02d}")
 
         def _dentro_anno_corrente(mese_anno):
             return anno_teocratico_di(mese_anno) == anno_teo_corrente
@@ -7056,3 +7060,7 @@ elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
 else:
     mostra_home()
+
+
+
+
