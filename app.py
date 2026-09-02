@@ -1903,29 +1903,73 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
 
             elementi.append(Paragraph(f"Attività del gruppo: {etichetta_intervallo}", stile_titolo2))
 
-            # 1. Pionieri ausiliari per mese
+            # 1. Pionieri ausiliari per mese — griglia a 4 colonne invece di elenco verticale
             elementi.append(Paragraph(
                 f"Numero dei proclamatori che hanno fatto i pionieri ausiliari: {dett['n_ausiliari_totale']}",
                 stile_riga_principale))
-            for etichetta_mese, n in dett["ausiliari_per_mese"]:
-                elementi.append(Paragraph(f"{etichetta_mese}: {n}", stile_riga_indentata))
+            elenco_ausiliari = dett["ausiliari_per_mese"]
+            if elenco_ausiliari:
+                N_COLONNE_MESI = 4
+                celle_mesi = [Paragraph(f"{etichetta_mese}: {n}", stile_persona_grid)
+                              for etichetta_mese, n in elenco_ausiliari]
+                righe_mesi = []
+                for i in range(0, len(celle_mesi), N_COLONNE_MESI):
+                    riga = celle_mesi[i:i + N_COLONNE_MESI]
+                    while len(riga) < N_COLONNE_MESI:
+                        riga.append("")
+                    righe_mesi.append(riga)
+                larghezza_col_mese = (17.4 * cm) / N_COLONNE_MESI
+                tabella_mesi = Table(righe_mesi, colWidths=[larghezza_col_mese] * N_COLONNE_MESI)
+                tabella_mesi.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("GRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#cfe0f5")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 9),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]))
+                elementi.append(Spacer(1, 4))
+                elementi.append(tabella_mesi)
+                elementi.append(Spacer(1, 6))
 
-            # 2. Studi biblici totale — intestazione con le date reali, poi griglia a colonne
+            # 2. Studi biblici totale — intestazione con le date reali, poi griglia a colonne.
+            # L'intestazione di ogni categoria è una riga a sé (non testo dentro la stessa
+            # cella del corpo) così, se la tabella prosegue in una pagina successiva, la
+            # riga con i nomi delle categorie si ripete in cima automaticamente (repeatRows).
             elementi.append(Paragraph(
                 f"Numero degli studi biblici che i proclamatori hanno tenuto nei mesi da "
                 f"{etichetta_intervallo}: {dett['n_studi_totale']}",
                 stile_riga_principale))
-            celle_categorie = []
-            for cat, n_persone, lista_persone in dett["studi_per_categoria"]:
-                contenuto_cella = [Paragraph(f"{cat} ({n_persone})", stile_categoria_lista)]
-                for nome, media in lista_persone:
-                    media_txt = f"{media:.1f}".replace(".", ",")
-                    contenuto_cella.append(Paragraph(f"{nome} — {media_txt}", stile_persona_grid))
-                celle_categorie.append(contenuto_cella)
-            if celle_categorie:
-                n_colonne = len(celle_categorie)
+            if dett["studi_per_categoria"]:
+                n_colonne = len(dett["studi_per_categoria"])
                 larghezza_totale = 17.4 * cm
-                tabella_studi = Table([celle_categorie], colWidths=[larghezza_totale / n_colonne] * n_colonne)
+                riga_intestazioni = [Paragraph(f"{cat} ({n_persone})", stile_categoria_lista)
+                                     for cat, n_persone, _ in dett["studi_per_categoria"]]
+
+                # Suddivide ogni colonna in "blocchi" di righe: una singola cella con troppi
+                # nomi non riuscirebbe a proseguire su una pagina nuova (va oltre l'altezza
+                # di un'intera pagina) e il PDF si romperebbe. Con più blocchi, la tabella
+                # può sempre continuare a pagina nuova, ripetendo l'intestazione (repeatRows).
+                MAX_NOMI_PER_BLOCCO = 18
+                liste_colonne = [lista_persone for _cat, _n, lista_persone in dett["studi_per_categoria"]]
+                lunghezza_massima = max((len(l) for l in liste_colonne), default=0)
+                n_blocchi = max(1, -(-lunghezza_massima // MAX_NOMI_PER_BLOCCO))
+
+                righe_tabella = [riga_intestazioni]
+                for b in range(n_blocchi):
+                    riga_blocco = []
+                    for lista_persone in liste_colonne:
+                        sotto_blocco = lista_persone[b * MAX_NOMI_PER_BLOCCO:(b + 1) * MAX_NOMI_PER_BLOCCO]
+                        contenuto_cella = [
+                            Paragraph(f"{nome} — {str(round(media, 1)).replace('.', ',')}", stile_persona_grid)
+                            for nome, media in sotto_blocco
+                        ] or [Paragraph("", stile_persona_grid)]
+                        riga_blocco.append(contenuto_cella)
+                    righe_tabella.append(riga_blocco)
+
+                tabella_studi = Table(righe_tabella,
+                                      colWidths=[larghezza_totale / n_colonne] * n_colonne,
+                                      repeatRows=1)
                 tabella_studi.setStyle(TableStyle([
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("GRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#cfe0f5")),
@@ -7060,7 +7104,3 @@ elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
 else:
     mostra_home()
-
-
-
-
