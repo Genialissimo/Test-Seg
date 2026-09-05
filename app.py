@@ -2703,6 +2703,34 @@ def mostra_home():
             line-height: 1.35;
         }
 
+        /* Stile personalizzato per rendere i pulsanti delle righe del post-it integrati ed interattivi */
+        div[class*="st-key-postit_btn_"] {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        div[class*="st-key-postit_btn_"] button {
+            width: 100% !important;
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px dashed rgba(0,0,0,0.15) !important;
+            border-radius: 0 !important;
+            text-align: left !important;
+            padding: 6px 4px !important;
+            color: #4a3f00 !important;
+            font-size: 0.92rem !important;
+            box-shadow: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 10px !important;
+            transition: background 0.15s ease;
+            cursor: pointer !important;
+        }
+        div[class*="st-key-postit_btn_"] button:hover {
+            background: rgba(255, 230, 0, 0.25) !important;
+            color: #2c2400 !important;
+        }
+
         @media (min-width: 900px) {
             .postit-lista {
                 display: grid;
@@ -2711,6 +2739,9 @@ def mostra_home():
             }
             .promemoria-testo {
                 font-size: 0.98rem;
+            }
+            div[class*="st-key-postit_btn_"] button {
+                font-size: 0.98rem !important;
             }
         }
     </style>
@@ -2726,8 +2757,8 @@ def mostra_home():
     df_tutti_home = pd.DataFrame()
 
     esito_presenze_adunanza = None
-    nomi_mancanti_rapporto_mese = None  # None = non calcolabile; lista = proclamatori attivi senza rapporto del mese
-    info_mese_archiviato = None  # (mese, n_archiviati, n_attivi) quando i rapporti sono già stati spostati in Tutti
+    nomi_mancanti_rapporto_mese = None  
+    info_mese_archiviato = None  
 
     if collegato:
         try:
@@ -2758,21 +2789,13 @@ def mostra_home():
                         nomi_consegnati_home = set()
 
                     if not df_risposte_home.empty:
-                        # I rapporti stanno ancora arrivando in "Risposte del modulo 9":
-                        # il conteggio si basa su quello, come sempre.
                         conteggio_consegnati_home = len(nomi_consegnati_home)
                         completo = conteggio_attivi_home > 0 and conteggio_consegnati_home >= conteggio_attivi_home
                         cls_badge = "hud-green" if completo else "hud-red"
                         badge_rapporti = f'<span class="hud-badge {cls_badge}">{conteggio_consegnati_home} / {conteggio_attivi_home}</span>'
-
-                        # Proclamatori attivi che non compaiono ancora in "Risposte del modulo 9" per questo mese
                         nomi_mancanti_rapporto_mese = sorted(nomi_attivi_home - nomi_consegnati_home)
                     elif (not err_tutti_home and not df_tutti_home.empty
                           and "Mese" in df_tutti_home.columns and "Cognome e Nome" in df_tutti_home.columns):
-                        # "Risposte del modulo 9" è vuoto: i rapporti sono probabilmente
-                        # già stati spostati in archivio con "Sposta i rapporti in
-                        # archivio". Controlliamo l'ultimo mese presente in "Tutti"
-                        # invece di segnalare per errore che mancano tutti.
                         mesi_presenti_tutti = df_tutti_home["Mese"].astype(str).str.strip()
                         mesi_presenti_tutti = mesi_presenti_tutti[mesi_presenti_tutti != ""]
                         if not mesi_presenti_tutti.empty:
@@ -2817,7 +2840,6 @@ def mostra_home():
                             b_list.append(f'<span class="hud-badge hud-yellow"> Incompleti: {tot_incomp}</span>')
 
                         badge_anagrafica = " ".join(b_list)
-
                         n_completi_anagrafica = int(tot_comp)
                         n_incompleti_anagrafica = int(tot_incomp)
 
@@ -2874,6 +2896,41 @@ def mostra_home():
         except Exception:
             badge_rapporti = ""
             badge_anagrafica = ""
+
+    # ─────────────────────────────────────────────────────────────────
+    # RENDER VISUALE DEL POST-IT INTERATTIVO
+    # ─────────────────────────────────────────────────────────────────
+    st.markdown('<div class="postit-card">', unsafe_allow_html=True)
+    st.markdown('<p class="postit-titolo">📌 Promemoria e Segnalazioni</p>', unsafe_allow_html=True)
+    st.markdown('<div class="postit-lista">', unsafe_allow_html=True)
+
+    # Definizione dei testi delle righe del post-it
+    txt_rapp = f"Rapporti di servizio: {badge_rapporti}" if badge_rapporti else "Verifica rapporti di servizio"
+    txt_ana = f"Verifica anagrafiche S-21: {badge_anagrafica}" if badge_anagrafica else "Verifica anagrafiche S-21"
+    
+    txt_pres = "Presenze adunanza da registrare"
+    if esito_presenze_adunanza and isinstance(esito_presenze_adunanza, tuple):
+        txt_pres = f"Presenze adunanza del {esito_presenze_adunanza[1]} da registrare"
+    elif esito_presenze_adunanza is True:
+        txt_pres = "Presenze adunanza regolarmente registrate"
+
+    # Riga 1: Rapporti (apre la sezione Rapporti / Modulo 9)
+    if st.button(f"📊 {txt_rapp}", key="postit_btn_rapporti"):
+        st.session_state.menu_principale = "Rapporti"  # Sostituisci con la chiave della tua tab/sezione
+        st.rerun()
+
+    # Riga 2: Anagrafica (apre la sezione Anagrafica)
+    if st.button(f"📋 {txt_ana}", key="postit_btn_anagrafica"):
+        st.session_state.menu_principale = "Anagrafica S-21"  # Sostituisci con la chiave della tua tab/sezione
+        st.rerun()
+
+    # Riga 3: Presenze (apre la sezione Presenze Adunanze)
+    if st.button(f"📅 {txt_pres}", key="postit_btn_presenze"):
+        st.session_state.menu_principale = "Presenze Adunanze"  # Sostituisci con la chiave della tua tab/sezione
+        st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────────────────────────
     # Domande di pioniere ausiliario da approvare (di qualsiasi mese, per il post-it)
