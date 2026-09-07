@@ -2931,7 +2931,7 @@ def mostra_home():
     # formato in entrambi i casi: pallino giallo se ne manca qualcuno,
     # verde se sono tutti presenti.
     # ─────────────────────────────────────────────────────────────────
-       if info_mese_archiviato:
+    if info_mese_archiviato:
         mese_arch, n_arch, n_att = info_mese_archiviato
         if n_att > 0:
             dot_cls_mese = "dot-green" if n_arch >= n_att else "dot-yellow"
