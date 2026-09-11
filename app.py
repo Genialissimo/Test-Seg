@@ -314,6 +314,120 @@ def salva_comitato_servizio(_workbook, nomi_per_ruolo: dict):
     except Exception as e:
         return False, f"Errore durante il salvataggio: {e}"
 
+# ─────────────────────────────────────────────────────────────────
+# IMPEGNI E SCADENZE — costanti e lettura/scrittura dati
+# ─────────────────────────────────────────────────────────────────
+NOME_FOGLIO_IMPEGNI = "Impegni e scadenze"
+RIGA_INTESTAZIONE_IMPEGNI = 1
+CHIAVE_CATEGORIA_IMPEGNI = "Categoria Impegni"
+OPZIONI_PREAVVISO_IMPEGNI = ["1", "3", "7", "10", "15", "30", "60", "90"]
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def leggi_categorie_impegni(_workbook) -> list:
+    """Legge dal foglio 'Configurazioni' tutte le righe con chiave 'Categoria Impegni'
+    (una riga per categoria, non un unico valore con virgole) e ritorna l'elenco
+    dei valori trovati, nell'ordine in cui compaiono nel foglio."""
+    categorie = []
+    if _workbook is None:
+        return categorie
+    try:
+        ws = _workbook.worksheet(NOME_FOGLIO_IMPOSTAZIONI)
+        valori = ws.get_all_values()
+        righe = valori[RIGA_INTESTAZIONE_IMPOSTAZIONI:]
+        for riga in righe:
+            if len(riga) >= 2 and riga[0].strip().lower() == CHIAVE_CATEGORIA_IMPEGNI.lower():
+                valore = riga[1].strip()
+                if valore and valore not in categorie:
+                    categorie.append(valore)
+    except Exception:
+        pass
+    return categorie
+
+
+def aggiungi_categoria_impegno(_workbook, nuova_categoria: str):
+    """Aggiunge una nuova riga 'Categoria Impegni' nel foglio 'Configurazioni'."""
+    try:
+        ws = _workbook.worksheet(NOME_FOGLIO_IMPOSTAZIONI)
+        ws.append_row([CHIAVE_CATEGORIA_IMPEGNI, nuova_categoria.strip()],
+                      value_input_option="USER_ENTERED")
+        return True, None
+    except Exception as e:
+        return False, f"Errore durante il salvataggio della categoria: {e}"
+
+
+def _impegni_e_fatto(valore) -> bool:
+    return str(valore).strip().upper() in ("X", "SI", "SÌ", "TRUE", "1")
+
+
+def _impegni_giorni_mancanti(scadenza_str: str):
+    """Ritorna i giorni mancanti alla scadenza (negativo se già passata), o None
+    se la data non è leggibile."""
+    try:
+        scadenza = datetime.strptime(str(scadenza_str).strip(), "%d/%m/%Y").date()
+    except Exception:
+        return None
+    return (scadenza - date.today()).days
+
+
+def _impegni_preavviso_attivo(scadenza_str: str, preavviso_str: str) -> bool:
+    """True se l'impegno è scaduto, oppure se oggi rientra in una delle soglie
+    di preavviso impostate per quell'impegno (es. '7,10,30' → mostralo da 30
+    giorni prima in poi, visto che 30 è la soglia più larga)."""
+    giorni = _impegni_giorni_mancanti(scadenza_str)
+    if giorni is None:
+        return False
+    if giorni < 0:
+        return True
+    soglie = [int(s.strip()) for s in str(preavviso_str).split(",") if s.strip().isdigit()]
+    return any(giorni <= s for s in soglie)
+
+
+def _impegni_testo_giorni(giorni: int) -> str:
+    if giorni < 0:
+        n = abs(giorni)
+        return f"scaduto da {n} giorno" if n == 1 else f"scaduto da {n} giorni"
+    if giorni == 0:
+        return "oggi"
+    if giorni == 1:
+        return "domani"
+    return f"tra {giorni} giorni"
+
+
+def _impegni_dot_class(giorni: int) -> str:
+    if giorni < 0 or giorni <= 3:
+        return "dot-red"
+    if giorni <= 10:
+        return "dot-yellow"
+    return "dot-green"
+
+
+def _impegni_calcola_promemoria(df_impegni: pd.DataFrame) -> list:
+    """Ritorna la lista degli impegni non ancora Fatti con il promemoria attivo
+    (scaduti, oppure entro una delle soglie di preavviso scelte), ordinata per
+    Scadenza crescente (i più urgenti per primi)."""
+    if df_impegni.empty or "Scadenza" not in df_impegni.columns:
+        return []
+
+    risultato = []
+    for idx, riga in df_impegni.iterrows():
+        if _impegni_e_fatto(riga.get("Fatto", "")):
+            continue
+        scadenza_str = str(riga.get("Scadenza", "")).strip()
+        giorni = _impegni_giorni_mancanti(scadenza_str)
+        if giorni is None:
+            continue
+        if not _impegni_preavviso_attivo(scadenza_str, riga.get("Preavviso", "")):
+            continue
+        risultato.append({
+            "descrizione": str(riga.get("Descrizione", "")).strip() or "(senza descrizione)",
+            "categoria": str(riga.get("Categoria", "")).strip(),
+            "giorni": giorni,
+            "riga_foglio": RIGA_INTESTAZIONE_IMPEGNI + 1 + idx,
+        })
+
+    risultato.sort(key=lambda r: r["giorni"])
+    return risultato
 
 def _iniziali_da_nome(nome_completo: str) -> str:
     """Ricava le iniziali da un nome completo, es. 'Putrino Fabrizio' -> 'PF'."""
@@ -2728,6 +2842,67 @@ def mostra_home():
                 font-size: 0.98rem;
             }
         }
+
+        .impegni-card {
+            width: 92%;
+            max-width: 900px;
+            margin: 8px auto 24px auto;
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+            border-radius: 14px;
+            padding: 22px clamp(20px, 4vw, 40px);
+            box-shadow: 3px 5px 14px rgba(0,0,0,0.18);
+        }
+        .impegni-titolo {
+            font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+            font-weight: 700;
+            color: #075985;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .impegni-lista {
+            display: block;
+        }
+        .impegni-riga {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 7px 0;
+            border-bottom: 1px dashed rgba(0,0,0,0.12);
+        }
+        .impegni-riga:last-child {
+            border-bottom: none;
+        }
+        .impegni-link {
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        .impegni-link:hover .impegni-testo {
+            text-decoration: underline;
+        }
+        .impegni-testo {
+            font-size: 0.92rem;
+            color: #0c4a6e;
+            line-height: 1.35;
+        }
+        .impegni-vuoto {
+            font-size: 0.92rem;
+            color: #0c4a6e;
+            opacity: 0.75;
+            font-style: italic;
+        }
+        @media (min-width: 900px) {
+            .impegni-lista {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2px 32px;
+            }
+            .impegni-testo {
+                font-size: 0.98rem;
+            }
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -2922,6 +3097,26 @@ def mostra_home():
             n_domande_da_approvare_tot = None
             info_mese_domande = None
 
+    # ─────────────────────────────────────────────────────────────────
+    # Impegni e scadenze con promemoria attivo (per il widget in Home)
+    # ─────────────────────────────────────────────────────────────────
+    lista_promemoria_impegni = []
+    badge_impegni = ""
+    if collegato:
+        try:
+            df_impegni_home, err_impegni_home = leggi_foglio_come_df(
+                workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI)
+            if not err_impegni_home:
+                lista_promemoria_impegni = _impegni_calcola_promemoria(df_impegni_home)
+                if lista_promemoria_impegni:
+                    n_imp = len(lista_promemoria_impegni)
+                    n_scaduti_imp = sum(1 for r in lista_promemoria_impegni if r["giorni"] < 0)
+                    cls_badge_imp = "hud-red" if n_scaduti_imp else "hud-yellow"
+                    badge_impegni = f'<span class="hud-badge {cls_badge_imp}">{n_imp}</span>'
+        except Exception:
+            lista_promemoria_impegni = []
+            badge_impegni = ""
+
     promemoria = []
 
     # ─────────────────────────────────────────────────────────────────
@@ -3013,6 +3208,28 @@ def mostra_home():
     </div>
     """
 
+    def _riga_impegno(r):
+        contenuto = (f'<span class="dot {_impegni_dot_class(r["giorni"])}"></span>'
+                     f'<span class="impegni-testo">{r["descrizione"]} — {_impegni_testo_giorni(r["giorni"])}'
+                     f'{" · " + r["categoria"] if r["categoria"] else ""}</span>')
+        if collegato:
+            return f'<a class="impegni-riga impegni-link" href="?vai_a=impegni_scadenze" target="_self">{contenuto}</a>'
+        return f'<div class="impegni-riga">{contenuto}</div>'
+
+    if lista_promemoria_impegni:
+        righe_html_impegni = "".join(_riga_impegno(r) for r in lista_promemoria_impegni)
+    else:
+        righe_html_impegni = '<div class="impegni-vuoto">Nessun impegno da ricordare al momento.</div>'
+
+    impegni_widget_html = f"""
+    <div class="impegni-card">
+        <div class="impegni-titolo">🗓️ Prossimi impegni</div>
+        <div class="impegni-lista">
+            {righe_html_impegni}
+        </div>
+    </div>
+    """
+
     lista_impostazioni = [
         ("⚙️", "bg-slate",  "Impostazioni", "Configura i giorni delle adunanze e altre opzioni.", "impostazioni", ""),
     ]
@@ -3040,6 +3257,10 @@ def mostra_home():
         "📝 Domande": [
             ("📝", "bg-amber", "Domande di pioniere ausiliario",
              "Compila, archivia ed esporta le domande S-205b.", "domande_pionieri", ""),
+        ],
+        "📅 Impegni": [
+            ("📅", "bg-cyan", "Impegni e scadenze",
+             "Gestisci impegni, scadenze e promemoria personali.", "impegni_scadenze", badge_impegni),
         ],
         "⚙️ Impostazioni": lista_impostazioni,
     }
@@ -3074,6 +3295,10 @@ def mostra_home():
 
     with tabs[0]:
         st.markdown(postit_html, unsafe_allow_html=True)
+
+        st.button("➕ Aggiungi impegno", key="home_aggiungi_impegno", use_container_width=True,
+                  disabled=not collegato, on_click=vai_a_impegni_nuovo)
+        st.markdown(impegni_widget_html, unsafe_allow_html=True)
 
     for tab, (nome_tab, lista_card) in zip(tabs[1:], sezioni.items()):
         with tab:
