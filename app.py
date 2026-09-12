@@ -422,7 +422,7 @@ def _impegni_calcola_promemoria(df_impegni: pd.DataFrame) -> list:
         if not attivo:
             continue
         risultato.append({
-            "descrizione": str(riga.get("Descrizione", "")).strip() or "(senza descrizione)",
+            "oggetto": str(riga.get("Oggetto", "")).strip() or "(senza oggetto)",
             "categoria": str(riga.get("Categoria", "")).strip(),
             "giorni": giorni,
             "scadenza_str": scadenza_str,
@@ -432,6 +432,7 @@ def _impegni_calcola_promemoria(df_impegni: pd.DataFrame) -> list:
 
     risultato.sort(key=lambda r: r["giorni"])
     return risultato
+
 
 def _iniziali_da_nome(nome_completo: str) -> str:
     """Ricava le iniziali da un nome completo, es. 'Putrino Fabrizio' -> 'PF'."""
