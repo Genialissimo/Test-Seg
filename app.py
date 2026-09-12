@@ -7407,6 +7407,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
 
     with st.form(f"form_impegno_{chiave}", clear_on_submit=False):
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
+        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=80, disabled=bloccato)
 
         opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
         categoria_corrente = e.get("Categoria", "")
@@ -7437,8 +7438,6 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                                           default=valori_preavviso_correnti, disabled=bloccato)
 
         assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), disabled=bloccato)
-        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=80, disabled=bloccato)
-        note = st.text_area("Note", value=e.get("Note", ""), height=100, disabled=bloccato)
         fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")), disabled=bloccato)
         link = st.text_input("Collega Link", value=e.get("Collega Link", ""), disabled=bloccato)
 
@@ -7480,7 +7479,6 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                 "Assegnato": assegnato.strip(),
                 "Oggetto": oggetto_pulito,
                 "Descrizione": descrizione.strip(),
-                "Note": note.strip(),
                 "Fatto": "X" if fatto else "",
                 "Collega Link": link.strip(),
             }
@@ -7519,6 +7517,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
             if st.button("No, annulla", key="impegni_conf_no", use_container_width=True):
                 st.session_state.impegni_conferma_elimina = None
                 st.rerun()
+
 
 
 def mostra_impegni_scadenze():
