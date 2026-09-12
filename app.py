@@ -2892,11 +2892,23 @@ def mostra_home():
             color: #0c4a6e;
             line-height: 1.35;
         }
+
         .impegni-vuoto {
             font-size: 0.92rem;
             color: #0c4a6e;
             opacity: 0.75;
             font-style: italic;
+        }
+        .impegni-testo-blocco {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .impegni-oggetto {
+            font-size: 0.92rem;
+            color: #0369a1;
+            font-weight: 500;
+            line-height: 1.3;
         }
         .impegni-conteggio {
             font-weight: 700;
