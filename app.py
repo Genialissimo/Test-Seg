@@ -3246,7 +3246,7 @@ def mostra_home():
     </div>
     """
 
-        def _impegni_html_riga(r):
+    def _impegni_html_riga(r):
         riga1_testo = f'{r["scadenza_str"]} ({r["giorni"]}) — {r["categoria"]}' if r["categoria"] \
             else f'{r["scadenza_str"]} ({r["giorni"]})'
         dot_html = f'<span class="dot {_impegni_dot_class(r["giorni"])}"></span>'
