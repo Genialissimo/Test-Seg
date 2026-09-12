@@ -3234,13 +3234,19 @@ def mostra_home():
     </div>
     """
 
-    def _impegni_html_riga(r):
-        etichetta_cat_oggetto = f'{r["categoria"]} - {r["oggetto"]}' if r["categoria"] else r["oggetto"]
-        contenuto = (f'<span class="dot {_impegni_dot_class(r["giorni"])}"></span>'
-                     f'<span class="impegni-testo">{r["scadenza_str"]} ({r["giorni"]}) — {etichetta_cat_oggetto}</span>')
+        def _impegni_html_riga(r):
+        riga1_testo = f'{r["scadenza_str"]} ({r["giorni"]}) — {r["categoria"]}' if r["categoria"] \
+            else f'{r["scadenza_str"]} ({r["giorni"]})'
+        dot_html = f'<span class="dot {_impegni_dot_class(r["giorni"])}"></span>'
         if collegato:
-            return f'<a class="impegni-riga impegni-link" href="?vai_a=impegni_scadenze" target="_self">{contenuto}</a>'
-        return f'<div class="impegni-riga">{contenuto}</div>'
+            riga1_html = (f'<a class="impegni-link" href="?vai_a=impegni_scadenze" target="_self">'
+                          f'<span class="impegni-testo">{riga1_testo}</span></a>')
+        else:
+            riga1_html = f'<span class="impegni-testo">{riga1_testo}</span>'
+        riga2_html = f'<div class="impegni-oggetto">{r["oggetto"]}</div>'
+        return (f'<div class="impegni-riga">{dot_html}'
+                f'<div class="impegni-testo-blocco">{riga1_html}{riga2_html}</div></div>')
+
 
     def _impegni_html_gruppi(lista):
         scaduti = sorted([r for r in lista if r["giorni"] < 0], key=lambda r: r["giorni"])
