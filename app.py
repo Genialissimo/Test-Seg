@@ -7415,7 +7415,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
     bloccato = sola_lettura()
 
     if modo == "modifica":
-        st.markdown(f"#### ✏️ Modifica impegno — {e.get('Descrizione', '')}")
+        st.markdown(f"#### ✏️ Modifica impegno — {e.get('Oggetto', '')}")
     else:
         st.markdown("#### ➕ Nuovo impegno")
 
@@ -7426,8 +7426,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
             return None
 
     with st.form(f"form_impegno_{chiave}", clear_on_submit=False):
-        descrizione = st.text_input("Descrizione / oggetto *", value=e.get("Descrizione", ""),
-                                    disabled=bloccato)
+        oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
 
         opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
         categoria_corrente = e.get("Categoria", "")
@@ -7458,6 +7457,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                                           default=valori_preavviso_correnti, disabled=bloccato)
 
         assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), disabled=bloccato)
+        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=80, disabled=bloccato)
         note = st.text_area("Note", value=e.get("Note", ""), height=100, disabled=bloccato)
         fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")), disabled=bloccato)
         link = st.text_input("Collega Link", value=e.get("Collega Link", ""), disabled=bloccato)
@@ -7481,9 +7481,9 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
         st.rerun()
 
     if invia:
-        descrizione_pulita = descrizione.strip()
-        if not descrizione_pulita:
-            st.error("Il campo «Descrizione / oggetto» è obbligatorio.")
+        oggetto_pulito = oggetto.strip()
+        if not oggetto_pulito:
+            st.error("Il campo «Oggetto» è obbligatorio.")
         elif scadenza is None:
             st.error("Il campo «Scadenza» è obbligatorio.")
         else:
@@ -7498,7 +7498,8 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                 "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x))),
                 "Categoria": categoria_finale,
                 "Assegnato": assegnato.strip(),
-                "Descrizione": descrizione_pulita,
+                "Oggetto": oggetto_pulito,
+                "Descrizione": descrizione.strip(),
                 "Note": note.strip(),
                 "Fatto": "X" if fatto else "",
                 "Collega Link": link.strip(),
@@ -7511,14 +7512,14 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                 st.session_state.impegni_editor = None
                 st.session_state.impegni_tabella_versione = st.session_state.get(
                     "impegni_tabella_versione", 0) + 1
-                st.success(f"✔ «{descrizione_pulita}» salvato correttamente.")
+                st.success(f"✔ «{oggetto_pulito}» salvato correttamente.")
                 st.rerun()
             else:
                 st.error(err_salva)
 
     conferma = st.session_state.get("impegni_conferma_elimina")
     if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
-        st.warning(f"Confermi l'eliminazione di «{e.get('Descrizione', '')}»? "
+        st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? "
                    "L'operazione non è reversibile.")
         col_si, col_no = st.columns(2)
         with col_si:
@@ -7600,7 +7601,7 @@ def mostra_impegni_scadenze():
 
     righe_selezionate = []
     if df_filtrato is not None and not df_filtrato.empty:
-        colonne_mostrate = [c for c in ["_stato", "Descrizione", "Categoria", "Scadenza", "Assegnato"]
+        colonne_mostrate = [c for c in ["_stato", "Oggetto", "Categoria", "Scadenza", "Assegnato"]
                              if c in df_filtrato.columns]
         chiave_tabella = f"impegni_tabella_{st.session_state.impegni_tabella_versione}"
         evento = st.dataframe(
