@@ -404,8 +404,8 @@ def _impegni_dot_class(giorni: int) -> str:
 
 def _impegni_calcola_promemoria(df_impegni: pd.DataFrame) -> list:
     """Ritorna la lista degli impegni non ancora Fatti con il promemoria attivo
-    (scaduti, oppure entro una delle soglie di preavviso scelte), ordinata per
-    Scadenza crescente (i più urgenti per primi)."""
+    (scaduti, oppure entro una delle soglie di preavviso scelte per quell'impegno),
+    con le soglie stesse incluse per poterli raggruppare nel widget di Home."""
     if df_impegni.empty or "Scadenza" not in df_impegni.columns:
         return []
 
@@ -417,12 +417,16 @@ def _impegni_calcola_promemoria(df_impegni: pd.DataFrame) -> list:
         giorni = _impegni_giorni_mancanti(scadenza_str)
         if giorni is None:
             continue
-        if not _impegni_preavviso_attivo(scadenza_str, riga.get("Preavviso", "")):
+        soglie = [int(s.strip()) for s in str(riga.get("Preavviso", "")).split(",") if s.strip().isdigit()]
+        attivo = giorni < 0 or any(giorni <= s for s in soglie)
+        if not attivo:
             continue
         risultato.append({
             "descrizione": str(riga.get("Descrizione", "")).strip() or "(senza descrizione)",
             "categoria": str(riga.get("Categoria", "")).strip(),
             "giorni": giorni,
+            "scadenza_str": scadenza_str,
+            "soglie": soglie,
             "riga_foglio": RIGA_INTESTAZIONE_IMPEGNI + 1 + idx,
         })
 
