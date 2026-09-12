@@ -7325,7 +7325,297 @@ def mostra_domande_pioniere_ausiliario():
             _form_domanda_pioniere(editor, nomi_anagrafica)
 
 
+# ─────────────────────────────────────────────────────────────────
+# PAGINA: IMPEGNI E SCADENZE
+# ─────────────────────────────────────────────────────────────────
+def vai_a_impegni_nuovo():
+    st.session_state.impegni_editor = {"modo": "nuovo"}
+    vai_a("impegni_scadenze")
 
+
+def vai_a_home_reset_impegni():
+    for chiave in ("impegni_editor", "impegni_conferma_elimina", "impegni_menu_aperto"):
+        st.session_state.pop(chiave, None)
+    vai_a("home")
+
+
+def _form_impegno(editor: dict, categorie_disponibili: list):
+    modo = editor.get("modo")
+    e = editor.get("riga", {}) if modo == "modifica" else {}
+    chiave = editor.get("numero_riga_foglio", "nuovo")
+    bloccato = sola_lettura()
+
+    if modo == "modifica":
+        st.markdown(f"#### ✏️ Modifica impegno — {e.get('Descrizione', '')}")
+    else:
+        st.markdown("#### ➕ Nuovo impegno")
+
+    def parse_data(s):
+        try:
+            return datetime.strptime(s, "%d/%m/%Y").date()
+        except Exception:
+            return None
+
+    with st.form(f"form_impegno_{chiave}", clear_on_submit=False):
+        descrizione = st.text_input("Descrizione / oggetto *", value=e.get("Descrizione", ""),
+                                    disabled=bloccato)
+
+        opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
+        categoria_corrente = e.get("Categoria", "")
+        if categoria_corrente and categoria_corrente not in opzioni_categoria:
+            opzioni_categoria = [categoria_corrente] + opzioni_categoria
+        indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
+        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato)
+        nuova_categoria_testo = ""
+        if scelta_categoria == "➕ Nuova categoria…":
+            nuova_categoria_testo = st.text_input("Nome della nuova categoria", disabled=bloccato)
+
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            data_iniziale = st.date_input("Data Iniziale",
+                                          value=parse_data(e.get("Data Iniziale", "")) or date.today(),
+                                          format="DD/MM/YYYY", disabled=bloccato)
+        with col_d2:
+            scadenza = st.date_input("Scadenza *",
+                                     value=parse_data(e.get("Scadenza", "")) or date.today(),
+                                     format="DD/MM/YYYY", disabled=bloccato)
+
+        valori_preavviso_correnti = [v.strip() for v in str(e.get("Preavviso", "")).split(",") if v.strip()]
+        opzioni_preavviso = list(OPZIONI_PREAVVISO_IMPEGNI)
+        for v in valori_preavviso_correnti:
+            if v not in opzioni_preavviso:
+                opzioni_preavviso.append(v)
+        preavviso_scelto = st.multiselect("Avvisami (giorni prima della scadenza)", opzioni_preavviso,
+                                          default=valori_preavviso_correnti, disabled=bloccato)
+
+        assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), disabled=bloccato)
+        note = st.text_area("Note", value=e.get("Note", ""), height=100, disabled=bloccato)
+        fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")), disabled=bloccato)
+        link = st.text_input("Collega Link", value=e.get("Collega Link", ""), disabled=bloccato)
+
+        col_salva, col_annulla, col_elimina = st.columns(3)
+        with col_salva:
+            invia = st.form_submit_button("✔ Salva", type="primary", use_container_width=True,
+                                          disabled=bloccato)
+        with col_annulla:
+            annulla = st.form_submit_button("✖ Annulla", use_container_width=True)
+        with col_elimina:
+            elimina = st.form_submit_button("🗑️ Elimina", use_container_width=True,
+                                            disabled=(bloccato or modo != "modifica"))
+
+    if annulla:
+        st.session_state.impegni_editor = None
+        st.rerun()
+
+    if elimina and modo == "modifica":
+        st.session_state.impegni_conferma_elimina = editor
+        st.rerun()
+
+    if invia:
+        descrizione_pulita = descrizione.strip()
+        if not descrizione_pulita:
+            st.error("Il campo «Descrizione / oggetto» è obbligatorio.")
+        elif scadenza is None:
+            st.error("Il campo «Scadenza» è obbligatorio.")
+        else:
+            categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
+                                else scelta_categoria)
+            if scelta_categoria == "➕ Nuova categoria…" and categoria_finale:
+                aggiungi_categoria_impegno(workbook, categoria_finale)
+
+            valori = {
+                "Data Iniziale": data_iniziale.strftime("%d/%m/%Y") if data_iniziale else "",
+                "Scadenza": scadenza.strftime("%d/%m/%Y"),
+                "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x))),
+                "Categoria": categoria_finale,
+                "Assegnato": assegnato.strip(),
+                "Descrizione": descrizione_pulita,
+                "Note": note.strip(),
+                "Fatto": "X" if fatto else "",
+                "Collega Link": link.strip(),
+            }
+            numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
+            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI,
+                                              valori, riga_da_aggiornare=numero_riga)
+            if ok:
+                st.cache_data.clear()
+                st.session_state.impegni_editor = None
+                st.session_state.impegni_tabella_versione = st.session_state.get(
+                    "impegni_tabella_versione", 0) + 1
+                st.success(f"✔ «{descrizione_pulita}» salvato correttamente.")
+                st.rerun()
+            else:
+                st.error(err_salva)
+
+    conferma = st.session_state.get("impegni_conferma_elimina")
+    if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
+        st.warning(f"Confermi l'eliminazione di «{e.get('Descrizione', '')}»? "
+                   "L'operazione non è reversibile.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✔ Sì, elimina", key="impegni_conf_si", type="primary", use_container_width=True):
+                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI, editor["numero_riga_foglio"])
+                if ok:
+                    st.cache_data.clear()
+                    st.session_state.impegni_editor = None
+                    st.session_state.impegni_conferma_elimina = None
+                    st.session_state.impegni_tabella_versione = st.session_state.get(
+                        "impegni_tabella_versione", 0) + 1
+                    st.success("✔ Impegno eliminato.")
+                    st.rerun()
+                else:
+                    st.error(err_elim)
+        with col_no:
+            if st.button("No, annulla", key="impegni_conf_no", use_container_width=True):
+                st.session_state.impegni_conferma_elimina = None
+                st.rerun()
+
+
+def mostra_impegni_scadenze():
+    st.title("🗓️ Impegni e scadenze")
+    contenitore_pulsanti = st.container()
+
+    if "impegni_tabella_versione" not in st.session_state:
+        st.session_state.impegni_tabella_versione = 0
+
+    if not collegato:
+        with contenitore_pulsanti:
+            st.button("🏠 Home", key="home_da_impegni", use_container_width=True,
+                      on_click=vai_a_home_reset_impegni)
+        st.warning("⚠️ Nessun foglio dati collegato.")
+        return
+
+    df_impegni, err = leggi_foglio_come_df(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI)
+    if err:
+        with contenitore_pulsanti:
+            st.button("🏠 Home", key="home_da_impegni", use_container_width=True,
+                      on_click=vai_a_home_reset_impegni)
+        st.error(err)
+        return
+
+    categorie_disponibili = leggi_categorie_impegni(workbook)
+
+    df_impegni = df_impegni.reset_index(drop=True)
+    if not df_impegni.empty:
+        df_impegni["_riga_foglio"] = RIGA_INTESTAZIONE_IMPEGNI + 1 + df_impegni.index
+        df_impegni["_giorni"] = df_impegni["Scadenza"].apply(_impegni_giorni_mancanti)
+
+        def _stato_riga(r):
+            if _impegni_e_fatto(r.get("Fatto", "")):
+                return "✅ Fatto"
+            giorni = r.get("_giorni")
+            if giorni is None:
+                return "⚪ Senza scadenza valida"
+            if giorni < 0:
+                return "🔴 Scaduto"
+            if _impegni_preavviso_attivo(r.get("Scadenza", ""), r.get("Preavviso", "")):
+                return "🟡 Da ricordare"
+            return "⚪ Programmato"
+
+        df_impegni["_stato"] = df_impegni.apply(_stato_riga, axis=1)
+
+    filtro_stato = st.radio("Stato", ["Tutti", "Da fare", "Fatti"], horizontal=True,
+                            key="impegni_filtro_stato")
+    opzioni_categoria_filtro = ["Tutte le categorie"] + categorie_disponibili
+    filtro_categoria = st.selectbox("Categoria", opzioni_categoria_filtro, key="impegni_filtro_categoria")
+
+    df_filtrato = df_impegni
+    if not df_filtrato.empty:
+        if filtro_stato == "Da fare":
+            df_filtrato = df_filtrato[df_filtrato["_stato"] != "✅ Fatto"]
+        elif filtro_stato == "Fatti":
+            df_filtrato = df_filtrato[df_filtrato["_stato"] == "✅ Fatto"]
+        if filtro_categoria != "Tutte le categorie":
+            df_filtrato = df_filtrato[df_filtrato["Categoria"] == filtro_categoria]
+        df_filtrato = df_filtrato.sort_values("_giorni", na_position="last").reset_index(drop=True)
+
+    righe_selezionate = []
+    if df_filtrato is not None and not df_filtrato.empty:
+        colonne_mostrate = [c for c in ["_stato", "Descrizione", "Categoria", "Scadenza", "Assegnato"]
+                             if c in df_filtrato.columns]
+        chiave_tabella = f"impegni_tabella_{st.session_state.impegni_tabella_versione}"
+        evento = st.dataframe(
+            df_filtrato[colonne_mostrate],
+            hide_index=True,
+            use_container_width=True,
+            on_select="rerun",
+            selection_mode="multi-row",
+            key=chiave_tabella,
+            column_config={
+                "_stato": st.column_config.TextColumn("Stato", width="small"),
+                "Scadenza": st.column_config.TextColumn(width="small"),
+            },
+        )
+        righe_sel = evento.selection.rows if evento and evento.selection else []
+        indici_validi = [i for i in righe_sel if i < len(df_filtrato)]
+        righe_selezionate = [df_filtrato.loc[i].to_dict() for i in indici_validi]
+    else:
+        st.info("Nessun impegno trovato con questi filtri.")
+
+    n_selezionate = len(righe_selezionate)
+    riga_selezionata = righe_selezionate[0] if n_selezionate == 1 else None
+
+    with contenitore_pulsanti:
+        col_home, col_menu = st.columns(2)
+        with col_home:
+            st.button("🏠 Home", key="home_da_impegni", use_container_width=True,
+                      on_click=vai_a_home_reset_impegni)
+        with col_menu:
+            if st.button("⋯", key="toggle_menu_impegni", use_container_width=True):
+                st.session_state.impegni_menu_aperto = not st.session_state.get(
+                    "impegni_menu_aperto", False)
+
+        apri_form_click = fatto_click = False
+        if st.session_state.get("impegni_menu_aperto"):
+            etichetta_nuovo = "✏️ Modifica" if n_selezionate == 1 else "➕ Nuovo"
+            apri_form_click = st.button(etichetta_nuovo, key="impegni_apri_form", use_container_width=True,
+                                        disabled=sola_lettura() or n_selezionate > 1)
+            etichetta_fatto = ("✔ Segna come Fatto" if n_selezionate <= 1
+                               else f"✔ Segna come Fatto ({n_selezionate})")
+            fatto_click = st.button(etichetta_fatto, key="impegni_segna_fatto", use_container_width=True,
+                                    disabled=n_selezionate == 0 or sola_lettura())
+            if apri_form_click or fatto_click:
+                st.session_state.impegni_menu_aperto = False
+
+        if apri_form_click:
+            if riga_selezionata is not None:
+                st.session_state.impegni_editor = {
+                    "modo": "modifica",
+                    "riga": riga_selezionata,
+                    "numero_riga_foglio": int(riga_selezionata["_riga_foglio"]),
+                }
+            else:
+                st.session_state.impegni_editor = {"modo": "nuovo"}
+            st.session_state.impegni_conferma_elimina = None
+
+        if fatto_click and righe_selezionate:
+            errori_fatto = []
+            n_ok = 0
+            with st.spinner(f"Aggiorno {len(righe_selezionate)} impegni…"):
+                for riga in righe_selezionate:
+                    valori = dict(riga)
+                    valori["Fatto"] = "X"
+                    ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
+                                                      RIGA_INTESTAZIONE_IMPEGNI, valori,
+                                                      riga_da_aggiornare=int(riga["_riga_foglio"]))
+                    if ok:
+                        n_ok += 1
+                    else:
+                        errori_fatto.append(err_salva)
+            if n_ok:
+                st.cache_data.clear()
+                st.session_state.impegni_tabella_versione = st.session_state.get(
+                    "impegni_tabella_versione", 0) + 1
+            if errori_fatto:
+                st.error("Alcuni aggiornamenti non sono riusciti:\n" + "\n".join(errori_fatto))
+            if n_ok:
+                st.success(f"✔ {n_ok} impegni segnati come Fatti.")
+                st.rerun()
+
+        editor = st.session_state.get("impegni_editor")
+        if editor:
+            st.divider()
+            _form_impegno(editor, categorie_disponibili)
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
@@ -7354,6 +7644,8 @@ elif st.session_state.pagina == "utenti":
     mostra_gestione_utenti()
 elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
+elif st.session_state.pagina == "impegni_scadenze":
+    mostra_impegni_scadenze()
 else:
     mostra_home()
 
