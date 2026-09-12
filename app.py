@@ -2897,6 +2897,16 @@ def mostra_home():
             opacity: 0.75;
             font-style: italic;
         }
+        .impegni-conteggio {
+            font-weight: 700;
+            font-size: 0.98rem;
+        }
+        .impegni-gruppo-titolo {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #0369a1;
+            margin: 10px 0 4px 0;
+        }
         @media (min-width: 900px) {
             .impegni-lista {
                 display: grid;
@@ -2906,6 +2916,11 @@ def mostra_home():
             .impegni-testo {
                 font-size: 0.98rem;
             }
+        }
+        div[class*="st-key-home_aggiungi_impegno"] button {
+            background: transparent !important;
+            border: 1px solid rgba(3, 105, 161, 0.35) !important;
+            color: #0369a1 !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -3102,23 +3117,34 @@ def mostra_home():
             info_mese_domande = None
 
     # ─────────────────────────────────────────────────────────────────
-    # Impegni e scadenze con promemoria attivo (per il widget in Home)
+    # Impegni e scadenze — conteggio totale da fare e promemoria attivi
+    # (per il widget in Home, raggruppati per soglia di preavviso)
     # ─────────────────────────────────────────────────────────────────
     lista_promemoria_impegni = []
+    n_impegni_da_fare_totale = 0
     badge_impegni = ""
     if collegato:
         try:
             df_impegni_home, err_impegni_home = leggi_foglio_come_df(
                 workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI)
             if not err_impegni_home:
+                if not df_impegni_home.empty and "Fatto" in df_impegni_home.columns:
+                    n_impegni_da_fare_totale = int(
+                        (~df_impegni_home["Fatto"].apply(_impegni_e_fatto)).sum()
+                    )
                 lista_promemoria_impegni = _impegni_calcola_promemoria(df_impegni_home)
-                if lista_promemoria_impegni:
-                    n_imp = len(lista_promemoria_impegni)
+                if n_impegni_da_fare_totale > 0:
                     n_scaduti_imp = sum(1 for r in lista_promemoria_impegni if r["giorni"] < 0)
-                    cls_badge_imp = "hud-red" if n_scaduti_imp else "hud-yellow"
-                    badge_impegni = f'<span class="hud-badge {cls_badge_imp}">{n_imp}</span>'
+                    if n_scaduti_imp:
+                        cls_badge_imp = "hud-red"
+                    elif lista_promemoria_impegni:
+                        cls_badge_imp = "hud-yellow"
+                    else:
+                        cls_badge_imp = "hud-green"
+                    badge_impegni = f'<span class="hud-badge {cls_badge_imp}">{n_impegni_da_fare_totale}</span>'
         except Exception:
             lista_promemoria_impegni = []
+            n_impegni_da_fare_totale = 0
             badge_impegni = ""
 
     promemoria = []
@@ -3212,24 +3238,59 @@ def mostra_home():
     </div>
     """
 
-    def _riga_impegno(r):
+    def _impegni_html_riga(r):
         contenuto = (f'<span class="dot {_impegni_dot_class(r["giorni"])}"></span>'
-                     f'<span class="impegni-testo">{r["descrizione"]} — {_impegni_testo_giorni(r["giorni"])}'
+                     f'<span class="impegni-testo">{r["scadenza_str"]} ({r["giorni"]}) — {r["descrizione"]}'
                      f'{" · " + r["categoria"] if r["categoria"] else ""}</span>')
         if collegato:
             return f'<a class="impegni-riga impegni-link" href="?vai_a=impegni_scadenze" target="_self">{contenuto}</a>'
         return f'<div class="impegni-riga">{contenuto}</div>'
 
-    if lista_promemoria_impegni:
-        righe_html_impegni = "".join(_riga_impegno(r) for r in lista_promemoria_impegni)
+    def _impegni_html_gruppi(lista):
+        scaduti = sorted([r for r in lista if r["giorni"] < 0], key=lambda r: r["giorni"])
+        futuri = [r for r in lista if r["giorni"] >= 0]
+
+        gruppi = {}
+        for r in futuri:
+            candidati = [s for s in r["soglie"] if r["giorni"] <= s]
+            if not candidati:
+                continue
+            gruppi.setdefault(min(candidati), []).append(r)
+
+        pezzi = []
+        if scaduti:
+            righe = "".join(_impegni_html_riga(r) for r in scaduti)
+            pezzi.append(f'<div class="impegni-gruppo-titolo">⚠️ Scaduti</div>{righe}')
+
+        for soglia in sorted(gruppi.keys()):
+            righe_gruppo = sorted(gruppi[soglia], key=lambda r: r["giorni"])
+            righe = "".join(_impegni_html_riga(r) for r in righe_gruppo)
+            pezzi.append(f'<div class="impegni-gruppo-titolo">Nei prossimi {soglia:02d} giorni</div>{righe}')
+
+        return "".join(pezzi)
+
+    if collegato:
+        riga_conteggio_html = (
+            f'<a class="impegni-riga impegni-link" href="?vai_a=impegni_scadenze" target="_self">'
+            f'<span class="impegni-testo impegni-conteggio">'
+            f'📋 {n_impegni_da_fare_totale} impegni da completare o portare a termine</span></a>'
+        )
     else:
-        righe_html_impegni = '<div class="impegni-vuoto">Nessun impegno da ricordare al momento.</div>'
+        riga_conteggio_html = (
+            f'<div class="impegni-riga"><span class="impegni-testo impegni-conteggio">'
+            f'📋 {n_impegni_da_fare_totale} impegni da completare o portare a termine</span></div>'
+        )
+
+    if lista_promemoria_impegni:
+        corpo_gruppi_html = _impegni_html_gruppi(lista_promemoria_impegni)
+    else:
+        corpo_gruppi_html = '<div class="impegni-vuoto">Nessun impegno da ricordare al momento.</div>'
 
     impegni_widget_html = f"""
     <div class="impegni-card">
-        <div class="impegni-titolo">🗓️ Prossimi impegni</div>
+        {riga_conteggio_html}
         <div class="impegni-lista">
-            {righe_html_impegni}
+            {corpo_gruppi_html}
         </div>
     </div>
     """
@@ -3300,14 +3361,18 @@ def mostra_home():
     with tabs[0]:
         st.markdown(postit_html, unsafe_allow_html=True)
 
-        st.button("➕ Aggiungi impegno", key="home_aggiungi_impegno", use_container_width=True,
-                  disabled=not collegato, on_click=vai_a_impegni_nuovo)
+        col_titolo_imp, col_add_imp = st.columns([5, 1])
+        with col_titolo_imp:
+            st.markdown("##### 🗓️ Prossimi impegni")
+        with col_add_imp:
+            st.button("➕", key="home_aggiungi_impegno", help="Aggiungi impegno",
+                      use_container_width=True, disabled=not collegato,
+                      on_click=vai_a_impegni_nuovo)
         st.markdown(impegni_widget_html, unsafe_allow_html=True)
 
     for tab, (nome_tab, lista_card) in zip(tabs[1:], sezioni.items()):
         with tab:
             mostra_griglia_card(lista_card)
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: RAPPORTI CONSEGNATI
 # ─────────────────────────────────────────────────────────────────
