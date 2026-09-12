@@ -2917,11 +2917,6 @@ def mostra_home():
                 font-size: 0.98rem;
             }
         }
-        div[class*="st-key-home_aggiungi_impegno"] button {
-            background: transparent !important;
-            border: 1px solid rgba(3, 105, 161, 0.35) !important;
-            color: #0369a1 !important;
-        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -3239,9 +3234,9 @@ def mostra_home():
     """
 
     def _impegni_html_riga(r):
+        etichetta_cat_oggetto = f'{r["categoria"]} - {r["oggetto"]}' if r["categoria"] else r["oggetto"]
         contenuto = (f'<span class="dot {_impegni_dot_class(r["giorni"])}"></span>'
-                     f'<span class="impegni-testo">{r["scadenza_str"]} ({r["giorni"]}) — {r["descrizione"]}'
-                     f'{" · " + r["categoria"] if r["categoria"] else ""}</span>')
+                     f'<span class="impegni-testo">{r["scadenza_str"]} ({r["giorni"]}) — {etichetta_cat_oggetto}</span>')
         if collegato:
             return f'<a class="impegni-riga impegni-link" href="?vai_a=impegni_scadenze" target="_self">{contenuto}</a>'
         return f'<div class="impegni-riga">{contenuto}</div>'
@@ -3269,18 +3264,6 @@ def mostra_home():
 
         return "".join(pezzi)
 
-    if collegato:
-        riga_conteggio_html = (
-            f'<a class="impegni-riga impegni-link" href="?vai_a=impegni_scadenze" target="_self">'
-            f'<span class="impegni-testo impegni-conteggio">'
-            f'📋 {n_impegni_da_fare_totale} impegni da completare o portare a termine</span></a>'
-        )
-    else:
-        riga_conteggio_html = (
-            f'<div class="impegni-riga"><span class="impegni-testo impegni-conteggio">'
-            f'📋 {n_impegni_da_fare_totale} impegni da completare o portare a termine</span></div>'
-        )
-
     if lista_promemoria_impegni:
         corpo_gruppi_html = _impegni_html_gruppi(lista_promemoria_impegni)
     else:
@@ -3288,7 +3271,7 @@ def mostra_home():
 
     impegni_widget_html = f"""
     <div class="impegni-card">
-        {riga_conteggio_html}
+        <div class="impegni-titolo">🗓️ Prossimi impegni e scadenze ({n_impegni_da_fare_totale})</div>
         <div class="impegni-lista">
             {corpo_gruppi_html}
         </div>
@@ -3361,18 +3344,14 @@ def mostra_home():
     with tabs[0]:
         st.markdown(postit_html, unsafe_allow_html=True)
 
-        col_titolo_imp, col_add_imp = st.columns([5, 1])
-        with col_titolo_imp:
-            st.markdown("##### 🗓️ Prossimi impegni")
-        with col_add_imp:
-            st.button("➕", key="home_aggiungi_impegno", help="Aggiungi impegno",
-                      use_container_width=True, disabled=not collegato,
-                      on_click=vai_a_impegni_nuovo)
+        st.button("➕ Aggiungi impegno", key="home_aggiungi_impegno", use_container_width=True,
+                  disabled=not collegato, on_click=vai_a_impegni_nuovo)
         st.markdown(impegni_widget_html, unsafe_allow_html=True)
 
     for tab, (nome_tab, lista_card) in zip(tabs[1:], sezioni.items()):
         with tab:
             mostra_griglia_card(lista_card)
+
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: RAPPORTI CONSEGNATI
 # ─────────────────────────────────────────────────────────────────
