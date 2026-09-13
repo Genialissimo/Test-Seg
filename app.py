@@ -7400,9 +7400,11 @@ def vai_a_impegni_nuovo():
 
 
 def vai_a_home_reset_impegni():
-    for chiave in ("impegni_editor", "impegni_conferma_elimina", "impegni_menu_aperto"):
+    for chiave in ("impegni_editor", "impegni_conferma_elimina",
+                   "impegni_modalita_selezione", "impegni_selezionati"):
         st.session_state.pop(chiave, None)
     vai_a("home")
+
 
 
 def _form_impegno(editor: dict, categorie_disponibili: list):
