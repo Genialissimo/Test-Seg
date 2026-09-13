@@ -7537,6 +7537,10 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                 st.session_state.impegni_conferma_elimina = None
                 st.rerun()
 
+def _impegni_apri_modifica(riga_dict: dict, rf: int):
+    st.session_state.impegni_editor = {
+        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+    }
 
 
 def mostra_impegni_scadenze():
@@ -7544,29 +7548,62 @@ def mostra_impegni_scadenze():
 
     st.markdown("""
     <style>
-        div[class*="st-key-impegno_apri_"] button {
+        div[class*="st-key-impegno_card_"] {
+            position: relative !important;
+            padding: 10px 14px !important;
+            text-align: left !important;
+        }
+        div[class*="st-key-impegno_card_"] div[data-testid="stElementContainer"] {
+            margin-bottom: 2px !important;
+        }
+        div[class*="st-key-impegno_card_"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]) {
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            z-index: 5 !important;
+        }
+        div[class*="st-key-impegno_card_"] div[data-testid="stButton"] {
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        div[class*="st-key-impegno_card_"] div[data-testid="stButton"] button {
+            width: 100% !important;
+            height: 100% !important;
+            opacity: 0 !important;
             background: transparent !important;
             border: none !important;
-            text-align: left !important;
-            justify-content: flex-start !important;
-            font-weight: 700 !important;
-            color: #0c4a6e !important;
-            padding: 4px 0 !important;
+            cursor: pointer !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
-        div[class*="st-key-impegno_apri_"] button:hover {
-            text-decoration: underline;
-            color: #0369a1 !important;
+        div[class*="st-key-impegno_link_"] {
+            position: relative !important;
+            z-index: 10 !important;
+        }
+        .impegno-riga1 {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #0c4a6e;
+            text-align: left;
+            margin: 0 0 2px 0;
         }
         .impegno-oggetto-riga {
-            font-size: 0.92rem;
+            font-size: 0.9rem;
             color: #374151;
-            margin: 2px 0 6px 0;
+            text-align: left;
+            margin: 0 0 4px 0;
         }
         .impegno-gruppo-titolo {
             font-weight: 700;
             font-size: 1.05rem;
             color: #0369a1;
-            margin: 16px 0 8px 0;
+            margin: 14px 0 6px 0;
+            text-align: left;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -7722,21 +7759,23 @@ def mostra_impegni_scadenze():
                             st.session_state.impegni_selezionati.add(rf)
                         else:
                             st.session_state.impegni_selezionati.discard(rf)
-                    corpo = col_corpo
+                    with col_corpo:
+                        st.markdown(f'<div class="impegno-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
+                        if raggruppa_per_mese and r["oggetto"]:
+                            st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>',
+                                        unsafe_allow_html=True)
+                        if r["link"]:
+                            st.link_button("🔗 Apri link", r["link"], key=f"impegno_link_{rf}")
                 else:
-                    corpo = st.container()
-
-                with corpo:
-                    if st.button(riga1_testo, key=f"impegno_apri_{rf}", use_container_width=True):
-                        st.session_state.impegni_editor = {
-                            "modo": "modifica", "riga": r["riga_dict"], "numero_riga_foglio": rf,
-                        }
-                        st.rerun()
+                    st.markdown(f'<div class="impegno-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
                     if raggruppa_per_mese and r["oggetto"]:
                         st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>',
                                     unsafe_allow_html=True)
                     if r["link"]:
-                        st.link_button("🔗 Apri link", r["link"])
+                        st.link_button("🔗 Apri link", r["link"], key=f"impegno_link_{rf}")
+                    st.button(" ", key=f"impegno_apri_{rf}",
+                              on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
+
 
 
 # ─────────────────────────────────────────────────────────────────
