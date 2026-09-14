@@ -7543,6 +7543,9 @@ def _impegni_apri_modifica(riga_dict: dict, rf: int):
     }
 
 
+def mostra_impegni_scadenze():
+    st.title("🗓️ Impegni e scadenze")
+
     st.markdown("""
     <style>
         div[class*="st-key-impegno_card_"] {
@@ -7741,7 +7744,7 @@ def _impegni_apri_modifica(riga_dict: dict, rf: int):
                                 key=lambda r: (r["scadenza_date"] is None, r["scadenza_date"] or date.max))
         gruppi = [(filtro_categoria, righe_ordinate)]
 
-        for etichetta_gruppo, righe_gruppo in gruppi:
+    for etichetta_gruppo, righe_gruppo in gruppi:
         st.markdown(f'<div class="impegno-gruppo-titolo">📅 {etichetta_gruppo}</div>', unsafe_allow_html=True)
 
         for r in righe_gruppo:
