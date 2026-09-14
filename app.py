@@ -7548,61 +7548,25 @@ def mostra_impegni_scadenze():
 
     st.markdown("""
     <style>
-        div[class*="st-key-impegno_card_"] {
-            position: relative !important;
-            padding: 10px 14px !important;
-            text-align: left !important;
-        }
-        div[class*="st-key-impegno_card_"] div[data-testid="stElementContainer"] {
-            margin-bottom: 2px !important;
-        }
-        div[class*="st-key-impegno_apri_"] {
-            position: absolute !important;
-            inset: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            z-index: 1 !important;
-        }
-        div[class*="st-key-impegno_apri_"] button {
-            width: 100% !important;
-            height: 100% !important;
-            opacity: 0 !important;
-            background: transparent !important;
-            border: none !important;
-            cursor: pointer !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        div[class*="st-key-impegno_link_"],
-        div[class*="st-key-impegno_fatto_true_"],
-        div[class*="st-key-impegno_fatto_false_"] {
-            position: relative !important;
-            z-index: 10 !important;
-        }
-        div[class*="st-key-impegno_fatto_true_"] button {
-            background: #bbf7d0 !important;
-            color: #166534 !important;
-            border: 1px solid #86efac !important;
-        }
-        div[class*="st-key-impegno_fatto_false_"] button {
-            background: #f3f4f6 !important;
-            color: #374151 !important;
-            border: 1px solid #d1d5db !important;
+        .impegno-card-custom {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            text-align: left;
         }
         .impegno-riga1 {
             font-weight: 700;
             font-size: 0.95rem;
             color: #0c4a6e;
-            text-align: left;
             margin: 0 0 2px 0;
         }
         .impegno-oggetto-riga {
             font-size: 0.9rem;
             color: #374151;
-            text-align: left;
-            margin: 0 0 4px 0;
+            margin: 0 0 8px 0;
         }
         .impegno-gruppo-titolo {
             font-weight: 700;
@@ -7610,6 +7574,52 @@ def mostra_impegni_scadenze():
             color: #0369a1;
             margin: 14px 0 6px 0;
             text-align: left;
+        }
+        /* Contenitore flessibile perfetto per tenere i bottoni affiancati e piccoli */
+        .impegno-azioni-bar {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+        /* Stile comune per i bottoni compatti */
+        .btn-custom-mini {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 38px !important;
+            min-width: 38px !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            padding: 0 !important;
+            font-size: 0.85rem !important;
+            border-radius: 4px !important;
+            text-decoration: none !important;
+            cursor: pointer !important;
+            box-sizing: border-box !important;
+        }
+        .btn-link-style {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
+        }
+        .btn-fatto-true-style {
+            background-color: #bbf7d0 !important;
+            color: #166534 !important;
+            border: 1px solid #86efac !important;
+        }
+        .btn-fatto-false-style {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
+        }
+        .btn-modifica-style {
+            background-color: #e0f2fe !important;
+            color: #0369a1 !important;
+            border: 1px solid #bae6fd !important;
+            font-size: 0.8rem !important;
+            width: auto !important;
+            padding: 0 8px !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -7698,8 +7708,8 @@ def mostra_impegni_scadenze():
                         continue
                     valori["Fatto"] = "X"
                     ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
-                                                      RIGA_INTESTAZIONE_IMPEGNI, valori,
-                                                      riga_da_aggiornare=rf)
+                                                        RIGA_INTESTAZIONE_IMPEGNI, valori,
+                                                        riga_da_aggiornare=rf)
                     if ok:
                         n_ok += 1
                     else:
@@ -7754,49 +7764,53 @@ def mostra_impegni_scadenze():
             else:
                 riga1_testo = r["scadenza_str"]
 
-            def _render_corpo_impegno(r=r, rf=rf, riga1_testo=riga1_testo):
-                st.markdown(f'<div class="impegno-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
-                if r["oggetto"]:
-                    st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
+            # Contenitore visivo personalizzato HTML
+            st.markdown(f'''
+                <div class="impegno-card-custom">
+                    <div class="impegno-riga1">{riga1_testo}</div>
+                    <div class="impegno-oggetto-riga">{r["oggetto"]}</div>
+            ''', unsafe_allow_html=True)
 
-                col_link, col_fatto, _pad = st.columns([2, 2, 5])
-                with col_link:
-                    st.link_button("🔗 Apri link", r["link"] or "#", disabled=not bool(r["link"]),
-                                   key=f"impegno_link_{rf}")
-                with col_fatto:
-                    fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
-                    key_fatto = f"impegno_fatto_true_{rf}" if fatto_corrente else f"impegno_fatto_false_{rf}"
-                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "◻️ Da fare"
-                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura()):
-                        valori_fatto = dict(r["riga_dict"])
-                        valori_fatto["Fatto"] = "" if fatto_corrente else "X"
-                        ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
-                                                        RIGA_INTESTAZIONE_IMPEGNI, valori_fatto,
-                                                        riga_da_aggiornare=rf)
-                        if ok_f:
-                            st.cache_data.clear()
-                            st.rerun()
-                        else:
-                            st.error(err_f)
-
-            with st.container(key=f"impegno_card_{rf}", border=True):
-                if st.session_state.impegni_modalita_selezione:
-                    col_chk, col_corpo = st.columns([1, 9])
-                    with col_chk:
-                        attualmente_sel = rf in st.session_state.impegni_selezionati
-                        nuovo_stato = st.checkbox(" ", key=f"impegno_chk_{rf}", value=attualmente_sel,
-                                                   label_visibility="collapsed")
-                        if nuovo_stato:
-                            st.session_state.impegni_selezionati.add(rf)
-                        else:
-                            st.session_state.impegni_selezionati.discard(rf)
-                    with col_corpo:
-                        _render_corpo_impegno()
+            # Sotto inseriamo i controlli (Checkbox di selezione se attiva, e i bottoni)
+            if st.session_state.impegni_modalita_selezione:
+                attualmente_sel = rf in st.session_state.impegni_selezionati
+                nuovo_stato = st.checkbox("Seleziona", key=f"impegno_chk_{rf}", value=attualmente_sel)
+                if nuovo_stato:
+                    st.session_state.impegni_selezionati.add(rf)
                 else:
-                    _render_corpo_impegno()
-                    st.button(" ", key=f"impegno_apri_{rf}",
-                              on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
+                    st.session_state.impegni_selezionati.discard(rf)
 
+            # Riga bottoni azionabili nativi gestiti in modo pulito
+            col_link, col_fatto, col_mod, _pad = st.columns([1, 1, 1, 5])
+            
+            with col_link:
+                url = r["link"] if r["link"] else "#"
+                disabilita_link = not bool(r["link"])
+                st.link_button("🔗", url, disabled=disabilita_link, key=f"impegno_link_{rf}", use_container_width=True)
+                
+            with col_fatto:
+                fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
+                etichetta_fatto = "✅" if fatto_corrente else "⏳"
+                key_fatto = f"impegno_fatto_{rf}"
+                if st.button(etichetta_fatto, key=key_fatto, disabled=sola_lettura(), use_container_width=True):
+                    valori_fatto = dict(r["riga_dict"])
+                    valori_fatto["Fatto"] = "" if fatto_corrente else "X"
+                    ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
+                                                    RIGA_INTESTAZIONE_IMPEGNI, valori_fatto,
+                                                    riga_da_aggiornare=rf)
+                    if ok_f:
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error(err_f)
+
+            with col_mod:
+                if st.button("✏️", key=f"impegno_mod_{rf}", disabled=sola_lettura(), use_container_width=True, help="Modifica impegno"):
+                    _impegni_apri_modifica(r["riga_dict"], rf)
+                    st.rerun()
+
+            # Chiusura card HTML
+            st.markdown('</div>', unsafe_allow_html=True)
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
