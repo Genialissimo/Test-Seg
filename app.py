@@ -7613,7 +7613,14 @@ def mostra_impegni_scadenze():
             font-size: 0.9rem;
             color: #374151;
             text-align: left;
-            margin: 0 0 4px 0;
+            margin: 0 0 8px 0;
+        }
+        div[class*="st-key-impegno_link_"] button,
+        div[class*="st-key-impegno_fatto_true_"] button,
+        div[class*="st-key-impegno_fatto_false_"] button {
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+            min-height: 0 !important;
         }
         .impegno-gruppo-titolo {
             font-weight: 700;
@@ -7793,21 +7800,18 @@ def mostra_impegni_scadenze():
 
             with st.container(key=f"impegno_card_{rf}", border=True):
                 if st.session_state.impegni_modalita_selezione:
-                    col_chk, col_corpo = st.columns([1, 9])
-                    with col_chk:
-                        attualmente_sel = rf in st.session_state.impegni_selezionati
-                        nuovo_stato = st.checkbox(" ", key=f"impegno_chk_{rf}", value=attualmente_sel,
-                                                   label_visibility="collapsed")
-                        if nuovo_stato:
-                            st.session_state.impegni_selezionati.add(rf)
-                        else:
-                            st.session_state.impegni_selezionati.discard(rf)
-                    with col_corpo:
-                        _render_corpo_impegno()
+                    attualmente_sel = rf in st.session_state.impegni_selezionati
+                    nuovo_stato = st.checkbox("Seleziona", key=f"impegno_chk_{rf}", value=attualmente_sel)
+                    if nuovo_stato:
+                        st.session_state.impegni_selezionati.add(rf)
+                    else:
+                        st.session_state.impegni_selezionati.discard(rf)
+                    _render_corpo_impegno()
                 else:
                     _render_corpo_impegno()
                     st.button(" ", key=f"impegno_apri_{rf}",
                               on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
+
 
 
 # ─────────────────────────────────────────────────────────────────
