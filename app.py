@@ -7611,6 +7611,16 @@ def mostra_impegni_scadenze():
             margin: 14px 0 6px 0;
             text-align: left;
         }
+        /* Forza i bottoni degli impegni ad affiancarsi perfettamente anche su mobile */
+        .azioni-impegno {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            margin-top: 8px;
+        }
+        .azioni-impegno > div {
+            flex: 1;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -7698,8 +7708,8 @@ def mostra_impegni_scadenze():
                         continue
                     valori["Fatto"] = "X"
                     ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
-                                                      RIGA_INTESTAZIONE_IMPEGNI, valori,
-                                                      riga_da_aggiornare=rf)
+                                                        RIGA_INTESTAZIONE_IMPEGNI, valori,
+                                                        riga_da_aggiornare=rf)
                     if ok:
                         n_ok += 1
                     else:
@@ -7759,15 +7769,18 @@ def mostra_impegni_scadenze():
                 if r["oggetto"]:
                     st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
 
-                col_link, col_fatto, _pad = st.columns([2, 2, 5])
+                # Contenitore flessibile personalizzato per i tasti
+                st.markdown('<div class="azioni-impegno">', unsafe_allow_html=True)
+                col_link, col_fatto = st.columns(2)
+                
                 with col_link:
-                    st.link_button("🔗 Apri link", r["link"] or "#", disabled=not bool(r["link"]),
-                                   key=f"impegno_link_{rf}")
+                    st.link_button("🔗 Link", r["link"] or "#", disabled=not bool(r["link"]),
+                                   key=f"impegno_link_{rf}", use_container_width=True)
                 with col_fatto:
                     fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
                     key_fatto = f"impegno_fatto_true_{rf}" if fatto_corrente else f"impegno_fatto_false_{rf}"
-                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "◻️ Da fare"
-                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura()):
+                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "⏳ Da fare"
+                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura(), use_container_width=True):
                         valori_fatto = dict(r["riga_dict"])
                         valori_fatto["Fatto"] = "" if fatto_corrente else "X"
                         ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
@@ -7778,6 +7791,7 @@ def mostra_impegni_scadenze():
                             st.rerun()
                         else:
                             st.error(err_f)
+                st.markdown('</div>', unsafe_allow_html=True)
 
             with st.container(key=f"impegno_card_{rf}", border=True):
                 if st.session_state.impegni_modalita_selezione:
@@ -7785,7 +7799,7 @@ def mostra_impegni_scadenze():
                     with col_chk:
                         attualmente_sel = rf in st.session_state.impegni_selezionati
                         nuovo_stato = st.checkbox(" ", key=f"impegno_chk_{rf}", value=attualmente_sel,
-                                                   label_visibility="collapsed")
+                                                  label_visibility="collapsed")
                         if nuovo_stato:
                             st.session_state.impegni_selezionati.add(rf)
                         else:
@@ -7796,7 +7810,6 @@ def mostra_impegni_scadenze():
                     _render_corpo_impegno()
                     st.button(" ", key=f"impegno_apri_{rf}",
                               on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
-
 
 
 # ─────────────────────────────────────────────────────────────────
