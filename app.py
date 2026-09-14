@@ -7611,26 +7611,15 @@ def mostra_impegni_scadenze():
             margin: 14px 0 6px 0;
             text-align: left;
         }
-        
-        /* --- BLOCCO DEFINITIVO PER BLOCCARE I TASTI AFFIANCATI SU MOBILE --- */
-        .azioni-impegno div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 8px !important;
-            width: 100% !important;
-        }
-        .azioni-impegno div[data-testid="column"] {
-            width: 50% !important;
-            flex: 1 1 50% !important;
-            min-width: 0 !important;
-        }
-        .azioni-impegno button, .azioni-impegno a {
-            min-height: 32px !important;
-            height: 32px !important;
+        /* Riduce l'altezza e rende compatti i bottoni */
+        div[class*="st-key-impegno_link_"] button,
+        div[class*="st-key-impegno_fatto_true_"] button,
+        div[class*="st-key-impegno_fatto_false_"] button,
+        div[class*="st-key-impegno_link_"] a {
+            min-height: 30px !important;
+            height: 30px !important;
             padding: 0px 8px !important;
-            font-size: 0.85rem !important;
-            white-space: nowrap !important;
+            font-size: 0.8rem !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -7780,17 +7769,14 @@ def mostra_impegni_scadenze():
                 if r["oggetto"]:
                     st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
 
-                # Contenitore agganciato all'stHorizontalBlock di Streamlit
-                st.markdown('<div class="azioni-impegno">', unsafe_allow_html=True)
-                col_link, col_fatto = st.columns(2)
-                
+                col_link, col_fatto, _pad = st.columns([1, 1, 4])
                 with col_link:
-                    st.link_button("🔗 Link", r["link"] or "#", disabled=not bool(r["link"]),
+                    st.link_button("🔗", r["link"] or "#", disabled=not bool(r["link"]),
                                    key=f"impegno_link_{rf}", use_container_width=True)
                 with col_fatto:
                     fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
                     key_fatto = f"impegno_fatto_true_{rf}" if fatto_corrente else f"impegno_fatto_false_{rf}"
-                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "⏳ Da fare"
+                    etichetta_fatto_toggle = "✅" if fatto_corrente else "⏳"
                     if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura(), use_container_width=True):
                         valori_fatto = dict(r["riga_dict"])
                         valori_fatto["Fatto"] = "" if fatto_corrente else "X"
@@ -7802,7 +7788,6 @@ def mostra_impegni_scadenze():
                             st.rerun()
                         else:
                             st.error(err_f)
-                st.markdown('</div>', unsafe_allow_html=True)
 
             with st.container(key=f"impegno_card_{rf}", border=True):
                 if st.session_state.impegni_modalita_selezione:
@@ -7821,7 +7806,6 @@ def mostra_impegni_scadenze():
                     _render_corpo_impegno()
                     st.button(" ", key=f"impegno_apri_{rf}",
                               on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
-
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
