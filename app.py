@@ -7543,7 +7543,7 @@ def _impegni_apri_modifica(riga_dict: dict, rf: int):
     }
 
 
-ddef mostra_impegni_scadenze():
+def mostra_impegni_scadenze():
     st.title("🗓️ Impegni e scadenze")
 
     st.markdown("""
@@ -7575,6 +7575,22 @@ ddef mostra_impegni_scadenze():
             margin: 0 !important;
             padding: 0 !important;
         }
+        div[class*="st-key-impegno_link_"],
+        div[class*="st-key-impegno_fatto_true_"],
+        div[class*="st-key-impegno_fatto_false_"] {
+            position: relative !important;
+            z-index: 10 !important;
+        }
+        div[class*="st-key-impegno_fatto_true_"] button {
+            background: #bbf7d0 !important;
+            color: #166534 !important;
+            border: 1px solid #86efac !important;
+        }
+        div[class*="st-key-impegno_fatto_false_"] button {
+            background: #f3f4f6 !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
+        }
         .impegno-riga1 {
             font-weight: 700;
             font-size: 0.95rem;
@@ -7586,7 +7602,7 @@ ddef mostra_impegni_scadenze():
             font-size: 0.9rem;
             color: #374151;
             text-align: left;
-            margin: 0 0 6px 0;
+            margin: 0 0 4px 0;
         }
         .impegno-gruppo-titolo {
             font-weight: 700;
@@ -7594,46 +7610,6 @@ ddef mostra_impegni_scadenze():
             color: #0369a1;
             margin: 14px 0 6px 0;
             text-align: left;
-        }
-        
-        /* Contenitore flessibile per forzare i bottoni vicini ed evitare sovrapposizioni con il bottone invisibile */
-        .impegno-bottoni-container {
-            display: flex !important;
-            gap: 6px !important;
-            position: relative !important;
-            z-index: 10 !important;
-            margin-top: 4px;
-        }
-        /* Stile personalizzato per i pulsanti HTML compatti */
-        .btn-custom-impegno {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 38px !important;
-            height: 30px !important;
-            padding: 0px !important;
-            font-size: 0.85rem !important;
-            border-radius: 4px !important;
-            text-decoration: none !important;
-            cursor: pointer !important;
-        }
-        .btn-link-custom {
-            background-color: #f0f2f6;
-            color: #31333F;
-            border: 1px solid #d1d5db;
-        }
-        .btn-link-custom:hover {
-            background-color: #e2e8f0;
-        }
-        .btn-fatto-true {
-            background-color: #bbf7d0 !important;
-            color: #166534 !important;
-            border: 1px solid #86efac !important;
-        }
-        .btn-fatto-false {
-            background-color: #f3f4f6 !important;
-            color: #374151 !important;
-            border: 1px solid #d1d5db !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -7722,8 +7698,8 @@ ddef mostra_impegni_scadenze():
                         continue
                     valori["Fatto"] = "X"
                     ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
-                                                        RIGA_INTESTAZIONE_IMPEGNI, valori,
-                                                        riga_da_aggiornare=rf)
+                                                      RIGA_INTESTAZIONE_IMPEGNI, valori,
+                                                      riga_da_aggiornare=rf)
                     if ok:
                         n_ok += 1
                     else:
@@ -7783,37 +7759,25 @@ ddef mostra_impegni_scadenze():
                 if r["oggetto"]:
                     st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
 
-                # Gestione dello stato Fatto
-                fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
-                key_fatto = f"impegno_fatto_{rf}"
-                etichetta_fatto_toggle = "✅" if fatto_corrente else "⏳"
-                classe_fatto = "btn-fatto-true" if fatto_corrente else "btn-fatto-false"
-
-                # Gestione Link
-                url_link = r["link"] if r["link"] else "#"
-                attr_disabilitato = "" if r["link"] else "style='opacity: 0.5; pointer-events: none;'"
-
-                # Generiamo i due pulsanti affiancati con HTML puro dentro un container Flex
-                html_bottoni = f"""
-                <div class="impegno-bottoni-container">
-                    <a href="{url_link}" target="_blank" class="btn-custom-impegno btn-link-custom" {attr_disabilitato} title="Apri link">🔗</a>
-                """
-                st.markdown(html_bottoni, unsafe_allow_html=True)
-
-                # Usiamo un bottone nativo Streamlit per gestire l'azione di "Fatto/Da fare" agganciato alla chiave
-                if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura()):
-                    valori_fatto = dict(r["riga_dict"])
-                    valori_fatto["Fatto"] = "" if fatto_corrente else "X"
-                    ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
-                                                    RIGA_INTESTAZIONE_IMPEGNI, valori_fatto,
-                                                    riga_da_aggiornare=rf)
-                    if ok_f:
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error(err_f)
-                
-                # Chiudiamo il div flex se necessario (il bottone di streamlit andrà a completare visivamente la riga grazie al CSS)
+                col_link, col_fatto, _pad = st.columns([2, 2, 5])
+                with col_link:
+                    st.link_button("🔗 Apri link", r["link"] or "#", disabled=not bool(r["link"]),
+                                   key=f"impegno_link_{rf}")
+                with col_fatto:
+                    fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
+                    key_fatto = f"impegno_fatto_true_{rf}" if fatto_corrente else f"impegno_fatto_false_{rf}"
+                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "◻️ Da fare"
+                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura()):
+                        valori_fatto = dict(r["riga_dict"])
+                        valori_fatto["Fatto"] = "" if fatto_corrente else "X"
+                        ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
+                                                        RIGA_INTESTAZIONE_IMPEGNI, valori_fatto,
+                                                        riga_da_aggiornare=rf)
+                        if ok_f:
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error(err_f)
 
             with st.container(key=f"impegno_card_{rf}", border=True):
                 if st.session_state.impegni_modalita_selezione:
@@ -7821,7 +7785,7 @@ ddef mostra_impegni_scadenze():
                     with col_chk:
                         attualmente_sel = rf in st.session_state.impegni_selezionati
                         nuovo_stato = st.checkbox(" ", key=f"impegno_chk_{rf}", value=attualmente_sel,
-                                                  label_visibility="collapsed")
+                                                   label_visibility="collapsed")
                         if nuovo_stato:
                             st.session_state.impegni_selezionati.add(rf)
                         else:
@@ -7832,6 +7796,7 @@ ddef mostra_impegni_scadenze():
                     _render_corpo_impegno()
                     st.button(" ", key=f"impegno_apri_{rf}",
                               on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
+
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
