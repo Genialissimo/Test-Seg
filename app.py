@@ -7611,15 +7611,24 @@ def mostra_impegni_scadenze():
             margin: 14px 0 6px 0;
             text-align: left;
         }
-        /* Forza i bottoni degli impegni ad affiancarsi perfettamente anche su mobile */
+        /* Forza i bottoni a restare affiancati al 50% e ridurne la misura */
         .azioni-impegno {
-            display: flex;
-            gap: 8px;
-            width: 100%;
-            margin-top: 8px;
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 8px !important;
+            width: 100% !important;
+            margin-top: 8px !important;
         }
-        .azioni-impegno > div {
-            flex: 1;
+        .azioni-impegno [data-testid="column"] {
+            width: 50% !important;
+            flex: 1 1 50% !important;
+            min-width: unset !important;
+        }
+        .azioni-impegno button {
+            min-height: 32px !important;
+            height: 32px !important;
+            padding: 0px 10px !important;
+            font-size: 0.85rem !important;
         }
     </style>
     """, unsafe_allow_html=True)
