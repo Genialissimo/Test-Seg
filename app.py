@@ -9,7 +9,7 @@ import os
 import re
 import zipfile
 
-import pandas as pdf
+import pandas as pd
 import streamlit as st
 from st_keyup import st_keyup
 from streamlit_gsheets import GSheetsConnection
