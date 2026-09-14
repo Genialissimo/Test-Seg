@@ -9,7 +9,7 @@ import os
 import re
 import zipfile
 
-import pandas as pd
+import pandas as pdf
 import streamlit as st
 from st_keyup import st_keyup
 from streamlit_gsheets import GSheetsConnection
@@ -7543,9 +7543,6 @@ def _impegni_apri_modifica(riga_dict: dict, rf: int):
     }
 
 
-def mostra_impegni_scadenze():
-    st.title("🗓️ Impegni e scadenze")
-
     st.markdown("""
     <style>
         div[class*="st-key-impegno_card_"] {
@@ -7556,22 +7553,16 @@ def mostra_impegni_scadenze():
         div[class*="st-key-impegno_card_"] div[data-testid="stElementContainer"] {
             margin-bottom: 2px !important;
         }
-        div[class*="st-key-impegno_card_"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]) {
+        div[class*="st-key-impegno_apri_"] {
             position: absolute !important;
             inset: 0 !important;
             width: 100% !important;
             height: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            z-index: 5 !important;
+            z-index: 1 !important;
         }
-        div[class*="st-key-impegno_card_"] div[data-testid="stButton"] {
-            width: 100% !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        div[class*="st-key-impegno_card_"] div[data-testid="stButton"] button {
+        div[class*="st-key-impegno_apri_"] button {
             width: 100% !important;
             height: 100% !important;
             opacity: 0 !important;
@@ -7581,9 +7572,21 @@ def mostra_impegni_scadenze():
             margin: 0 !important;
             padding: 0 !important;
         }
-        div[class*="st-key-impegno_link_"] {
+        div[class*="st-key-impegno_link_"],
+        div[class*="st-key-impegno_fatto_true_"],
+        div[class*="st-key-impegno_fatto_false_"] {
             position: relative !important;
             z-index: 10 !important;
+        }
+        div[class*="st-key-impegno_fatto_true_"] button {
+            background: #bbf7d0 !important;
+            color: #166534 !important;
+            border: 1px solid #86efac !important;
+        }
+        div[class*="st-key-impegno_fatto_false_"] button {
+            background: #f3f4f6 !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
         }
         .impegno-riga1 {
             font-weight: 700;
@@ -7738,15 +7741,40 @@ def mostra_impegni_scadenze():
                                 key=lambda r: (r["scadenza_date"] is None, r["scadenza_date"] or date.max))
         gruppi = [(filtro_categoria, righe_ordinate)]
 
-    for etichetta_gruppo, righe_gruppo in gruppi:
+        for etichetta_gruppo, righe_gruppo in gruppi:
         st.markdown(f'<div class="impegno-gruppo-titolo">📅 {etichetta_gruppo}</div>', unsafe_allow_html=True)
 
         for r in righe_gruppo:
             rf = r["riga_foglio"]
-            if raggruppa_per_mese:
-                riga1_testo = f'{r["scadenza_str"]} — {r["categoria"]}' if r["categoria"] else r["scadenza_str"]
+            if raggruppa_per_mese and r["categoria"]:
+                riga1_testo = f'{r["scadenza_str"]} — {r["categoria"]}'
             else:
-                riga1_testo = f'{r["scadenza_str"]} — {r["oggetto"]}'
+                riga1_testo = r["scadenza_str"]
+
+            def _render_corpo_impegno(r=r, rf=rf, riga1_testo=riga1_testo):
+                st.markdown(f'<div class="impegno-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
+                if r["oggetto"]:
+                    st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
+
+                col_link, col_fatto, _pad = st.columns([2, 2, 5])
+                with col_link:
+                    st.link_button("🔗 Apri link", r["link"] or "#", disabled=not bool(r["link"]),
+                                   key=f"impegno_link_{rf}")
+                with col_fatto:
+                    fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
+                    key_fatto = f"impegno_fatto_true_{rf}" if fatto_corrente else f"impegno_fatto_false_{rf}"
+                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "◻️ Da fare"
+                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura()):
+                        valori_fatto = dict(r["riga_dict"])
+                        valori_fatto["Fatto"] = "" if fatto_corrente else "X"
+                        ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
+                                                        RIGA_INTESTAZIONE_IMPEGNI, valori_fatto,
+                                                        riga_da_aggiornare=rf)
+                        if ok_f:
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error(err_f)
 
             with st.container(key=f"impegno_card_{rf}", border=True):
                 if st.session_state.impegni_modalita_selezione:
@@ -7760,19 +7788,9 @@ def mostra_impegni_scadenze():
                         else:
                             st.session_state.impegni_selezionati.discard(rf)
                     with col_corpo:
-                        st.markdown(f'<div class="impegno-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
-                        if raggruppa_per_mese and r["oggetto"]:
-                            st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>',
-                                        unsafe_allow_html=True)
-                        if r["link"]:
-                            st.link_button("🔗 Apri link", r["link"], key=f"impegno_link_{rf}")
+                        _render_corpo_impegno()
                 else:
-                    st.markdown(f'<div class="impegno-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
-                    if raggruppa_per_mese and r["oggetto"]:
-                        st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>',
-                                    unsafe_allow_html=True)
-                    if r["link"]:
-                        st.link_button("🔗 Apri link", r["link"], key=f"impegno_link_{rf}")
+                    _render_corpo_impegno()
                     st.button(" ", key=f"impegno_apri_{rf}",
                               on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
 
