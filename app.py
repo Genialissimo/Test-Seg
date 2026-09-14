@@ -7612,20 +7612,18 @@ def mostra_impegni_scadenze():
             text-align: left;
         }
         
-        /* --- BLOCCO FORZATURA AFFIANCATURA MOBILE/DESKTOP --- */
-        .azioni-impegno {
+        /* --- BLOCCO DEFINITIVO PER BLOCCARE I TASTI AFFIANCATI SU MOBILE --- */
+        .azioni-impegno div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             gap: 8px !important;
             width: 100% !important;
-            margin-top: 8px !important;
         }
-        .azioni-impegno [data-testid="column"] {
+        .azioni-impegno div[data-testid="column"] {
             width: 50% !important;
-            flex: 1 1 0% !important;
+            flex: 1 1 50% !important;
             min-width: 0 !important;
-            max-width: 50% !important;
         }
         .azioni-impegno button, .azioni-impegno a {
             min-height: 32px !important;
@@ -7633,8 +7631,6 @@ def mostra_impegni_scadenze():
             padding: 0px 8px !important;
             font-size: 0.85rem !important;
             white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -7784,7 +7780,7 @@ def mostra_impegni_scadenze():
                 if r["oggetto"]:
                     st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
 
-                # Contenitore flessibile forzato in orizzontale
+                # Contenitore agganciato all'stHorizontalBlock di Streamlit
                 st.markdown('<div class="azioni-impegno">', unsafe_allow_html=True)
                 col_link, col_fatto = st.columns(2)
                 
@@ -7825,7 +7821,6 @@ def mostra_impegni_scadenze():
                     _render_corpo_impegno()
                     st.button(" ", key=f"impegno_apri_{rf}",
                               on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
-
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
