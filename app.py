@@ -7575,12 +7575,6 @@ def mostra_impegni_scadenze():
             margin: 0 !important;
             padding: 0 !important;
         }
-        div[class*="st-key-impegno_link_"],
-        div[class*="st-key-impegno_fatto_true_"],
-        div[class*="st-key-impegno_fatto_false_"] {
-            position: relative !important;
-            z-index: 10 !important;
-        }
         div[class*="st-key-impegno_fatto_true_"] button {
             background: #bbf7d0 !important;
             color: #166534 !important;
@@ -7612,27 +7606,29 @@ def mostra_impegni_scadenze():
             text-align: left;
         }
         
-        /* --- FORZATURA ASSOLUTA: Impedisce a Streamlit di impilare i bottoni su smartphone --- */
-        div[class*="st-key-impegno_card_"] [data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 6px !important;
+        /* --- DIMENSIONE E POSIZIONAMENTO FISSO DEI BOTTONI --- */
+        div[class*="st-key-impegno_link_"],
+        div[class*="st-key-impegno_fatto_true_"],
+        div[class*="st-key-impegno_fatto_false_"] {
+            position: relative !important;
+            z-index: 10 !important;
+            max-width: 45px !important;
+            display: inline-block !important;
         }
-        div[class*="st-key-impegno_card_"] [data-testid="column"] {
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-        }
-
-        /* Riduce ulteriormente le dimensioni dei bottoni */
         div[class*="st-key-impegno_link_"] button,
         div[class*="st-key-impegno_fatto_true_"] button,
         div[class*="st-key-impegno_fatto_false_"] button,
         div[class*="st-key-impegno_link_"] a {
-            min-height: 28px !important;
-            height: 28px !important;
-            padding: 0px 6px !important;
-            font-size: 0.75rem !important;
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            min-height: 32px !important;
+            height: 32px !important;
+            padding: 0px !important;
+            font-size: 0.85rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -7782,7 +7778,7 @@ def mostra_impegni_scadenze():
                 if r["oggetto"]:
                     st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
 
-                col_link, col_fatto, _pad = st.columns([1, 1, 6])
+                col_link, col_fatto, _pad = st.columns([1, 1, 8])
                 with col_link:
                     st.link_button("🔗", r["link"] or "#", disabled=not bool(r["link"]),
                                    key=f"impegno_link_{rf}", use_container_width=True)
