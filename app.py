@@ -7556,6 +7556,41 @@ def mostra_impegni_scadenze():
         div[class*="st-key-impegno_card_"] div[data-testid="stElementContainer"] {
             margin-bottom: 2px !important;
         }
+        div[class*="st-key-impegno_apri_"] {
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            z-index: 1 !important;
+        }
+        div[class*="st-key-impegno_apri_"] button {
+            width: 100% !important;
+            height: 100% !important;
+            opacity: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        div[class*="st-key-impegno_link_"],
+        div[class*="st-key-impegno_fatto_true_"],
+        div[class*="st-key-impegno_fatto_false_"] {
+            position: relative !important;
+            z-index: 10 !important;
+        }
+        div[class*="st-key-impegno_fatto_true_"] button {
+            background: #bbf7d0 !important;
+            color: #166534 !important;
+            border: 1px solid #86efac !important;
+        }
+        div[class*="st-key-impegno_fatto_false_"] button {
+            background: #f3f4f6 !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
+        }
         .impegno-riga1 {
             font-weight: 700;
             font-size: 0.95rem;
@@ -7567,7 +7602,7 @@ def mostra_impegni_scadenze():
             font-size: 0.9rem;
             color: #374151;
             text-align: left;
-            margin: 0 0 6px 0;
+            margin: 0 0 4px 0;
         }
         .impegno-gruppo-titolo {
             font-weight: 700;
@@ -7575,36 +7610,6 @@ def mostra_impegni_scadenze():
             color: #0369a1;
             margin: 14px 0 6px 0;
             text-align: left;
-        }
-        
-        /* --- BLOCCO DEFINITIVO PER TENERE I BOTTONI AFFIANCATI ANCHE DA TELEFONO --- */
-        div[class*="st-key-impegno_card_"] div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            gap: 6px !important;
-        }
-        div[class*="st-key-impegno_card_"] div[data-testid="column"] {
-            width: auto !important;
-            flex: 0 0 auto !important;
-            min-width: unset !important;
-            padding: 0 !important;
-        }
-        /* Dimensioni fisse e compatte dei bottoni all'interno della riga */
-        div[class*="st-key-impegno_card_"] button,
-        div[class*="st-key-impegno_card_"] a {
-            width: 38px !important;
-            min-width: 38px !important;
-            max-width: 38px !important;
-            height: 30px !important;
-            min-height: 30px !important;
-            padding: 0px !important;
-            font-size: 0.85rem !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            border-radius: 4px !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -7693,8 +7698,8 @@ def mostra_impegni_scadenze():
                         continue
                     valori["Fatto"] = "X"
                     ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
-                                                        RIGA_INTESTAZIONE_IMPEGNI, valori,
-                                                        riga_da_aggiornare=rf)
+                                                      RIGA_INTESTAZIONE_IMPEGNI, valori,
+                                                      riga_da_aggiornare=rf)
                     if ok:
                         n_ok += 1
                     else:
@@ -7754,17 +7759,15 @@ def mostra_impegni_scadenze():
                 if r["oggetto"]:
                     st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
 
-                # Colonne ravvicinate e bloccate in orizzontale via CSS
-                col_link, col_fatto, col_mod = st.columns(3)
-                
+                col_link, col_fatto, _pad = st.columns([2, 2, 5])
                 with col_link:
-                    st.link_button("🔗", r["link"] or "#", disabled=not bool(r["link"]),
-                                   key=f"impegno_link_{rf}", use_container_width=True)
+                    st.link_button("🔗 Apri link", r["link"] or "#", disabled=not bool(r["link"]),
+                                   key=f"impegno_link_{rf}")
                 with col_fatto:
                     fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
-                    key_fatto = f"impegno_fatto_{rf}"
-                    etichetta_fatto_toggle = "✅" if fatto_corrente else "⏳"
-                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura(), use_container_width=True):
+                    key_fatto = f"impegno_fatto_true_{rf}" if fatto_corrente else f"impegno_fatto_false_{rf}"
+                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "◻️ Da fare"
+                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura()):
                         valori_fatto = dict(r["riga_dict"])
                         valori_fatto["Fatto"] = "" if fatto_corrente else "X"
                         ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
@@ -7775,10 +7778,6 @@ def mostra_impegni_scadenze():
                             st.rerun()
                         else:
                             st.error(err_f)
-                with col_mod:
-                    if st.button("✏️", key=f"impegno_mod_{rf}", disabled=sola_lettura(), use_container_width=True):
-                        _impegni_apri_modifica(r["riga_dict"], rf)
-                        st.rerun()
 
             with st.container(key=f"impegno_card_{rf}", border=True):
                 if st.session_state.impegni_modalita_selezione:
@@ -7786,7 +7785,7 @@ def mostra_impegni_scadenze():
                     with col_chk:
                         attualmente_sel = rf in st.session_state.impegni_selezionati
                         nuovo_stato = st.checkbox(" ", key=f"impegno_chk_{rf}", value=attualmente_sel,
-                                                  label_visibility="collapsed")
+                                                   label_visibility="collapsed")
                         if nuovo_stato:
                             st.session_state.impegni_selezionati.add(rf)
                         else:
@@ -7795,6 +7794,9 @@ def mostra_impegni_scadenze():
                         _render_corpo_impegno()
                 else:
                     _render_corpo_impegno()
+                    st.button(" ", key=f"impegno_apri_{rf}",
+                              on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
+
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
