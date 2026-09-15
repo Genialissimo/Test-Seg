@@ -7764,7 +7764,17 @@ def mostra_impegni_scadenze():
                         else:
                             st.error(err_f)
 
-            with st.container(key=f"impegno_card_{rf}", border=True):
+            fatto_card = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
+            scaduto_card = (not fatto_card and r["scadenza_date"] is not None
+                            and r["scadenza_date"] < date.today())
+            if fatto_card:
+                stato_card = "fatto"
+            elif scaduto_card:
+                stato_card = "scaduto"
+            else:
+                stato_card = "dafare"
+
+            with st.container(key=f"impegno_card_{stato_card}_{rf}", border=True):
                 _render_corpo_impegno()
                 st.button(" ", key=f"impegno_apri_{rf}",
                           on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
