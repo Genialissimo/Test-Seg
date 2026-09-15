@@ -7591,24 +7591,29 @@ def mostra_impegni_scadenze():
             flex: 1 1 0% !important;
             min-width: 0 !important;
         }
-        div[class*="st-key-impegno_link_present_"] button {
-            background: transparent !important;
-            border: none !important;
-            color: #2563eb !important;
-            text-decoration: underline !important;
-            font-weight: 500 !important;
-            padding: 2px 6px !important;
-            min-height: 0 !important;
-        }
+        div[class*="st-key-impegno_link_present_"] button,
         div[class*="st-key-impegno_link_absent_"] button {
             background: transparent !important;
             border: none !important;
+            font-weight: 500 !important;
+            padding: 0 4px !important;
+            min-height: 0 !important;
+            height: auto !important;
+            line-height: 1.2 !important;
+        }
+        div[class*="st-key-impegno_link_present_"] button p,
+        div[class*="st-key-impegno_link_absent_"] button p {
+            margin: 0 !important;
+            line-height: 1.2 !important;
+        }
+        div[class*="st-key-impegno_link_present_"] button {
+            color: #2563eb !important;
+            text-decoration: underline !important;
+        }
+        div[class*="st-key-impegno_link_absent_"] button {
             color: #cbd5e1 !important;
             text-decoration: none !important;
-            font-weight: 500 !important;
-            padding: 2px 6px !important;
-            min-height: 0 !important;
-        }
+        }}
         .impegno-riga1 {
             font-weight: 700;
             font-size: 0.95rem;
