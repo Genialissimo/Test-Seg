@@ -7679,7 +7679,7 @@ def mostra_impegni_scadenze():
         _form_impegno(editor, categorie_disponibili)
         st.divider()
 
-    filtro_stato = st.radio("Stato", ["Tutti", "Da fare", "Fatti"], horizontal=True,
+    filtro_stato = st.radio("Stato", ["Tutti", "Da fare", "Fatto"], horizontal=True,
                             key="impegni_filtro_stato")
     opzioni_categoria_filtro = ["Tutte le categorie"] + categorie_disponibili
     filtro_categoria = st.selectbox("Categoria", opzioni_categoria_filtro, key="impegni_filtro_categoria")
@@ -7689,7 +7689,7 @@ def mostra_impegni_scadenze():
         fatto = _impegni_e_fatto(riga.get("Fatto", ""))
         if filtro_stato == "Da fare" and fatto:
             continue
-        if filtro_stato == "Fatti" and not fatto:
+        if filtro_stato == "Fatto" and not fatto:
             continue
         if filtro_categoria != "Tutte le categorie" and str(riga.get("Categoria", "")).strip() != filtro_categoria:
             continue
@@ -7759,14 +7759,14 @@ def mostra_impegni_scadenze():
                     st.link_button("Link", r["link"] or "#", disabled=not ha_link, key=key_link)
                 with col_stato:
                     fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
-                    valore_corrente = "Fatti" if fatto_corrente else "Da fare"
-                    scelta_stato = st.radio(" ", ["Da fare", "Fatti"],
+                    valore_corrente = "Fatto" if fatto_corrente else "Da fare"
+                    scelta_stato = st.radio(" ", ["Da fare", "Fatto"],
                                             index=(1 if fatto_corrente else 0),
                                             key=f"impegno_stato_{rf}", horizontal=True,
                                             label_visibility="collapsed", disabled=sola_lettura())
                     if scelta_stato != valore_corrente:
                         valori_fatto = dict(r["riga_dict"])
-                        valori_fatto["Fatto"] = "X" if scelta_stato == "Fatti" else ""
+                        valori_fatto["Fatto"] = "X" if scelta_stato == "Fatto" else ""
                         ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
                                                         RIGA_INTESTAZIONE_IMPEGNI, valori_fatto,
                                                         riga_da_aggiornare=rf)
