@@ -7621,6 +7621,18 @@ def mostra_impegni_scadenze():
             text-align: left;
             margin: 0 0 2px 0;
         }
+            div[class*="st-key-impegno_card_fatto_"] {
+            background: #f0fdf4 !important;
+            border-color: #bbf7d0 !important;
+        }
+        div[class*="st-key-impegno_card_scaduto_"] {
+            background: #fef2f2 !important;
+            border-color: #fecaca !important;
+        }
+        div[class*="st-key-impegno_card_dafare_"] {
+            background: #f9fafb !important;
+            border-color: #e5e7eb !important;
+        }
         .impegno-oggetto-riga {
             font-size: 0.9rem;
             color: #374151;
