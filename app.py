@@ -2848,14 +2848,14 @@ def mostra_home():
             }
         }
 
-        .impegni-card {
+        div[class*="st-key-impegni_card_container"] {
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
+            border: none !important;
+            border-radius: 14px !important;
+            box-shadow: 3px 5px 14px rgba(0,0,0,0.18) !important;
             width: 92%;
             max-width: 900px;
-            margin: 8px auto 24px auto;
-            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
-            border-radius: 14px;
-            padding: 22px clamp(20px, 4vw, 40px);
-            box-shadow: 3px 5px 14px rgba(0,0,0,0.18);
+            margin: 8px auto 24px auto !important;
         }
         .impegni-titolo {
             font-size: clamp(1.05rem, 1.6vw, 1.3rem);
@@ -2892,7 +2892,6 @@ def mostra_home():
             color: #0c4a6e;
             line-height: 1.35;
         }
-
         .impegni-vuoto {
             font-size: 0.92rem;
             color: #0c4a6e;
@@ -3250,15 +3249,10 @@ def mostra_home():
         riga1_testo = f'{r["scadenza_str"]} ({r["giorni"]}) — {r["categoria"]}' if r["categoria"] \
             else f'{r["scadenza_str"]} ({r["giorni"]})'
         dot_html = f'<span class="dot {_impegni_dot_class(r["giorni"])}"></span>'
-        if collegato:
-            riga1_html = (f'<a class="impegni-link" href="?vai_a=impegni_scadenze" target="_self">'
-                          f'<span class="impegni-testo">{riga1_testo}</span></a>')
-        else:
-            riga1_html = f'<span class="impegni-testo">{riga1_testo}</span>'
+        riga1_html = f'<span class="impegni-testo">{riga1_testo}</span>'
         riga2_html = f'<div class="impegni-oggetto">{r["oggetto"]}</div>'
         return (f'<div class="impegni-riga">{dot_html}'
                 f'<div class="impegni-testo-blocco">{riga1_html}{riga2_html}</div></div>')
-
 
     def _impegni_html_gruppi(lista):
         scaduti = sorted([r for r in lista if r["giorni"] < 0], key=lambda r: r["giorni"])
@@ -3288,14 +3282,18 @@ def mostra_home():
     else:
         corpo_gruppi_html = '<div class="impegni-vuoto">Nessun impegno da ricordare al momento.</div>'
 
-    impegni_widget_html = f"""
-    <div class="impegni-card">
-        <div class="impegni-titolo">🗓️ Prossimi impegni e scadenze ({n_impegni_da_fare_totale})</div>
-        <div class="impegni-lista">
-            {corpo_gruppi_html}
-        </div>
-    </div>
-    """
+    contenuto_widget_html = (
+        f'<div class="impegni-titolo">🗓️ Prossimi impegni e scadenze ({n_impegni_da_fare_totale})</div>'
+        f'<div class="impegni-lista">{corpo_gruppi_html}</div>'
+    )
+    if collegato:
+        impegni_widget_html = (
+            f'<a href="?vai_a=impegni_scadenze" target="_self" '
+            f'style="text-decoration:none; color:inherit; display:block; cursor:pointer;">'
+            f'{contenuto_widget_html}</a>'
+        )
+    else:
+        impegni_widget_html = contenuto_widget_html
 
     lista_impostazioni = [
         ("⚙️", "bg-slate",  "Impostazioni", "Configura i giorni delle adunanze e altre opzioni.", "impostazioni", ""),
@@ -3363,14 +3361,14 @@ def mostra_home():
     with tabs[0]:
         st.markdown(postit_html, unsafe_allow_html=True)
 
-        st.button("➕ Aggiungi impegno", key="home_aggiungi_impegno", use_container_width=True,
-                  disabled=not collegato, on_click=vai_a_impegni_nuovo)
-        st.markdown(impegni_widget_html, unsafe_allow_html=True)
+        with st.container(key="impegni_card_container", border=True):
+            st.button("➕ Aggiungi impegno", key="home_aggiungi_impegno", use_container_width=True,
+                      disabled=not collegato, on_click=vai_a_impegni_nuovo)
+            st.markdown(impegni_widget_html, unsafe_allow_html=True)
 
     for tab, (nome_tab, lista_card) in zip(tabs[1:], sezioni.items()):
         with tab:
             mostra_griglia_card(lista_card)
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: RAPPORTI CONSEGNATI
 # ─────────────────────────────────────────────────────────────────
