@@ -7400,8 +7400,7 @@ def vai_a_impegni_nuovo():
 
 
 def vai_a_home_reset_impegni():
-    for chiave in ("impegni_editor", "impegni_conferma_elimina",
-                   "impegni_modalita_selezione", "impegni_selezionati"):
+    for chiave in ("impegni_editor", "impegni_conferma_elimina"):
         st.session_state.pop(chiave, None)
     vai_a("home")
 
@@ -7537,6 +7536,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                 st.session_state.impegni_conferma_elimina = None
                 st.rerun()
 
+
 def _impegni_apri_modifica(riga_dict: dict, rf: int):
     st.session_state.impegni_editor = {
         "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
@@ -7576,8 +7576,7 @@ def mostra_impegni_scadenze():
             padding: 0 !important;
         }
         div[class*="st-key-impegno_link_"],
-        div[class*="st-key-impegno_fatto_true_"],
-        div[class*="st-key-impegno_fatto_false_"] {
+        div[class*="st-key-impegno_stato_"] {
             position: relative !important;
             z-index: 10 !important;
         }
@@ -7585,22 +7584,30 @@ def mostra_impegni_scadenze():
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             gap: 10px !important;
-            align-items: flex-start !important;
+            align-items: center !important;
         }
         div[class*="st-key-impegno_card_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
             width: 100% !important;
             flex: 1 1 0% !important;
             min-width: 0 !important;
         }
-        div[class*="st-key-impegno_fatto_true_"] button {
-            background: #bbf7d0 !important;
-            color: #166534 !important;
-            border: 1px solid #86efac !important;
+        div[class*="st-key-impegno_link_present_"] button {
+            background: transparent !important;
+            border: none !important;
+            color: #2563eb !important;
+            text-decoration: underline !important;
+            font-weight: 500 !important;
+            padding: 2px 6px !important;
+            min-height: 0 !important;
         }
-        div[class*="st-key-impegno_fatto_false_"] button {
-            background: #f3f4f6 !important;
-            color: #374151 !important;
-            border: 1px solid #d1d5db !important;
+        div[class*="st-key-impegno_link_absent_"] button {
+            background: transparent !important;
+            border: none !important;
+            color: #cbd5e1 !important;
+            text-decoration: none !important;
+            font-weight: 500 !important;
+            padding: 2px 6px !important;
+            min-height: 0 !important;
         }
         .impegno-riga1 {
             font-weight: 700;
@@ -7615,13 +7622,6 @@ def mostra_impegni_scadenze():
             text-align: left;
             margin: 0 0 8px 0;
         }
-        div[class*="st-key-impegno_link_"] button,
-        div[class*="st-key-impegno_fatto_true_"] button,
-        div[class*="st-key-impegno_fatto_false_"] button {
-            padding-top: 4px !important;
-            padding-bottom: 4px !important;
-            min-height: 0 !important;
-        }
         .impegno-gruppo-titolo {
             font-weight: 700;
             font-size: 1.05rem;
@@ -7632,12 +7632,7 @@ def mostra_impegni_scadenze():
     </style>
     """, unsafe_allow_html=True)
 
-    if "impegni_modalita_selezione" not in st.session_state:
-        st.session_state.impegni_modalita_selezione = False
-    if "impegni_selezionati" not in st.session_state:
-        st.session_state.impegni_selezionati = set()
-
-    col_home, col_nuovo, col_sel = st.columns(3)
+    col_home, col_nuovo = st.columns(2)
     with col_home:
         st.button("🏠 Home", key="home_da_impegni", use_container_width=True,
                   on_click=vai_a_home_reset_impegni)
@@ -7645,12 +7640,6 @@ def mostra_impegni_scadenze():
         if st.button("➕ Nuovo", key="impegni_nuovo_btn", use_container_width=True,
                      disabled=not collegato or sola_lettura()):
             st.session_state.impegni_editor = {"modo": "nuovo"}
-    with col_sel:
-        etichetta_sel = "✖ Esci selezione" if st.session_state.impegni_modalita_selezione else "☑️ Seleziona"
-        if st.button(etichetta_sel, key="impegni_toggle_selezione", use_container_width=True,
-                     disabled=not collegato):
-            st.session_state.impegni_modalita_selezione = not st.session_state.impegni_modalita_selezione
-            st.session_state.impegni_selezionati = set()
 
     if not collegato:
         st.warning("⚠️ Nessun foglio dati collegato.")
@@ -7701,37 +7690,6 @@ def mostra_impegni_scadenze():
             "link": str(riga.get("Collega Link", "")).strip(),
         })
 
-    if st.session_state.impegni_modalita_selezione:
-        n_sel = len(st.session_state.impegni_selezionati)
-        etichetta_fatto = f"✔ Segna come Fatto ({n_sel})" if n_sel else "✔ Segna come Fatto"
-        if st.button(etichetta_fatto, key="impegni_bulk_fatto", use_container_width=True,
-                     disabled=n_sel == 0 or sola_lettura(), type="primary"):
-            mappa_righe = {r["riga_foglio"]: r["riga_dict"] for r in righe_valide}
-            n_ok = 0
-            errori = []
-            with st.spinner(f"Aggiorno {n_sel} impegni…"):
-                for rf in st.session_state.impegni_selezionati:
-                    valori = dict(mappa_righe.get(rf, {}))
-                    if not valori:
-                        continue
-                    valori["Fatto"] = "X"
-                    ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
-                                                      RIGA_INTESTAZIONE_IMPEGNI, valori,
-                                                      riga_da_aggiornare=rf)
-                    if ok:
-                        n_ok += 1
-                    else:
-                        errori.append(err_salva)
-            if n_ok:
-                st.cache_data.clear()
-                st.session_state.impegni_selezionati = set()
-                st.session_state.impegni_modalita_selezione = False
-            if errori:
-                st.error("Alcuni aggiornamenti non sono riusciti:\n" + "\n".join(errori))
-            if n_ok:
-                st.success(f"✔ {n_ok} impegni segnati come Fatti.")
-                st.rerun()
-
     if not righe_valide:
         st.info("Nessun impegno trovato con questi filtri.")
         return
@@ -7777,18 +7735,21 @@ def mostra_impegni_scadenze():
                 if r["oggetto"]:
                     st.markdown(f'<div class="impegno-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
 
-                col_link, col_fatto = st.columns(2)
+                col_link, col_stato = st.columns([1, 2])
                 with col_link:
-                    st.link_button("🔗 Apri link", r["link"] or "#", disabled=not bool(r["link"]),
-                                   key=f"impegno_link_{rf}", use_container_width=True)
-                with col_fatto:
+                    ha_link = bool(r["link"])
+                    key_link = f"impegno_link_present_{rf}" if ha_link else f"impegno_link_absent_{rf}"
+                    st.link_button("Link", r["link"] or "#", disabled=not ha_link, key=key_link)
+                with col_stato:
                     fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
-                    key_fatto = f"impegno_fatto_true_{rf}" if fatto_corrente else f"impegno_fatto_false_{rf}"
-                    etichetta_fatto_toggle = "✅ Fatto" if fatto_corrente else "◻️ Da fare"
-                    if st.button(etichetta_fatto_toggle, key=key_fatto, disabled=sola_lettura(),
-                                 use_container_width=True):
+                    valore_corrente = "Fatti" if fatto_corrente else "Da fare"
+                    scelta_stato = st.radio(" ", ["Da fare", "Fatti"],
+                                            index=(1 if fatto_corrente else 0),
+                                            key=f"impegno_stato_{rf}", horizontal=True,
+                                            label_visibility="collapsed", disabled=sola_lettura())
+                    if scelta_stato != valore_corrente:
                         valori_fatto = dict(r["riga_dict"])
-                        valori_fatto["Fatto"] = "" if fatto_corrente else "X"
+                        valori_fatto["Fatto"] = "X" if scelta_stato == "Fatti" else ""
                         ok_f, err_f = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI,
                                                         RIGA_INTESTAZIONE_IMPEGNI, valori_fatto,
                                                         riga_da_aggiornare=rf)
@@ -7799,19 +7760,9 @@ def mostra_impegni_scadenze():
                             st.error(err_f)
 
             with st.container(key=f"impegno_card_{rf}", border=True):
-                if st.session_state.impegni_modalita_selezione:
-                    attualmente_sel = rf in st.session_state.impegni_selezionati
-                    nuovo_stato = st.checkbox("Seleziona", key=f"impegno_chk_{rf}", value=attualmente_sel)
-                    if nuovo_stato:
-                        st.session_state.impegni_selezionati.add(rf)
-                    else:
-                        st.session_state.impegni_selezionati.discard(rf)
-                    _render_corpo_impegno()
-                else:
-                    _render_corpo_impegno()
-                    st.button(" ", key=f"impegno_apri_{rf}",
-                              on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
-
+                _render_corpo_impegno()
+                st.button(" ", key=f"impegno_apri_{rf}",
+                          on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
 
 
 # ─────────────────────────────────────────────────────────────────
