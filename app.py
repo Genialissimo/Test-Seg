@@ -4237,6 +4237,454 @@ def mostra_cartoline_registrazione():
 st.divider()
 
 
+# ─────────────────────────────────────────────────────────────────
+# PAGINA: GRUPPI DI SERVIZIO (COMPLETO DI HTML E PDF)
+# ─────────────────────────────────────────────────────────────────
+import io
+import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from xhtml2pdf import pisa
+
+ETICHETTE_STATO_GRUPPI = {"A": "🟢 Attivi", "I": "🔺 Inattivi", "TR": "↔️ Trasferiti"}
+
+COLORI_GRUPPI = ["BDD7EE", "FBE0D0", "D8ECD2", "FCEDB6", "E4D6EC", "F5C6C6"]
+COLORI_TESTATA_GRUPPI = ["9DC3E6", "F4B183", "A9D18E", "FFD966", "C9A0DC", "E8A0A0"]
+
+
+def _gruppi_calcola_sigla(riga: dict) -> str:
+    parti = []
+    incarico = (riga.get("Incarico") or "").strip()
+    tipo = (riga.get("Tipo") or "").strip()
+    if incarico == "Anziano":
+        parti.append("A")
+    elif incarico == "Servitore di ministero":
+        parti.append("SM")
+    if tipo == "Pioniere Regolare":
+        parti.append("PR")
+    elif tipo == "Pioniere speciale":
+        parti.append("PS")
+    elif tipo == "Missionario sul campo":
+        parti.append("M")
+    return "/".join(parti)
+
+
+def _gruppi_trova_assistente(df: pd.DataFrame, gruppo: str) -> str:
+    for _, r in df.iterrows():
+        g = str(r.get("Gruppo", "")).strip()
+        note = str(r.get("Note", "")).strip().lower()
+        if g == gruppo and "assistente gruppo di servizio" in note:
+            return str(r.get("Cognome e Nome", "")).strip()
+    return ""
+
+
+def _gruppi_dati_filtrati(df: pd.DataFrame, includi_inattivi: bool = False):
+    if "Attivi / Inattivi" in df.columns:
+        categorie = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
+        df = df[categorie != "TR"] if includi_inattivi else df[categorie == "A"]
+    else:
+        categorie = pd.Series(["A"] * len(df), index=df.index)
+
+    gruppi = {}
+    for idx, riga in df.iterrows():
+        nome = str(riga.get("Cognome e Nome", "")).strip()
+        if not nome:
+            continue
+        g = str(riga.get("Gruppo", "")).strip()
+        if not g:
+            continue
+        stato = categorie.loc[idx] if idx in categorie.index else "A"
+        gruppi.setdefault(g, []).append({
+            "nome": nome, 
+            "sigla": _gruppi_calcola_sigla(riga.to_dict()),
+            "stato": stato
+        })
+    return df, gruppi
+
+
+def _gruppi_ordina_membri(membri: list) -> list:
+    return sorted(membri, key=lambda m: (0 if m.get("stato") != "I" else 1, m["nome"]))
+
+
+def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
+    df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
+    nomi_gruppi = sorted(gruppi.keys())
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gruppi di servizio"
+
+    bordo_sottile = Side(style="thin", color="999999")
+    bordo = Border(left=bordo_sottile, right=bordo_sottile, top=bordo_sottile, bottom=bordo_sottile)
+
+    blocco_colonne = 3
+    gutter = 1
+    riga_cursore = 1
+
+    for indice_coppia in range(0, len(nomi_gruppi), 2):
+        coppia = nomi_gruppi[indice_coppia:indice_coppia + 2]
+        max_membri = max(len(gruppi[g]) for g in coppia)
+
+        for posizione, nome_gruppo in enumerate(coppia):
+            indice_colore = (indice_coppia // 2 + posizione) % len(COLORI_GRUPPI)
+            colore_corpo = COLORI_GRUPPI[indice_colore]
+            colore_testata = COLORI_TESTATA_GRUPPI[indice_colore]
+            col_base = 1 + posizione * (blocco_colonne + gutter)
+            col_num, col_nome, col_sigla = col_base, col_base + 1, col_base + 2
+
+            r = riga_cursore
+            ws.merge_cells(start_row=r, start_column=col_num, end_row=r, end_column=col_sigla)
+            cella = ws.cell(row=r, column=col_num, value=f"Gruppo {nome_gruppo.upper()}")
+            cella.font = Font(name="Arial", size=12, bold=True)
+            cella.alignment = Alignment(horizontal="center")
+            cella.fill = PatternFill("solid", fgColor=colore_testata)
+
+            assistente = _gruppi_trova_assistente(df, nome_gruppo)
+            for etichetta, valore, r_offset in (("Sorvegliante", nome_gruppo, 1), ("Assistente", assistente, 2)):
+                rr = r + r_offset
+                ws.merge_cells(start_row=rr, start_column=col_num, end_row=rr, end_column=col_nome)
+                c1 = ws.cell(row=rr, column=col_num, value=valore)
+                c1.font = Font(name="Arial", size=10, italic=True, bold=True, color="1F4E78")
+                c1.fill = PatternFill("solid", fgColor=colore_corpo)
+                c2 = ws.cell(row=rr, column=col_sigla, value=etichetta)
+                c2.font = Font(name="Arial", size=10, bold=True)
+                c2.alignment = Alignment(horizontal="right")
+                c2.fill = PatternFill("solid", fgColor=colore_corpo)
+
+            membri = _gruppi_ordina_membri(gruppi[nome_gruppo])
+            for i in range(max_membri):
+                rr = r + 3 + i
+                cn = ws.cell(row=rr, column=col_num, value=i + 1 if i < len(membri) else "")
+                cnome = ws.cell(row=rr, column=col_nome, value=membri[i]["nome"] if i < len(membri) else "")
+                csigla = ws.cell(row=rr, column=col_sigla, value=membri[i]["sigla"] if i < len(membri) else "")
+                colore_font = "FF0000" if i < len(membri) and membri[i].get("stato") == "I" else "000000"
+                for c in (cn, cnome, csigla):
+                    c.font = Font(name="Arial", size=10, color=colore_font)
+                    c.fill = PatternFill("solid", fgColor=colore_corpo)
+                    c.border = bordo
+                cn.alignment = Alignment(horizontal="center")
+                csigla.alignment = Alignment(horizontal="center")
+
+            ws.column_dimensions[get_column_letter(col_num)].width = 5
+            ws.column_dimensions[get_column_letter(col_nome)].width = 26
+            ws.column_dimensions[get_column_letter(col_sigla)].width = 10
+
+        riga_cursore += 3 + max_membri + 2
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
+                          colore_corpo: str, colore_testata: str) -> str:
+    membri_ordinati = _gruppi_ordina_membri(membri)
+    assistente = _gruppi_trova_assistente(df, nome_gruppo)
+    
+    html_righe = ""
+    for i, m in enumerate(membri_ordinati):
+        stile_stato = "color: red;" if m.get("stato") == "I" else ""
+        html_righe += f"""
+            <tr>
+                <td style="text-align: center; width: 12%; border: 0.5px solid #ccc; padding: 3px; {stile_stato}">{i + 1}</td>
+                <td style="width: 58%; border: 0.5px solid #ccc; padding: 3px; {stile_stato}">{m["nome"]}</td>
+                <td style="text-align: center; width: 30%; border: 0.5px solid #ccc; padding: 3px; {stile_stato}">{m["sigla"]}</td>
+            </tr>
+        """
+
+    html = f"""
+    <div style="width: 48%; float: left; margin-right: 2%; margin-bottom: 15px; background-color: #{colore_corpo}; border-left: 4px solid #{colore_testata}; padding: 8px; box-sizing: border-box;">
+        <div style="font-size: 13px; font-weight: bold; color: #{colore_testata}; margin-bottom: 6px; text-transform: uppercase;">
+            Gruppo {nome_gruppo.upper()}
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px; background-color: #ffffff;">
+            <tr style="background-color: #{colore_corpo};">
+                <td style="text-align: center; width: 12%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">1</td>
+                <td style="width: 58%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold; font-style: italic; color: #1F4E78;">{nome_gruppo}</td>
+                <td style="text-align: right; width: 30%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">Sorvegliante</td>
+            </tr>
+            <tr style="background-color: #{colore_corpo};">
+                <td style="text-align: center; width: 12%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">2</td>
+                <td style="width: 58%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold; font-style: italic; color: #1F4E78;">{assistente}</td>
+                <td style="text-align: right; width: 30%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">Assistente</td>
+            </tr>
+            {html_righe}
+        </table>
+    </div>
+    """
+    return html
+
+
+def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
+    df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
+    nomi_gruppi = sorted(gruppi.keys())
+
+    griglie_html = ""
+    for indice in range(0, len(nomi_gruppi), 2):
+        coppia = nomi_gruppi[indice:indice + 2]
+        griglie_html += '<div style="width: 100%; clear: both; margin-bottom: 10px;">'
+        for posizione, nome_gruppo in enumerate(coppia):
+            indice_colore = (indice // 2 + posizione) % len(COLORI_GRUPPI)
+            griglie_html += _gruppi_tabella_html(
+                df, nome_gruppo, gruppi[nome_gruppo],
+                COLORI_GRUPPI[indice_colore],
+                COLORI_TESTATA_GRUPPI[indice_colore]
+            )
+        griglie_html += '</div><div style="clear: both;"></div>'
+
+    html_completo = f"""<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {{
+            size: A4 portrait;
+            margin: 1cm;
+        }}
+        body {{
+            font-family: Helvetica, Arial, sans-serif;
+            color: #333;
+            font-size: 10px;
+            margin: 0;
+            padding: 0;
+        }}
+        .header {{
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            width: 100%;
+        }}
+        h1 {{
+            font-size: 20px;
+            color: #4b6cb7;
+            margin: 0;
+            float: left;
+        }}
+        .meta {{
+            text-align: right;
+            font-size: 9px;
+            color: #6b7280;
+            float: right;
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Gruppi di servizio</h1>
+        <div class="meta">
+            <span style="color: #2563eb; font-weight: bold;">Congregazione: Vibo Valentia Marina</span>
+        </div>
+        <div style="clear: both;"></div>
+    </div>
+    {griglie_html}
+</body>
+</html>
+"""
+    pdf_output = io.BytesIO()
+    pisa_status = pisa.CreatePDF(io.BytesIO(html_completo.encode("utf-8")), dest=pdf_output)
+    
+    if pisa_status.err:
+        raise Exception("Errore durante la generazione del PDF HTML")
+        
+    pdf_output.seek(0)
+    return pdf_output.getvalue()
+
+
+def mostra_gruppi_servizio():
+    st.title("👥 Gruppi di servizio")
+    st.button("🏠 Torna alla Home", key="home_da_gruppi", use_container_width=True,
+              on_click=vai_a, args=("home",))
+    contenitore_associa = st.container()
+    st.caption("Seleziona uno o più Proclamatori e abbinali a un sorvegliante di gruppo.")
+
+    if not collegato:
+        st.warning("⚠️  Nessun foglio dati collegato.")
+        return
+
+    df, err = leggi_foglio_come_df(workbook, NOME_FOGLIO_ANAGRAFICA, RIGA_INTESTAZIONE_ANAGRAFICA)
+    if err:
+        st.error(err)
+        return
+    if df.empty or "Cognome e Nome" not in df.columns:
+        st.info("Nessun Proclamatore trovato in Anagrafica.")
+        return
+
+    df = df.reset_index(drop=True)
+
+    formato_export = st.radio("Formato esportazione", ["Excel", "PDF", "PDF includi inattivi"],
+                              horizontal=True, key="gruppi_formato_export")
+    if st.button(f"📥 Esporta Gruppi di servizio ({formato_export})", key="esporta_gruppi",
+                 use_container_width=True):
+        if formato_export == "Excel":
+            st.session_state.gruppi_export_pronto = ("xlsx", genera_excel_gruppi_servizio(df))
+        elif formato_export == "PDF":
+            st.session_state.gruppi_export_pronto = ("pdf", genera_pdf_da_html_gruppi_servizio(df))
+        else:
+            st.session_state.gruppi_export_pronto = (
+                "pdf", genera_pdf_da_html_gruppi_servizio(df, includi_inattivi=True))
+
+    if st.session_state.get("gruppi_export_pronto"):
+        tipo_file, dati_file = st.session_state.gruppi_export_pronto
+        if tipo_file == "xlsx":
+            st.download_button(
+                "⬇️ Scarica Gruppi di servizio.xlsx",
+                data=dati_file,
+                file_name="Gruppi_di_servizio.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_gruppi_excel",
+                use_container_width=True,
+                on_click=lambda: st.session_state.pop("gruppi_export_pronto", None),
+            )
+        else:
+            st.download_button(
+                "⬇️ Scarica Gruppi di servizio.pdf",
+                data=dati_file,
+                file_name="Gruppi_di_servizio.pdf",
+                mime="application/pdf",
+                key="download_gruppi_pdf",
+                use_container_width=True,
+                on_click=lambda: st.session_state.pop("gruppi_export_pronto", None),
+            )
+
+    if "Attivi / Inattivi" in df.columns:
+        categorie = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
+    else:
+        categorie = pd.Series(["A"] * len(df), index=df.index)
+
+    stato_scelto = st.radio("Stato", ["🟢 Attivi", "🔺 Inattivi"], horizontal=True,
+                            key="gruppi_stato_filtro")
+    codice_stato = {v: k for k, v in ETICHETTE_STATO_GRUPPI.items()}[stato_scelto]
+
+    def _chiave_cb(nome: str) -> str:
+        return f"cb_gruppi_{nome}"
+
+    if st.session_state.get("gruppi_stato_precedente") != codice_stato:
+        for chiave in list(st.session_state.keys()):
+            if chiave.startswith("cb_gruppi_"):
+                st.session_state[chiave] = False
+        st.session_state.gruppi_stato_precedente = codice_stato
+
+    df_filtrato = df[categorie == codice_stato]
+    df_filtrato = df_filtrato[df_filtrato["Cognome e Nome"].astype(str).str.strip() != ""]
+
+    if df_filtrato.empty:
+        st.info("Nessun Proclamatore in questa categoria.")
+        return
+
+    conteggi_per_gruppo = {}
+    for idx, riga in df.iterrows():
+        stato_riga = categorie.loc[idx]
+        if stato_riga not in ("A", "I"):
+            continue
+        g = str(riga.get("Gruppo", "")).strip() or "(Senza gruppo)"
+        conteggi_per_gruppo.setdefault(g, {"A": 0, "I": 0})
+        conteggi_per_gruppo[g][stato_riga] += 1
+
+    gruppi_vista = {}
+    for _, riga in df_filtrato.iterrows():
+        nome = str(riga.get("Cognome e Nome", "")).strip()
+        g = str(riga.get("Gruppo", "")).strip() or "(Senza gruppo)"
+        gruppi_vista.setdefault(g, []).append(nome)
+
+    for g in sorted(gruppi_vista.keys()):
+        conteggi = conteggi_per_gruppo.get(g, {"A": 0, "I": 0})
+        st.markdown(f"#### 👤 {g} (Attivi {conteggi['A']} - Inattivi {conteggi['I']})")
+        for nome in sorted(gruppi_vista[g]):
+            st.checkbox(nome, key=_chiave_cb(nome))
+        st.divider()
+
+    nomi_filtrati = [str(n).strip() for n in df_filtrato["Cognome e Nome"] if str(n).strip()]
+    selezionati = [nome for nome in nomi_filtrati if st.session_state.get(_chiave_cb(nome), False)]
+    n_sel = len(selezionati)
+
+    with contenitore_associa:
+        if st.button(f"🔗 Associa al gruppo ({n_sel})", use_container_width=True,
+                     disabled=(n_sel == 0 or sola_lettura())):
+            st.session_state.gruppi_mostra_scelta = True
+
+        if st.session_state.get("gruppi_mostra_scelta") and n_sel > 0:
+            with st.container(border=True):
+                st.caption(f"{n_sel} Proclamatori selezionati.")
+                gruppi_esistenti = sorted({g.strip() for g in df["Gruppo"].astype(str) if g.strip()}) \
+                    if "Gruppo" in df.columns else []
+                opzioni = gruppi_esistenti + ["➕ Nuovo sorvegliante…"]
+                scelta = st.selectbox("Sorvegliante di gruppo", opzioni, key="gruppi_scelta_sorvegliante")
+                nuovo_nome_gruppo = ""
+                if scelta == "➕ Nuovo sorvegliante…":
+                    nuovo_nome_gruppo = st.text_input("Nome del nuovo sorvegliante", key="gruppi_nuovo_nome")
+
+                col_abbina, col_annulla, col_elimina = st.columns(3)
+                with col_abbina:
+                    conferma_abbina = st.button("✔ Abbina", type="primary", use_container_width=True,
+                                                key="gruppi_conferma_abbina")
+                with col_annulla:
+                    conferma_annulla = st.button("✖ Annulla", use_container_width=True,
+                                                 key="gruppi_conferma_annulla")
+                with col_elimina:
+                    conferma_elimina = st.button("🗑️ Elimina", use_container_width=True,
+                                                 key="gruppi_conferma_elimina")
+
+                if conferma_annulla:
+                    st.session_state.gruppi_mostra_scelta = False
+                    for nome in selezionati:
+                        st.session_state.pop(_chiave_cb(nome), None)
+                    st.rerun()
+
+                if conferma_elimina:
+                    errori = []
+                    with st.spinner("Rimuovo il gruppo dai Proclamatori selezionati…"):
+                        for nome in selezionati:
+                            idx_lista = df.index[df["Cognome e Nome"].astype(str).str.strip() == nome]
+                            if len(idx_lista) == 0:
+                                continue
+                            idx = idx_lista[0]
+                            numero_riga_foglio = RIGA_INTESTAZIONE_ANAGRAFICA + 1 + idx
+                            valori = df.loc[idx].to_dict()
+                            valori["Gruppo"] = ""
+                            ok, err_salva = salva_riga_anagrafica(workbook, valori,
+                                                                   riga_da_aggiornare=numero_riga_foglio)
+                            if not ok:
+                                errori.append(f"{nome}: {err_salva}")
+                    for nome in selezionati:
+                        st.session_state.pop(_chiave_cb(nome), None)
+                    if errori:
+                        st.error("Alcune rimozioni non sono riuscite:\n" + "\n".join(errori))
+                    else:
+                        st.cache_data.clear()
+                        st.session_state.gruppi_mostra_scelta = False
+                        st.success(f"✔ Gruppo rimosso per {n_sel} Proclamatori.")
+
+                if conferma_abbina:
+                    nome_gruppo_finale = nuovo_nome_gruppo.strip() if scelta == "➕ Nuovo sorvegliante…" else scelta
+                    if not nome_gruppo_finale:
+                        st.error("Indica il nome del sorvegliante di gruppo.")
+                    else:
+                        errori = []
+                        with st.spinner("Aggiorno l'Anagrafica…"):
+                            for nome in selezionati:
+                                idx_lista = df.index[df["Cognome e Nome"].astype(str).str.strip() == nome]
+                                if len(idx_lista) == 0:
+                                    continue
+                                idx = idx_lista[0]
+                                numero_riga_foglio = RIGA_INTESTAZIONE_ANAGRAFICA + 1 + idx
+                                valori = df.loc[idx].to_dict()
+                                valori["Gruppo"] = nome_gruppo_finale
+                                ok, err_salva = salva_riga_anagrafica(workbook, valori,
+                                                                       riga_da_aggiornare=numero_riga_foglio)
+                                if not ok:
+                                    errori.append(f"{nome}: {err_salva}")
+                        for nome in selezionati:
+                            st.session_state.pop(_chiave_cb(nome), None)
+                        if errori:
+                            st.error("Alcuni abbinamenti non sono riusciti:\n" + "\n".join(errori))
+                        else:
+                            st.cache_data.clear()
+                            for nome in selezionati:
+                                st.session_state.pop(_chiave_cb(nome), None)
+                            st.session_state.gruppi_mostra_scelta = False
+                            st.success(f"✔ {n_sel} Proclamatori abbinati a «{nome_gruppo_finale}».")
 
 
 
