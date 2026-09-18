@@ -4242,6 +4242,7 @@ def mostra_cartoline_registrazione():
 # ─────────────────────────────────────────────────────────────────
 ETICHETTE_STATO_GRUPPI = {"A": "🟢 Attivi", "I": "🔺 Inattivi", "TR": "↔️ Trasferiti"}
 
+
 COLORI_GRUPPI = ["BDD7EE", "FBE0D0", "D8ECD2", "FCEDB6", "E4D6EC", "F5C6C6"]
 COLORI_TESTATA_GRUPPI = ["9DC3E6", "F4B183", "A9D18E", "FFD966", "C9A0DC", "E8A0A0"]
 
@@ -4274,10 +4275,10 @@ def _gruppi_trova_assistente(df: pd.DataFrame, gruppo: str) -> str:
 
 def _gruppi_dati_filtrati(df: pd.DataFrame, includi_inattivi: bool = False):
     if "Attivi / Inattivi" in df.columns:
-        categorias = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
-        df = df[categorias != "TR"] if includi_inattivi else df[categorias == "A"]
+        categorie = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
+        df = df[categorie != "TR"] if includi_inattivi else df[categorie == "A"]
     else:
-        categorias = pd.Series(["A"] * len(df), index=df.index)
+        categorie = pd.Series(["A"] * len(df), index=df.index)
 
     gruppi = {}
     for idx, riga in df.iterrows():
@@ -4287,9 +4288,9 @@ def _gruppi_dati_filtrati(df: pd.DataFrame, includi_inattivi: bool = False):
         g = str(riga.get("Gruppo", "")).strip()
         if not g:
             continue
-        stato = categorias.loc[idx] if idx in categorias.index else "A"
+        stato = categorie.loc[idx] if idx in categorie.index else "A"
         gruppi.setdefault(g, []).append({"nome": nome, "sigla": _gruppi_calcola_sigla(riga.to_dict()),
-                                         "stato": stato})
+                                          "stato": stato})
     return df, gruppi
 
 
@@ -4385,7 +4386,7 @@ def _gruppi_tabella_pdf(df: pd.DataFrame, nome_gruppo: str, membri: list,
         else:
             dati.append(["", "", ""])
 
-    larghezze = [0.8 * cm, 5.5 * cm, 1.7 * cm]
+    larghezze = [1.1 * cm, 4.6 * cm, 1.8 * cm]
     t = Table(dati, colWidths=larghezze)
     stile = [
         ("SPAN", (0, 0), (2, 0)),
@@ -4402,8 +4403,8 @@ def _gruppi_tabella_pdf(df: pd.DataFrame, nome_gruppo: str, membri: list,
         ("ALIGN", (0, 3), (0, -1), "CENTER"),
         ("ALIGN", (2, 3), (2, -1), "CENTER"),
         ("FONTSIZE", (0, 0), (2, -1), 7),
-        ("TOPPADDING", (0, 0), (2, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (2, -1), 2),
+        ("TOPPADDING", (0, 0), (2, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (2, -1), 1),
         ("VALIGN", (0, 0), (2, -1), "MIDDLE"),
     ]
     for i, m in enumerate(membri_ordinati):
@@ -4420,18 +4421,9 @@ def genera_pdf_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.7 * cm, bottomMargin=0.7 * cm,
-                            leftMargin=0.7 * cm, rightMargin=0.7 * cm)
+                             leftMargin=0.7 * cm, rightMargin=0.7 * cm)
     stili = getSampleStyleSheet()
-    
-    # Intestazione principale con titolo a sinistra e info congregazione a destra
-    intestazione_data = [
-        [Paragraph("<b>Gruppi di servizio</b>", stili["Title"]), 
-         Paragraph("<para align=right><font size=8 color='#555555'>Congregazione: Vibo Valentia Marina<br/>Rev. 1/1 data: 01 settembre 2026</font></para>", stili["Normal"])]
-    ]
-    tab_intestazione = Table(intestazione_data, colWidths=[11 * cm, 8 * cm])
-    tab_intestazione.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "BOTTOM")]))
-    
-    elementi = [tab_intestazione, Spacer(1, 10)]
+    elementi = [Paragraph("Gruppi di servizio", stili["Title"]), Spacer(1, 8)]
 
     for indice in range(0, len(nomi_gruppi), 2):
         coppia = nomi_gruppi[indice:indice + 2]
@@ -4440,17 +4432,13 @@ def genera_pdf_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False)
         for posizione, nome_gruppo in enumerate(coppia):
             indice_colore = (indice // 2 + posizione) % len(COLORI_GRUPPI)
             celle.append(_gruppi_tabella_pdf(df, nome_gruppo, gruppi[nome_gruppo],
-                                             COLORI_GRUPPI[indice_colore],
-                                             COLORI_TESTATA_GRUPPI[indice_colore],
-                                             righe_totali=max_membri))
+                                              COLORI_GRUPPI[indice_colore],
+                                              COLORI_TESTATA_GRUPPI[indice_colore],
+                                              righe_totali=max_membri))
         if len(celle) == 1:
             celle.append("")
-        riga_esterna = Table([celle], colWidths=[9.5 * cm, 9.5 * cm])
-        riga_esterna.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 2),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-        ]))
+        riga_esterna = Table([celle], colWidths=[9 * cm, 9 * cm])
+        riga_esterna.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
         elementi.append(KeepTogether([riga_esterna, Spacer(1, 8)]))
 
     doc.build(elementi)
@@ -4480,7 +4468,7 @@ def mostra_gruppi_servizio():
     df = df.reset_index(drop=True)
 
     formato_export = st.radio("Formato esportazione", ["Excel", "PDF", "PDF includi inattivi"],
-                              horizontal=True, key="gruppi_formato_export")
+                               horizontal=True, key="gruppi_formato_export")
     if st.button(f"📥 Esporta Gruppi di servizio ({formato_export})", key="esporta_gruppi",
                  use_container_width=True):
         if formato_export == "Excel":
@@ -4515,12 +4503,12 @@ def mostra_gruppi_servizio():
             )
 
     if "Attivi / Inattivi" in df.columns:
-        categorias = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
+        categorie = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
     else:
-        categorias = pd.Series(["A"] * len(df), index=df.index)
+        categorie = pd.Series(["A"] * len(df), index=df.index)
 
     stato_scelto = st.radio("Stato", ["🟢 Attivi", "🔺 Inattivi"], horizontal=True,
-                            key="gruppi_stato_filtro")
+                             key="gruppi_stato_filtro")
     codice_stato = {v: k for k, v in ETICHETTE_STATO_GRUPPI.items()}[stato_scelto]
 
     def _chiave_cb(nome: str) -> str:
@@ -4532,7 +4520,7 @@ def mostra_gruppi_servizio():
                 st.session_state[chiave] = False
         st.session_state.gruppi_stato_precedente = codice_stato
 
-    df_filtrato = df[categorias == codice_stato]
+    df_filtrato = df[categorie == codice_stato]
     df_filtrato = df_filtrato[df_filtrato["Cognome e Nome"].astype(str).str.strip() != ""]
 
     if df_filtrato.empty:
@@ -4541,7 +4529,7 @@ def mostra_gruppi_servizio():
 
     conteggi_per_gruppo = {}
     for idx, riga in df.iterrows():
-        stato_riga = categorias.loc[idx]
+        stato_riga = categorie.loc[idx]
         if stato_riga not in ("A", "I"):
             continue
         g = str(riga.get("Gruppo", "")).strip() or "(Senza gruppo)"
@@ -4610,7 +4598,7 @@ def mostra_gruppi_servizio():
                             valori = df.loc[idx].to_dict()
                             valori["Gruppo"] = ""
                             ok, err_salva = salva_riga_anagrafica(workbook, valori,
-                                                                 riga_da_aggiornare=numero_riga_foglio)
+                                                                   riga_da_aggiornare=numero_riga_foglio)
                             if not ok:
                                 errori.append(f"{nome}: {err_salva}")
                     for nome in selezionati:
@@ -4638,7 +4626,7 @@ def mostra_gruppi_servizio():
                                 valori = df.loc[idx].to_dict()
                                 valori["Gruppo"] = nome_gruppo_finale
                                 ok, err_salva = salva_riga_anagrafica(workbook, valori,
-                                                                     riga_da_aggiornare=numero_riga_foglio)
+                                                                       riga_da_aggiornare=numero_riga_foglio)
                                 if not ok:
                                     errori.append(f"{nome}: {err_salva}")
                         for nome in selezionati:
@@ -4651,6 +4639,7 @@ def mostra_gruppi_servizio():
                                 st.session_state.pop(_chiave_cb(nome), None)
                             st.session_state.gruppi_mostra_scelta = False
                             st.success(f"✔ {n_sel} Proclamatori abbinati a «{nome_gruppo_finale}».")
+
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: Presenti alle adunanze
 # ─────────────────────────────────────────────────────────────────
