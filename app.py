@@ -4369,51 +4369,6 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
     return buf.getvalue()
 
 
-def _gruppi_tabella_pdf(df: pd.DataFrame, nome_gruppo: str, membri: list,
-                         colore_corpo: str, colore_testata: str, righe_totali: int = None):
-    membri_ordinati = _gruppi_ordina_membri(membri)
-    assistente = _gruppi_trova_assistente(df, nome_gruppo)
-    n_righe = righe_totali if righe_totali is not None else len(membri_ordinati)
-
-    dati = [[f"Gruppo {nome_gruppo.upper()}", "", ""],
-            [nome_gruppo, "", "Sorvegliante"],
-            [assistente, "", "Assistente"]]
-    for i in range(n_righe):
-        if i < len(membri_ordinati):
-            m = membri_ordinati[i]
-            dati.append([str(i + 1), m["nome"], m["sigla"]])
-        else:
-            dati.append(["", "", ""])
-
-    larghezze = [1.1 * cm, 4.6 * cm, 1.8 * cm]
-    t = Table(dati, colWidths=larghezze)
-    stile = [
-        ("SPAN", (0, 0), (2, 0)),
-        ("SPAN", (0, 1), (1, 1)),
-        ("SPAN", (0, 2), (1, 2)),
-        ("BACKGROUND", (0, 0), (2, 0), colors.HexColor("#" + colore_testata)),
-        ("FONTNAME", (0, 0), (2, 0), "Helvetica-Bold"),
-        ("ALIGN", (0, 0), (2, 0), "CENTER"),
-        ("BACKGROUND", (0, 1), (2, 2), colors.HexColor("#" + colore_corpo)),
-        ("FONTNAME", (0, 1), (1, 2), "Helvetica-BoldOblique"),
-        ("ALIGN", (2, 1), (2, 2), "RIGHT"),
-        ("BACKGROUND", (0, 3), (2, -1), colors.HexColor("#" + colore_corpo)),
-        ("GRID", (0, 3), (2, -1), 0.4, colors.grey),
-        ("ALIGN", (0, 3), (0, -1), "CENTER"),
-        ("ALIGN", (2, 3), (2, -1), "CENTER"),
-        ("FONTSIZE", (0, 0), (2, -1), 7),
-        ("TOPPADDING", (0, 0), (2, -1), 1),
-        ("BOTTOMPADDING", (0, 0), (2, -1), 1),
-        ("VALIGN", (0, 0), (2, -1), "MIDDLE"),
-    ]
-    for i, m in enumerate(membri_ordinati):
-        if m.get("stato") == "I":
-            riga_tabella = 3 + i
-            stile.append(("TEXTCOLOR", (0, riga_tabella), (2, riga_tabella), colors.red))
-    t.setStyle(TableStyle(stile))
-    return t
-
-
 def genera_pdf_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
     df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
     nomi_gruppi = sorted(gruppi.keys())
@@ -4422,23 +4377,33 @@ def genera_pdf_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False)
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.7 * cm, bottomMargin=0.7 * cm,
                             leftMargin=0.7 * cm, rightMargin=0.7 * cm)
     stili = getSampleStyleSheet()
-    elementi = [Paragraph("Gruppi di servizio", stili["Title"]), Spacer(1, 8)]
+    elementi = [Paragraph("Gruppi di servizio", stili["Title"]), Spacer(1, 10)]
 
-    for indice in range(0, len(nomi_gruppi), 2):
-        coppia = nomi_gruppi[indice:indice + 2]
-        max_membri = max(len(gruppi[g]) for g in coppia)
-        celle = []
-        for posizione, nome_gruppo in enumerate(coppia):
-            indice_colore = (indice // 2 + posizione) % len(COLORI_GRUPPI)
-            celle.append(_gruppi_tabella_pdf(df, nome_gruppo, gruppi[nome_gruppo],
-                                             COLORI_GRUPPI[indice_colore],
-                                             COLORI_TESTATA_GRUPPI[indice_colore],
-                                             righe_totali=max_membri))
-        if len(celle) == 1:
-            celle.append("")
-        riga_esterna = Table([celle], colWidths=[9 * cm, 9 * cm])
-        riga_esterna.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        elementi.append(KeepTogether([riga_esterna, Spacer(1, 8)]))
+    for nome_gruppo in nomi_gruppi:
+        membri_ordinati = _gruppi_ordina_membri(gruppi[nome_gruppo])
+        assistente = _gruppi_trova_assistente(df, nome_gruppo)
+
+        # Costruiamo il blocco verticale in stile elenco come nel riferimento
+        righe_gruppo = []
+        righe_gruppo.append([Paragraph(f"<b>Gruppo: {nome_gruppo}</b>", stili["Heading3"]), ""])
+        
+        for m in membri_ordinati:
+            sigla_txt = f" ({m['sigla']})" if m.get("sigla") else ""
+            righe_gruppo.append([Paragraph(m["nome"] + sigla_txt, stili["Normal"]), ""])
+
+        righe_gruppo.append([Paragraph("<b>Sorvegliante</b>", stili["Normal"]), ""])
+        righe_gruppo.append([Paragraph("<b>Assistente</b>", stili["Normal"]), ""])
+        righe_gruppo.append([Paragraph("Congregazione: Vibo Valentia Marina", stili["Normal"]), ""])
+        righe_gruppo.append([Paragraph("Rev. 1/1 data: 01 settembre 2026", stili["Normal"]), ""])
+
+        t = Table(righe_gruppo, colWidths=[15 * cm, 4 * cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E4D6EC")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
+        ]))
+        elementi.append(KeepTogether([t, Spacer(1, 10)]))
 
     doc.build(elementi)
     buf.seek(0)
@@ -4623,7 +4588,7 @@ def mostra_gruppi_servizio():
                                 idx = idx_lista[0]
                                 numero_riga_foglio = RIGA_INTESTAZIONE_ANAGRAFICA + 1 + idx
                                 valori = df.loc[idx].to_dict()
-                                valerori["Gruppo"] = nome_gruppo_finale
+                                valori["Gruppo"] = nome_gruppo_finale
                                 ok, err_salva = salva_riga_anagrafica(workbook, valori,
                                                                      riga_da_aggiornare=numero_riga_foglio)
                                 if not ok:
