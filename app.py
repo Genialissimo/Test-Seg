@@ -4238,10 +4238,9 @@ def mostra_cartoline_registrazione():
 
 
 # ─────────────────────────────────────────────────────────────────
-# BLOCCO COMPLETO: GRUPPI DI SERVIZIO (EXCEL, HTML, PDF & ANTEPRIMA)
+# BLOCCO COMPLETO: GRUPPI DI SERVIZIO (EXCEL, HTML, PDF SENZA ANTEPRIMA)
 # ─────────────────────────────────────────────────────────────────
 import io
-import base64
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -4398,9 +4397,9 @@ def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
         
         html_righe += f"""
             <tr>
-                <td style="text-align:center; width:9%; border-left:3px solid #{colore_testata}; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9;
+                <td style="text-align:center; width:8%; border-left:3px solid #{colore_testata}; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9;
                            padding:1.6px 4px; font-size:7.6px; color:#888888;">{i + 1}</td>
-                <td style="width:66%; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:8px; color:{colore_testo};">{nome_val}</td>
+                <td style="width:67%; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:8px; color:{colore_testo};">{nome_val}</td>
                 <td style="text-align:center; width:25%; border-right:0.5px solid #D9D9D9; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:7.6px;
                            font-weight:bold; color:#{colore_testata};">{sigla_val}</td>
             </tr>
@@ -4448,14 +4447,15 @@ def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool 
             celle.append("")
         righe_griglia += f"""
         <tr>
-            <td style="width:9cm; height:{altezza_riga_cm:.2f}cm; vertical-align:top;">{celle[0]}</td>
-            <td style="width:1cm;"></td>
-            <td style="width:9cm; height:{altezza_riga_cm:.2f}cm; vertical-align:top;">{celle[1]}</td>
+            <td style="width:9.6cm; height:{altezza_riga_cm:.2f}cm; vertical-align:top;">{celle[0]}</td>
+            <td style="width:0.8cm;"></td>
+            <td style="width:9.6cm; height:{altezza_riga_cm:.2f}cm; vertical-align:top;">{celle[1]}</td>
         </tr>
         """
 
+    # Griglia allineata simmetricamente con larghezza totale 20cm (perfetta per margini da 0.5cm)
     griglia_html = f'''
-    <table style="width:19cm; margin: 0 auto; border-collapse:collapse;">
+    <table style="width:20cm; margin: 0 auto; border-collapse:collapse;">
         {righe_griglia}
     </table>
     '''
@@ -4473,10 +4473,10 @@ def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool 
     <style>
         @page {{ 
             size: A4 portrait; 
-            margin-top: 0.7cm;
-            margin-bottom: 0.7cm;
-            margin-left: 1.0cm;
-            margin-right: 1.0cm;
+            margin-top: 0.6cm;
+            margin-bottom: 0.6cm;
+            margin-left: 0.5cm;
+            margin-right: 0.5cm;
         }}
         body {{ font-family: Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 0; }}
     </style>
@@ -4556,12 +4556,6 @@ def mostra_gruppi_servizio():
                 use_container_width=True,
                 on_click=lambda: st.session_state.pop("gruppi_export_pronto", None),
             )
-            
-            base64_pdf = base64.b64encode(dati_file).decode('utf-8')
-            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="700px" type="application/pdf"></iframe>'
-            
-            st.markdown("### 👁️ Anteprima PDF")
-            st.markdown(pdf_display, unsafe_allow_html=True)
 
     if "Attivi / Inattivi" in df.columns:
         categorie = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
@@ -4700,7 +4694,6 @@ def mostra_gruppi_servizio():
                                 st.session_state.pop(_chiave_cb(nome), None)
                             st.session_state.gruppi_mostra_scelta = False
                             st.success(f"✔ {n_sel} Proclamatori abbinati a «{nome_gruppo_finale}».")
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: Presenti alle adunanze
 # ─────────────────────────────────────────────────────────────────
