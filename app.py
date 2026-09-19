@@ -4234,20 +4234,14 @@ def mostra_cartoline_registrazione():
                                     use_container_width=True,
                                     on_click=lambda: st.session_state.pop("cartoline_pronto", None))
 
-st.divider()
+    st.divider()
 
 
 # ─────────────────────────────────────────────────────────────────
-# PAGINA: GRUPPI DI SERVIZIO (COMPLETO DI HTML E PDF)
+# PAGINA: GRUPPI DI SERVIZIO
 # ─────────────────────────────────────────────────────────────────
-import io
-import pandas as pd
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from xhtml2pdf import pisa
-
 ETICHETTE_STATO_GRUPPI = {"A": "🟢 Attivi", "I": "🔺 Inattivi", "TR": "↔️ Trasferiti"}
+
 
 COLORI_GRUPPI = ["BDD7EE", "FBE0D0", "D8ECD2", "FCEDB6", "E4D6EC", "F5C6C6"]
 COLORI_TESTATA_GRUPPI = ["9DC3E6", "F4B183", "A9D18E", "FFD966", "C9A0DC", "E8A0A0"]
@@ -4295,11 +4289,8 @@ def _gruppi_dati_filtrati(df: pd.DataFrame, includi_inattivi: bool = False):
         if not g:
             continue
         stato = categorie.loc[idx] if idx in categorie.index else "A"
-        gruppi.setdefault(g, []).append({
-            "nome": nome, 
-            "sigla": _gruppi_calcola_sigla(riga.to_dict()),
-            "stato": stato
-        })
+        gruppi.setdefault(g, []).append({"nome": nome, "sigla": _gruppi_calcola_sigla(riga.to_dict()),
+                                          "stato": stato})
     return df, gruppi
 
 
@@ -4309,6 +4300,7 @@ def _gruppi_ordina_membri(membri: list) -> list:
 
 def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
     df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
+
     nomi_gruppi = sorted(gruppi.keys())
 
     wb = Workbook()
@@ -4378,118 +4370,80 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
     return buf.getvalue()
 
 
-def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
-                          colore_corpo: str, colore_testata: str) -> str:
+def _gruppi_tabella_pdf(df: pd.DataFrame, nome_gruppo: str, membri: list,
+                         colore_corpo: str, colore_testata: str, righe_totali: int = None):
     membri_ordinati = _gruppi_ordina_membri(membri)
     assistente = _gruppi_trova_assistente(df, nome_gruppo)
-    
-    html_righe = ""
+    n_righe = righe_totali if righe_totali is not None else len(membri_ordinati)
+
+    dati = [[f"Gruppo {nome_gruppo.upper()}", "", ""],
+            [nome_gruppo, "", "Sorvegliante"],
+            [assistente, "", "Assistente"]]
+    for i in range(n_righe):
+        if i < len(membri_ordinati):
+            m = membri_ordinati[i]
+            dati.append([str(i + 1), m["nome"], m["sigla"]])
+        else:
+            dati.append(["", "", ""])
+
+    larghezze = [1.1 * cm, 4.6 * cm, 1.8 * cm]
+    t = Table(dati, colWidths=larghezze)
+    stile = [
+        ("SPAN", (0, 0), (2, 0)),
+        ("SPAN", (0, 1), (1, 1)),
+        ("SPAN", (0, 2), (1, 2)),
+        ("BACKGROUND", (0, 0), (2, 0), colors.HexColor("#" + colore_testata)),
+        ("FONTNAME", (0, 0), (2, 0), "Helvetica-Bold"),
+        ("ALIGN", (0, 0), (2, 0), "CENTER"),
+        ("BACKGROUND", (0, 1), (2, 2), colors.HexColor("#" + colore_corpo)),
+        ("FONTNAME", (0, 1), (1, 2), "Helvetica-BoldOblique"),
+        ("ALIGN", (2, 1), (2, 2), "RIGHT"),
+        ("BACKGROUND", (0, 3), (2, -1), colors.HexColor("#" + colore_corpo)),
+        ("GRID", (0, 3), (2, -1), 0.4, colors.grey),
+        ("ALIGN", (0, 3), (0, -1), "CENTER"),
+        ("ALIGN", (2, 3), (2, -1), "CENTER"),
+        ("FONTSIZE", (0, 0), (2, -1), 7),
+        ("TOPPADDING", (0, 0), (2, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (2, -1), 1),
+        ("VALIGN", (0, 0), (2, -1), "MIDDLE"),
+    ]
     for i, m in enumerate(membri_ordinati):
-        stile_stato = "color: red;" if m.get("stato") == "I" else ""
-        html_righe += f"""
-            <tr>
-                <td style="text-align: center; width: 12%; border: 0.5px solid #ccc; padding: 3px; {stile_stato}">{i + 1}</td>
-                <td style="width: 58%; border: 0.5px solid #ccc; padding: 3px; {stile_stato}">{m["nome"]}</td>
-                <td style="text-align: center; width: 30%; border: 0.5px solid #ccc; padding: 3px; {stile_stato}">{m["sigla"]}</td>
-            </tr>
-        """
-
-    html = f"""
-    <div style="width: 48%; float: left; margin-right: 2%; margin-bottom: 15px; background-color: #{colore_corpo}; border-left: 4px solid #{colore_testata}; padding: 8px; box-sizing: border-box;">
-        <div style="font-size: 13px; font-weight: bold; color: #{colore_testata}; margin-bottom: 6px; text-transform: uppercase;">
-            Gruppo {nome_gruppo.upper()}
-        </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 10px; background-color: #ffffff;">
-            <tr style="background-color: #{colore_corpo};">
-                <td style="text-align: center; width: 12%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">1</td>
-                <td style="width: 58%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold; font-style: italic; color: #1F4E78;">{nome_gruppo}</td>
-                <td style="text-align: right; width: 30%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">Sorvegliante</td>
-            </tr>
-            <tr style="background-color: #{colore_corpo};">
-                <td style="text-align: center; width: 12%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">2</td>
-                <td style="width: 58%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold; font-style: italic; color: #1F4E78;">{assistente}</td>
-                <td style="text-align: right; width: 30%; border: 0.5px solid #ccc; padding: 3px; font-weight: bold;">Assistente</td>
-            </tr>
-            {html_righe}
-        </table>
-    </div>
-    """
-    return html
+        if m.get("stato") == "I":
+            riga_tabella = 3 + i
+            stile.append(("TEXTCOLOR", (0, riga_tabella), (2, riga_tabella), colors.red))
+    t.setStyle(TableStyle(stile))
+    return t
 
 
-def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
+def genera_pdf_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
     df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
     nomi_gruppi = sorted(gruppi.keys())
 
-    griglie_html = ""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.7 * cm, bottomMargin=0.7 * cm,
+                             leftMargin=0.7 * cm, rightMargin=0.7 * cm)
+    stili = getSampleStyleSheet()
+    elementi = [Paragraph("Gruppi di servizio", stili["Title"]), Spacer(1, 8)]
+
     for indice in range(0, len(nomi_gruppi), 2):
         coppia = nomi_gruppi[indice:indice + 2]
-        griglie_html += '<div style="width: 100%; clear: both; margin-bottom: 10px;">'
+        max_membri = max(len(gruppi[g]) for g in coppia)
+        celle = []
         for posizione, nome_gruppo in enumerate(coppia):
             indice_colore = (indice // 2 + posizione) % len(COLORI_GRUPPI)
-            griglie_html += _gruppi_tabella_html(
-                df, nome_gruppo, gruppi[nome_gruppo],
-                COLORI_GRUPPI[indice_colore],
-                COLORI_TESTATA_GRUPPI[indice_colore]
-            )
-        griglie_html += '</div><div style="clear: both;"></div>'
+            celle.append(_gruppi_tabella_pdf(df, nome_gruppo, gruppi[nome_gruppo],
+                                              COLORI_GRUPPI[indice_colore],
+                                              COLORI_TESTATA_GRUPPI[indice_colore],
+                                              righe_totali=max_membri))
+        if len(celle) == 1:
+            celle.append("")
+        riga_esterna = Table([celle], colWidths=[9 * cm, 9 * cm])
+        riga_esterna.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+        elementi.append(KeepTogether([riga_esterna, Spacer(1, 8)]))
 
-    html_completo = f"""<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <style>
-        @page {{
-            size: A4 portrait;
-            margin: 1cm;
-        }}
-        body {{
-            font-family: Helvetica, Arial, sans-serif;
-            color: #333;
-            font-size: 10px;
-            margin: 0;
-            padding: 0;
-        }}
-        .header {{
-            border-bottom: 2px solid #ccc;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
-            width: 100%;
-        }}
-        h1 {{
-            font-size: 20px;
-            color: #4b6cb7;
-            margin: 0;
-            float: left;
-        }}
-        .meta {{
-            text-align: right;
-            font-size: 9px;
-            color: #6b7280;
-            float: right;
-        }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Gruppi di servizio</h1>
-        <div class="meta">
-            <span style="color: #2563eb; font-weight: bold;">Congregazione: Vibo Valentia Marina</span>
-        </div>
-        <div style="clear: both;"></div>
-    </div>
-    {griglie_html}
-</body>
-</html>
-"""
-    pdf_output = io.BytesIO()
-    pisa_status = pisa.CreatePDF(io.BytesIO(html_completo.encode("utf-8")), dest=pdf_output)
-    
-    if pisa_status.err:
-        raise Exception("Errore durante la generazione del PDF HTML")
-        
-    pdf_output.seek(0)
-    return pdf_output.getvalue()
+    doc.build(elementi)
+    buf.seek(0)
+    return buf.getvalue()
 
 
 def mostra_gruppi_servizio():
@@ -4514,16 +4468,16 @@ def mostra_gruppi_servizio():
     df = df.reset_index(drop=True)
 
     formato_export = st.radio("Formato esportazione", ["Excel", "PDF", "PDF includi inattivi"],
-                              horizontal=True, key="gruppi_formato_export")
+                               horizontal=True, key="gruppi_formato_export")
     if st.button(f"📥 Esporta Gruppi di servizio ({formato_export})", key="esporta_gruppi",
                  use_container_width=True):
         if formato_export == "Excel":
             st.session_state.gruppi_export_pronto = ("xlsx", genera_excel_gruppi_servizio(df))
         elif formato_export == "PDF":
-            st.session_state.gruppi_export_pronto = ("pdf", genera_pdf_da_html_gruppi_servizio(df))
+            st.session_state.gruppi_export_pronto = ("pdf", genera_pdf_gruppi_servizio(df))
         else:
             st.session_state.gruppi_export_pronto = (
-                "pdf", genera_pdf_da_html_gruppi_servizio(df, includi_inattivi=True))
+                "pdf", genera_pdf_gruppi_servizio(df, includi_inattivi=True))
 
     if st.session_state.get("gruppi_export_pronto"):
         tipo_file, dati_file = st.session_state.gruppi_export_pronto
@@ -4554,7 +4508,7 @@ def mostra_gruppi_servizio():
         categorie = pd.Series(["A"] * len(df), index=df.index)
 
     stato_scelto = st.radio("Stato", ["🟢 Attivi", "🔺 Inattivi"], horizontal=True,
-                            key="gruppi_stato_filtro")
+                             key="gruppi_stato_filtro")
     codice_stato = {v: k for k, v in ETICHETTE_STATO_GRUPPI.items()}[stato_scelto]
 
     def _chiave_cb(nome: str) -> str:
@@ -4685,8 +4639,6 @@ def mostra_gruppi_servizio():
                                 st.session_state.pop(_chiave_cb(nome), None)
                             st.session_state.gruppi_mostra_scelta = False
                             st.success(f"✔ {n_sel} Proclamatori abbinati a «{nome_gruppo_finale}».")
-
-
 
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: Presenti alle adunanze
@@ -7582,9 +7534,6 @@ def _form_impegno(editor: dict, categorie_disponibili: list):
                 st.session_state.impegni_conferma_elimina = None
                 st.rerun()
 
-
-from datetime import datetime, date
-import streamlit as st
 
 def _impegni_apri_modifica(riga_dict: dict, rf: int):
     st.session_state.impegni_editor = {
