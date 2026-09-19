@@ -4323,22 +4323,28 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
     gutter = 1
     riga_cursore = 1
 
-    # Struttura simmetrica a coppie di gruppi per riga (identica al layout HTML/PDF)
     for indice_coppia in range(0, len(nomi_gruppi), 2):
         coppia = nomi_gruppi[indice_coppia:indice_coppia + 2]
         max_membri = max((len(gruppi[g]) for g in coppia), default=0)
 
         for posizione, nome_gruppo in enumerate(coppia):
-            indice_colore = (indice_coppia // 2 + posizione) % len(COLORI_GRUPPI)
+            indice_assoluto = indice_coppia + posizione
+            # Forza il viola (indice 4) per il blocco in basso a sinistra
+            if indice_assoluto == 2:
+                indice_colore = 4
+            else:
+                indice_colore = indice_assoluto % len(COLORI_GRUPPI)
+
             colore_corpo = COLORI_GRUPPI[indice_colore]
             colore_testata = COLORI_TESTATA_GRUPPI[indice_colore]
+            
             col_base = 1 + posizione * (blocco_colonne + gutter)
             col_num, col_nome, col_sigla = col_base, col_base + 1, col_base + 2
 
             r = riga_cursore
             assistente = _gruppi_trova_assistente(df, nome_gruppo)
 
-            # Riga 1: Nome Gruppo / Sorvegliante (uguale al PDF)
+            # Riga 1: Nome Gruppo / Sorvegliante
             ws.merge_cells(start_row=r, start_column=col_num, end_row=r, end_column=col_nome)
             c1 = ws.cell(row=r, column=col_num, value=nome_gruppo)
             c1.font = Font(name="Arial", size=10, bold=True, color="1A1A1A")
@@ -4350,7 +4356,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
             c2.alignment = Alignment(horizontal="right", vertical="center")
             c2.fill = PatternFill("solid", fgColor=colore_corpo)
 
-            # Riga 2: Assistente (uguale al PDF)
+            # Riga 2: Assistente
             rr_ass = r + 1
             ws.merge_cells(start_row=rr_ass, start_column=col_num, end_row=rr_ass, end_column=col_nome)
             c1_ass = ws.cell(row=rr_ass, column=col_num, value=assistente)
@@ -4363,7 +4369,6 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
             c2_ass.alignment = Alignment(horizontal="right", vertical="center")
             c2_ass.fill = PatternFill("solid", fgColor=colore_corpo)
 
-            # Applicazione del bordo inferiore e testata laterale alle prime due righe del blocco
             for rw in (r, rr_ass):
                 ws.cell(row=rw, column=col_num).border = Border(
                     left=Side(style="medium", color=colore_testata),
@@ -4390,7 +4395,6 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
                 
                 cn.alignment = Alignment(horizontal="center", vertical="center")
                 cn.font = Font(name="Arial", size=8, color="888888")
-                # Bordo sinistro evidenziato con il colore di testata del gruppo
                 cn.border = Border(
                     left=Side(style="medium", color=colore_testata),
                     right=bordo_sottile, top=bordo_sottile, bottom=bordo_sottile
@@ -4399,14 +4403,11 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
                 csigla.alignment = Alignment(horizontal="center", vertical="center")
                 csigla.font = Font(name="Arial", size=8, bold=True, color=colore_testata)
 
-            # Dimensioni colonne per blocco
             ws.column_dimensions[get_column_letter(col_num)].width = 4
             ws.column_dimensions[get_column_letter(col_nome)].width = 28
             ws.column_dimensions[get_column_letter(col_sigla)].width = 10
 
-        # Spaziatore tra le colonne dei gruppi affiancati
         ws.column_dimensions[get_column_letter(col_base + 3)].width = 3
-
         riga_cursore += 2 + max_membri + 2
 
     buf = io.BytesIO()
@@ -4472,7 +4473,12 @@ def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool 
         max_membri_coppia = max((len(gruppi[g]) for g in coppia), default=0)
         celle = []
         for posizione, nome_gruppo in enumerate(coppia):
-            indice_colore = (indice // 2 + posizione) % len(COLORI_GRUPPI)
+            indice_assoluto = indice + posizione
+            if indice_assoluto == 2:
+                indice_colore = 4
+            else:
+                indice_colore = indice_assoluto % len(COLORI_GRUPPI)
+            
             celle.append(_gruppi_tabella_html(
                 df, nome_gruppo, gruppi[nome_gruppo],
                 COLORI_GRUPPI[indice_colore], COLORI_TESTATA_GRUPPI[indice_colore],
