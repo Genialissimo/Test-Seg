@@ -1,4 +1,4 @@
-k"""
+"""
 app.py
 Gestione Registrazioni SEG - Web App (Streamlit + Google Sheets)
 """
