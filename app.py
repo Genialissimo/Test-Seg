@@ -4238,9 +4238,10 @@ def mostra_cartoline_registrazione():
 
 
 # ─────────────────────────────────────────────────────────────────
-# PAGINA: GRUPPI DI SERVIZIO (COMPLETO DI HTML E PDF)
+# BLOCCO COMPLETO: GRUPPI DI SERVIZIO (EXCEL, HTML, PDF & ANTEPRIMA)
 # ─────────────────────────────────────────────────────────────────
 import io
+import base64
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -4453,7 +4454,12 @@ def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool 
         </tr>
         """
 
-    griglia_html = f'<table style="width:100%; border-collapse:collapse;">{righe_griglia}</table>'
+    # Griglia centrata a larghezza fissa (19cm) per bilanciare i margini sinistro e destro
+    griglia_html = f'''
+    <table style="width:19cm; margin: 0 auto; border-collapse:collapse;">
+        {righe_griglia}
+    </table>
+    '''
 
     riga_meta = ""
     if congregazione:
@@ -4466,7 +4472,13 @@ def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool 
 <head>
     <meta charset="UTF-8">
     <style>
-        @page {{ size: A4 portrait; margin: 0.7cm; }}
+        @page {{ 
+            size: A4 portrait; 
+            margin-top: 0.7cm;
+            margin-bottom: 0.7cm;
+            margin-left: 1.0cm;
+            margin-right: 1.0cm;
+        }}
         body {{ font-family: Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 0; }}
     </style>
 </head>
@@ -4545,6 +4557,13 @@ def mostra_gruppi_servizio():
                 use_container_width=True,
                 on_click=lambda: st.session_state.pop("gruppi_export_pronto", None),
             )
+            
+            # --- ANTEPRIMA PDF INTEGRATA ---
+            base64_pdf = base64.b64encode(dati_file).decode('utf-8')
+            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="700px" type="application/pdf"></iframe>'
+            
+            st.markdown("### 👁️ Anteprima PDF")
+            st.markdown(pdf_display, unsafe_allow_html=True)
 
     if "Attivi / Inattivi" in df.columns:
         categorie = df["Attivi / Inattivi"].apply(categoria_stato_proclamatore)
