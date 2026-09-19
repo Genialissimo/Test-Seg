@@ -4315,7 +4315,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
     ws = wb.active
     ws.title = "Gruppi di servizio"
 
-    bordo_sottile = Side(style="thin", color="999999")
+    bordo_sottile = Side(style="thin", color="D9D9D9")
     bordo = Border(left=bordo_sottile, right=bordo_sottile, top=bordo_sottile, bottom=bordo_sottile)
 
     blocco_colonne = 3
@@ -4324,7 +4324,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
 
     for indice_coppia in range(0, len(nomi_gruppi), 2):
         coppia = nomi_gruppi[indice_coppia:indice_coppia + 2]
-        max_membri = max(len(gruppi[g]) for g in coppia)
+        max_membri = max((len(gruppi[g]) for g in coppia), default=0)
 
         for posizione, nome_gruppo in enumerate(coppia):
             indice_colore = (indice_coppia // 2 + posizione) % len(COLORI_GRUPPI)
@@ -4355,10 +4355,12 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
             membri = _gruppi_ordina_membri(gruppi[nome_gruppo])
             for i in range(max_membri):
                 rr = r + 3 + i
-                cn = ws.cell(row=rr, column=col_num, value=i + 1 if i < len(membri) else "")
-                cnome = ws.cell(row=rr, column=col_nome, value=membri[i]["nome"] if i < len(membri) else "")
-                csigla = ws.cell(row=rr, column=col_sigla, value=membri[i]["sigla"] if i < len(membri) else "")
-                colore_font = "FF0000" if i < len(membri) and membri[i].get("stato") == "I" else "000000"
+                ha_membro = i < len(membri)
+                cn = ws.cell(row=rr, column=col_num, value=i + 1)
+                cnome = ws.cell(row=rr, column=col_nome, value=membri[i]["nome"] if ha_membro else "")
+                csigla = ws.cell(row=rr, column=col_sigla, value=membri[i]["sigla"] if ha_membro else "")
+                
+                colore_font = "FF0000" if ha_membro and membri[i].get("stato") == "I" else "000000"
                 for c in (cn, cnome, csigla):
                     c.font = Font(name="Arial", size=10, color=colore_font)
                     c.fill = PatternFill("solid", fgColor=colore_corpo)
@@ -4379,9 +4381,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
 
 
 def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
-                          colore_corpo: str, colore_testata: str) -> str:
-    """Card di un gruppo: intestazione Sorvegliante/Assistente colorata + elenco
-    membri come righe bianche con barra colorata a sinistra (numero, nome, incarico)."""
+                         colore_corpo: str, colore_testata: str, max_righe: int) -> str:
     membri_ordinati = _gruppi_ordina_membri(membri)
     assistente = _gruppi_trova_assistente(df, nome_gruppo)
 
@@ -4389,15 +4389,20 @@ def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
     spazio_tra_righe = '<tr><td colspan="3" style="height:1.3px; border:none; padding:0;"></td></tr>'
 
     html_righe = spazio_dopo_testata
-    for i, m in enumerate(membri_ordinati):
-        colore_testo = "#CC0000" if m.get("stato") == "I" else "#1A1A1A"
+    for i in range(max_righe):
+        ha_membro = i < len(membri_ordinati)
+        m = membri_ordinati[i] if ha_membro else None
+        colore_testo = "#CC0000" if m and m.get("stato") == "I" else "#1A1A1A"
+        nome_val = m["nome"] if m else ""
+        sigla_val = m["sigla"] if m else ""
+        
         html_righe += f"""
             <tr>
-                <td style="text-align:center; width:9%; border-left:3px solid #{colore_testata};
+                <td style="text-align:center; width:9%; border-left:3px solid #{colore_testata}; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9;
                            padding:1.6px 4px; font-size:7.6px; color:#888888;">{i + 1}</td>
-                <td style="width:66%; padding:1.6px 4px; font-size:8px; color:{colore_testo};">{m["nome"]}</td>
-                <td style="text-align:center; width:25%; padding:1.6px 4px; font-size:7.6px;
-                           font-weight:bold; color:#{colore_testata};">{m["sigla"]}</td>
+                <td style="width:66%; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:8px; color:{colore_testo};">{nome_val}</td>
+                <td style="text-align:center; width:25%; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:7.6px;
+                           font-weight:bold; color:#{colore_testata};">{sigla_val}</td>
             </tr>
             {spazio_tra_righe}
         """
@@ -4425,19 +4430,20 @@ def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool 
     df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
     nomi_gruppi = sorted(gruppi.keys())
 
-    # foglio A4 diviso in 4 parti uguali: 2 righe x 2 colonne, altezza di riga fissa
     n_coppie = (len(nomi_gruppi) + 1) // 2
-    altezza_riga_cm = 24.6 / max(n_coppie, 1)  # ~24.6cm di area utile sotto il titolo
+    altezza_riga_cm = 24.6 / max(n_coppie, 1)
 
     righe_griglia = ""
     for indice in range(0, len(nomi_gruppi), 2):
         coppia = nomi_gruppi[indice:indice + 2]
+        max_membri_coppia = max((len(gruppi[g]) for g in coppia), default=0)
         celle = []
         for posizione, nome_gruppo in enumerate(coppia):
             indice_colore = (indice // 2 + posizione) % len(COLORI_GRUPPI)
             celle.append(_gruppi_tabella_html(
                 df, nome_gruppo, gruppi[nome_gruppo],
-                COLORI_GRUPPI[indice_colore], COLORI_TESTATA_GRUPPI[indice_colore]
+                COLORI_GRUPPI[indice_colore], COLORI_TESTATA_GRUPPI[indice_colore],
+                max_righe=max_membri_coppia
             ))
         if len(celle) == 1:
             celle.append("")
@@ -4638,7 +4644,7 @@ def mostra_gruppi_servizio():
                             valori = df.loc[idx].to_dict()
                             valori["Gruppo"] = ""
                             ok, err_salva = salva_riga_anagrafica(workbook, valori,
-                                                                   riga_da_aggiornare=numero_riga_foglio)
+                                                                 riga_da_aggiornare=numero_riga_foglio)
                             if not ok:
                                 errori.append(f"{nome}: {err_salva}")
                     for nome in selezionati:
