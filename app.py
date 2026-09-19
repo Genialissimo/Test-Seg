@@ -4386,7 +4386,6 @@ def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
     assistente = _gruppi_trova_assistente(df, nome_gruppo)
 
     spazio_dopo_testata = '<tr><td colspan="3" style="height:4px; border:none; padding:0;"></td></tr>'
-    spazio_tra_righe = '<tr><td colspan="3" style="height:1.3px; border:none; padding:0;"></td></tr>'
 
     html_righe = spazio_dopo_testata
     for i in range(max_righe):
@@ -4401,10 +4400,9 @@ def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
                 <td style="text-align:center; width:9%; border-left:3px solid #{colore_testata}; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9;
                            padding:1.6px 4px; font-size:7.6px; color:#888888;">{i + 1}</td>
                 <td style="width:66%; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:8px; color:{colore_testo};">{nome_val}</td>
-                <td style="text-align:center; width:25%; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:7.6px;
+                <td style="text-align:center; width:25%; border-right:0.5px solid #D9D9D9; border-top:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:1.6px 4px; font-size:7.6px;
                            font-weight:bold; color:#{colore_testata};">{sigla_val}</td>
             </tr>
-            {spazio_tra_righe}
         """
 
     html = f"""
@@ -4412,12 +4410,12 @@ def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
         <tr style="background-color:#{colore_corpo};">
             <td colspan="2" style="border-left:3px solid #{colore_testata}; padding:3px 6px;
                                     font-size:9px; font-weight:bold; color:#1A1A1A;">{nome_gruppo}</td>
-            <td style="text-align:right; padding:3px 6px; font-size:7.3px; color:#777777;">Sorvegliante</td>
+            <td style="text-align:right; border-right:0.5px solid #D9D9D9; padding:3px 6px; font-size:7.3px; color:#777777;">Sorvegliante</td>
         </tr>
         <tr style="background-color:#{colore_corpo};">
-            <td colspan="2" style="border-left:3px solid #{colore_testata}; padding:3px 6px;
+            <td colspan="2" style="border-left:3px solid #{colore_testata}; border-bottom:0.5px solid #D9D9D9; padding:3px 6px;
                                     font-size:9px; font-weight:bold; color:#1A1A1A;">{assistente}</td>
-            <td style="text-align:right; padding:3px 6px; font-size:7.3px; color:#777777;">Assistente</td>
+            <td style="text-align:right; border-right:0.5px solid #D9D9D9; border-bottom:0.5px solid #D9D9D9; padding:3px 6px; font-size:7.3px; color:#777777;">Assistente</td>
         </tr>
         {html_righe}
     </table>
