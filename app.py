@@ -4344,7 +4344,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
             r = riga_cursore
             assistente = _gruppi_trova_assistente(df, nome_gruppo)
 
-            # Riga 1: Nome Gruppo / Sorvegliante
+            # Riga 1: Nome Gruppo / Sorvegliante (con sfondo colorato)
             ws.merge_cells(start_row=r, start_column=col_num, end_row=r, end_column=col_nome)
             c1 = ws.cell(row=r, column=col_num, value=nome_gruppo)
             c1.font = Font(name="Arial", size=10, bold=True, color="1A1A1A")
@@ -4356,7 +4356,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
             c2.alignment = Alignment(horizontal="right", vertical="center")
             c2.fill = PatternFill("solid", fgColor=colore_corpo)
 
-            # Riga 2: Assistente
+            # Riga 2: Assistente (con sfondo colorato)
             rr_ass = r + 1
             ws.merge_cells(start_row=rr_ass, start_column=col_num, end_row=rr_ass, end_column=col_nome)
             c1_ass = ws.cell(row=rr_ass, column=col_num, value=assistente)
@@ -4388,13 +4388,16 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
                 csigla = ws.cell(row=rr, column=col_sigla, value=membri[i]["sigla"] if ha_membro else "")
                 
                 colore_font = "CC0000" if ha_membro and membri[i].get("stato") == "I" else "1A1A1A"
-                for c in (cn, cnome, csigla):
+                
+                # Nomi e sigle senza sfondo (bianchi)
+                for c in (cnome, csigla):
                     c.font = Font(name="Arial", size=9, color=colore_font)
-                    c.fill = PatternFill("solid", fgColor=colore_corpo)
                     c.border = bordo
                 
+                # Colonna dei numeri con sfondo colorato
+                cn.fill = PatternFill("solid", fgColor=colore_corpo)
                 cn.alignment = Alignment(horizontal="center", vertical="center")
-                cn.font = Font(name="Arial", size=8, color="888888")
+                cn.font = Font(name="Arial", size=8, color="555555")
                 cn.border = Border(
                     left=Side(style="medium", color=colore_testata),
                     right=bordo_sottile, top=bordo_sottile, bottom=bordo_sottile
@@ -4407,14 +4410,14 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
             ws.column_dimensions[get_column_letter(col_nome)].width = 28
             ws.column_dimensions[get_column_letter(col_sigla)].width = 10
 
-        ws.column_dimensions[get_column_letter(col_base + 3)].width = 3
+        # Imposta la colonna divisoria stretta (larghezza 2)
+        ws.column_dimensions[get_column_letter(col_base + 3)].width = 2
         riga_cursore += 2 + max_membri + 2
 
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
     return buf.getvalue()
-
 
 def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
                          colore_corpo: str, colore_testata: str, max_righe: int) -> str:
