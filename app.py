@@ -4308,6 +4308,9 @@ def _gruppi_ordina_membri(membri: list) -> list:
     return sorted(membri, key=lambda m: (0 if m.get("stato") != "I" else 1, m["nome"]))
 
 
+# ─────────────────────────────────────────────────────────────────
+# PAGINA: GRUPPI DI SERVIZIO (Excel con margini stretti)
+# ─────────────────────────────────────────────────────────────────
 def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
     df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
     nomi_gruppi = sorted(gruppi.keys())
@@ -4315,6 +4318,14 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
     wb = Workbook()
     ws = wb.active
     ws.title = "Gruppi di servizio"
+
+    # Impostazione margini di stampa stretti (narrow)
+    ws.page_margins.left = 0.25
+    ws.page_margins.right = 0.25
+    ws.page_margins.top = 0.75
+    ws.page_margins.bottom = 0.75
+    ws.page_margins.header = 0.3
+    ws.page_margins.footer = 0.3
 
     bordo_sottile = Side(style="thin", color="D9D9D9")
     bordo = Border(left=bordo_sottile, right=bordo_sottile, top=bordo_sottile, bottom=bordo_sottile)
@@ -4418,7 +4429,6 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
     wb.save(buf)
     buf.seek(0)
     return buf.getvalue()
-
 def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
                          colore_corpo: str, colore_testata: str, max_righe: int) -> str:
     membri_ordinati = _gruppi_ordina_membri(membri)
