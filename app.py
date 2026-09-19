@@ -4454,7 +4454,6 @@ def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool 
         </tr>
         """
 
-    # Griglia centrata a larghezza fissa (19cm) per bilanciare i margini sinistro e destro
     griglia_html = f'''
     <table style="width:19cm; margin: 0 auto; border-collapse:collapse;">
         {righe_griglia}
@@ -4558,7 +4557,6 @@ def mostra_gruppi_servizio():
                 on_click=lambda: st.session_state.pop("gruppi_export_pronto", None),
             )
             
-            # --- ANTEPRIMA PDF INTEGRATA ---
             base64_pdf = base64.b64encode(dati_file).decode('utf-8')
             pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="700px" type="application/pdf"></iframe>'
             
@@ -4661,7 +4659,7 @@ def mostra_gruppi_servizio():
                             valori = df.loc[idx].to_dict()
                             valori["Gruppo"] = ""
                             ok, err_salva = salva_riga_anagrafica(workbook, valori,
-                                                                 riga_da_aggiornare=numero_riga_foglio)
+                                                                   riga_da_aggiornare=numero_riga_foglio)
                             if not ok:
                                 errori.append(f"{nome}: {err_salva}")
                     for nome in selezionati:
