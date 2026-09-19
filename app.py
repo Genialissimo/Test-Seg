@@ -4323,7 +4323,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
     gutter = 1
     riga_cursore = 1
 
-    # Struttura simmetrica a coppie di gruppi per riga (uguale al PDF)
+    # Struttura simmetrica a coppie di gruppi per riga (identica al layout HTML/PDF)
     for indice_coppia in range(0, len(nomi_gruppi), 2):
         coppia = nomi_gruppi[indice_coppia:indice_coppia + 2]
         max_membri = max((len(gruppi[g]) for g in coppia), default=0)
@@ -4336,33 +4336,47 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
             col_num, col_nome, col_sigla = col_base, col_base + 1, col_base + 2
 
             r = riga_cursore
-            
-            # Intestazione Gruppo (speculare al PDF)
-            ws.merge_cells(start_row=r, start_column=col_num, end_row=r, end_column=col_sigla)
-            cella = ws.cell(row=r, column=col_num, value=f"{nome_gruppo}")
-            cella.font = Font(name="Arial", size=11, bold=True, color="1A1A1A")
-            cella.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-            cella.fill = PatternFill("solid", fgColor=colore_corpo)
-
-            # Righe Sorvegliante e Assistente
             assistente = _gruppi_trova_assistente(df, nome_gruppo)
-            for etichetta, valore, r_offset in (("Sorvegliante", nome_gruppo, 1), ("Assistente", assistente, 2)):
-                rr = r + r_offset
-                ws.merge_cells(start_row=rr, start_column=col_num, end_row=rr, end_column=col_nome)
-                c1 = ws.cell(row=rr, column=col_num, value=valore)
-                c1.font = Font(name="Arial", size=10, bold=True, color="1A1A1A")
-                c1.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-                c1.fill = PatternFill("solid", fgColor=colore_corpo)
-                
-                c2 = ws.cell(row=rr, column=col_sigla, value=etichetta)
-                c2.font = Font(name="Arial", size=8, color="777777")
-                c2.alignment = Alignment(horizontal="right", vertical="center")
-                c2.fill = PatternFill("solid", fgColor=colore_corpo)
+
+            # Riga 1: Nome Gruppo / Sorvegliante (uguale al PDF)
+            ws.merge_cells(start_row=r, start_column=col_num, end_row=r, end_column=col_nome)
+            c1 = ws.cell(row=r, column=col_num, value=nome_gruppo)
+            c1.font = Font(name="Arial", size=10, bold=True, color="1A1A1A")
+            c1.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            c1.fill = PatternFill("solid", fgColor=colore_corpo)
+            
+            c2 = ws.cell(row=r, column=col_sigla, value="Sorvegliante")
+            c2.font = Font(name="Arial", size=8, color="777777")
+            c2.alignment = Alignment(horizontal="right", vertical="center")
+            c2.fill = PatternFill("solid", fgColor=colore_corpo)
+
+            # Riga 2: Assistente (uguale al PDF)
+            rr_ass = r + 1
+            ws.merge_cells(start_row=rr_ass, start_column=col_num, end_row=rr_ass, end_column=col_nome)
+            c1_ass = ws.cell(row=rr_ass, column=col_num, value=assistente)
+            c1_ass.font = Font(name="Arial", size=10, bold=True, color="1A1A1A")
+            c1_ass.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            c1_ass.fill = PatternFill("solid", fgColor=colore_corpo)
+            
+            c2_ass = ws.cell(row=rr_ass, column=col_sigla, value="Assistente")
+            c2_ass.font = Font(name="Arial", size=8, color="777777")
+            c2_ass.alignment = Alignment(horizontal="right", vertical="center")
+            c2_ass.fill = PatternFill("solid", fgColor=colore_corpo)
+
+            # Applicazione del bordo inferiore e testata laterale alle prime due righe del blocco
+            for rw in (r, rr_ass):
+                ws.cell(row=rw, column=col_num).border = Border(
+                    left=Side(style="medium", color=colore_testata),
+                    top=bordo.top, bottom=bordo.bottom
+                )
+                ws.cell(row=rw, column=col_sigla).border = Border(
+                    right=bordo.right, top=bordo.top, bottom=bordo.bottom
+                )
 
             # Membri del gruppo
             membri = _gruppi_ordina_membri(gruppi[nome_gruppo])
             for i in range(max_membri):
-                rr = r + 3 + i
+                rr = r + 2 + i
                 ha_membro = i < len(membri)
                 cn = ws.cell(row=rr, column=col_num, value=i + 1)
                 cnome = ws.cell(row=rr, column=col_nome, value=membri[i]["nome"] if ha_membro else "")
@@ -4376,6 +4390,11 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
                 
                 cn.alignment = Alignment(horizontal="center", vertical="center")
                 cn.font = Font(name="Arial", size=8, color="888888")
+                # Bordo sinistro evidenziato con il colore di testata del gruppo
+                cn.border = Border(
+                    left=Side(style="medium", color=colore_testata),
+                    right=bordo_sottile, top=bordo_sottile, bottom=bordo_sottile
+                )
                 
                 csigla.alignment = Alignment(horizontal="center", vertical="center")
                 csigla.font = Font(name="Arial", size=8, bold=True, color=colore_testata)
@@ -4388,7 +4407,7 @@ def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = Fals
         # Spaziatore tra le colonne dei gruppi affiancati
         ws.column_dimensions[get_column_letter(col_base + 3)].width = 3
 
-        riga_cursore += 3 + max_membri + 2
+        riga_cursore += 2 + max_membri + 2
 
     buf = io.BytesIO()
     wb.save(buf)
