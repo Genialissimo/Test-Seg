@@ -554,7 +554,7 @@ S21_COLORE_NERO = (0, 0, 0)
 # ─────────────────────────────────────────────────────────────────
 # PULIZIA PDF DA DROPBOX — costanti e funzioni di supporto
 # ─────────────────────────────────────────────────────────────────
-DRIVE_FOLDER_ID = "13DpH-po4bXKiVHtJcTrYVuHPUoMmT9dg"
+DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 
 
 @st.cache_resource(show_spinner=False)
