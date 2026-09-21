@@ -3,11 +3,13 @@ app.py
 Gestione Registrazioni SEG - Web App (Streamlit + Google Sheets)
 """
 
+
 from datetime import datetime, date, timedelta
 import io
 import os
 import re
 import zipfile
+import dropbox
 
 import pandas as pd
 import streamlit as st
