@@ -34,6 +34,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 DRIVE_FOLDER_ID = "13DpH-po4bXKiVHtJcTrYVuHPUoMmT9dg"
+DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
+
 # ==============================================================================
 # 1. CONFIGURAZIONE PAGINA (Deve essere la prima istruzione Streamlit)
 # ==============================================================================
