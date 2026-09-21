@@ -6139,7 +6139,7 @@ def mostra_impostazioni():
 
         components.html(html_copia_link, height=140)
 
-       with st.expander("📄 Pulizia PDF da Dropbox"):
+    with st.expander("📄 Pulizia PDF da Dropbox"):
         st.caption("Incolla il link di una cartella Dropbox condivisa: vedrai solo i PDF contenuti lì, "
                    "scegli quali pagine eliminare e carica il risultato in una cartella Google Drive fissa.")
 
@@ -6236,7 +6236,6 @@ def mostra_impostazioni():
                                         st.session_state.pulizia_pdf_path_corrente = None
                                     except Exception as e:
                                         st.error(f"Errore durante il salvataggio su Drive: {e}")
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: ACCESSI / GESTIONE UTENTI (solo Amministratore)
 # ─────────────────────────────────────────────────────────────────
