@@ -576,10 +576,10 @@ def _lista_pdf_dropbox(url_cartella_condivisa: str):
     return [v for v in voci if isinstance(v, dropbox.files.FileMetadata) and v.name.lower().endswith(".pdf")]
 
 
-def _scarica_pdf_da_percorso(url_cartella_condivisa: str, percorso_relativo: str) -> bytes:
-    """Scarica un PDF da una cartella Dropbox condivisa, dato il percorso relativo del file al suo interno."""
+def _scarica_pdf_da_percorso(percorso_file: str) -> bytes:
+    """Scarica un PDF da Dropbox dato il suo percorso completo nell'account."""
     dbx = _client_dropbox()
-    _, resp = dbx.sharing_get_shared_link_file(url=url_cartella_condivisa, path=percorso_relativo)
+    _, resp = dbx.files_download(percorso_file)
     return resp.content
 
 
@@ -6173,7 +6173,7 @@ def mostra_impostazioni():
                         with st.spinner(f"Scarico «{nome_scelto}» da Dropbox..."):
                             try:
                                 st.session_state.pdf_bytes_originale = _scarica_pdf_da_percorso(
-                                    DROPBOX_SHARED_FOLDER_URL, file_scelto.path_lower)
+                                    file_scelto.path_lower)
                             except Exception as e:
                                 st.error(f"Errore nel download da Dropbox: {e}")
 
