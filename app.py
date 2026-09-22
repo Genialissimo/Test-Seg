@@ -609,32 +609,32 @@ def _rimuovi_pagine(pdf_bytes: bytes, pagine_da_eliminare: list) -> bytes:
     return output
 
 
-def _carica_su_dropbox(pdf_bytes: bytes, nome_file: str) -> str:
-    """Carica il PDF direttamente su Dropbox (sostituisce Google Drive)."""
-    dbx = _client_dropbox()
+def _carica_su_drive(pdf_bytes: bytes, nome_file: str, folder_id: str, credentials) -> str:
+    """Carica il PDF nella cartella Drive indicata. Restituisce l'ID del file caricato."""
+    servizio = build("drive", "v3", credentials=credentials)
+    metadata = {"name": nome_file, "parents": [folder_id]}
+    media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf", resumable=False)
     
-    # Scegli la cartella di destinazione su Dropbox (es. /RegistrazioniSEG/)
-    destinazione = f"/RegistrazioniSEG/{nome_file}"
+    # Aggiungiamo supportsAllDrives=True per permettere il caricamento sui Drive Condivisi
+    file = servizio.files().create(
+        body=metadata, 
+        media_body=media, 
+        fields="id",
+        supportsAllDrives=True
+    ).execute()
     
-    try:
-        dbx.files_upload(
-            pdf_bytes, 
-            destinazione, 
-            mode=dropbox.files.WriteMode.overwrite
-        )
-        return f"Salvato con successo su Dropbox in: {destinazione}"
-    except Exception as e:
-        raise Exception(f"Errore durante l'upload su Dropbox: {e}")
+    return file.get("id")
 
 
 @st.cache_resource(show_spinner=False)
 def _credenziali_google_drive():
-    """Credenziali del service account (mantenute nel caso servano per Google Sheets)."""
+    """Credenziali del service account, con scope esteso a Drive oltre che a Sheets."""
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
     return Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+
 # ─────────────────────────────────────────────────────────────────
 # CONNESSIONE A GOOGLE
 # ─────────────────────────────────────────────────────────────────
