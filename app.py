@@ -6300,12 +6300,7 @@ def mostra_impostazioni():
                                     else:
                                         st.session_state.pagine_selezionate.discard(indice)
 
-                        n_da_eliminare = len(st.session_state.pagine_selezionate)
-                        st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
 
-                        nome_file_output = st.text_input("Nome file da salvare su Drive",
-                                                          value=nome_scelto,
-                                                          key="pulizia_pdf_nome_output")
 
                         n_da_eliminare = len(st.session_state.pagine_selezionate)
                         st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
