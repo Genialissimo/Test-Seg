@@ -558,6 +558,7 @@ S21_COLORE_NERO = (0, 0, 0)
 # PULIZIA PDF DA DROPBOX — costanti e funzioni di supporto
 # ─────────────────────────────────────────────────────────────────
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
+DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
 
 
 @st.cache_resource(show_spinner=False)
@@ -610,6 +611,31 @@ def _rimuovi_pagine(pdf_bytes: bytes, pagine_da_eliminare: list) -> bytes:
     output = doc.tobytes()
     doc.close()
     return output
+
+
+def _trasforma_nome_file(nome_originale: str, aggiungi_v: bool) -> str:
+    """Sposta la data (ultime 8 cifre AAAAMMGG prima dell'estensione) in testa al nome,
+    nel formato 'AAAA MM GG  Resto.pdf', aggiungendo il tag (V) se richiesto."""
+    base, estensione = os.path.splitext(nome_originale)
+    match = re.search(r"(\d{8})$", base)
+    if not match:
+        prefisso = "(V) " if aggiungi_v else ""
+        return f"{prefisso}{nome_originale}"
+
+    data_str = match.group(1)
+    resto = base[:match.start()]
+    anno, mese, giorno = data_str[0:4], data_str[4:6], data_str[6:8]
+    prefisso_v = "(V) " if aggiungi_v else ""
+    return f"{anno} {mese} {giorno}  {prefisso_v}{resto}{estensione}"
+
+
+def _file_esiste_su_drive(nome_file: str, folder_id: str, credentials) -> bool:
+    """True se esiste già un file con questo nome nella cartella Drive indicata."""
+    servizio = build("drive", "v3", credentials=credentials)
+    nome_escaped = nome_file.replace("'", "\\'")
+    query = f"name = '{nome_escaped}' and '{folder_id}' in parents and trashed = false"
+    risultato = servizio.files().list(q=query, fields="files(id, name)", pageSize=1).execute()
+    return len(risultato.get("files", [])) > 0
 
 
 def _carica_su_drive(pdf_bytes: bytes, nome_file: str, folder_id: str, credentials) -> str:
@@ -6281,20 +6307,50 @@ def mostra_impostazioni():
                                                           value=nome_scelto,
                                                           key="pulizia_pdf_nome_output")
 
-                        if st.button("✅ Genera PDF ed invia a Drive", type="primary",
-                                     disabled=(n_da_eliminare == len(miniature)),
-                                     key="pulizia_pdf_invia"):
-                            with st.spinner("Genero il nuovo PDF e lo carico su Drive..."):
-                                try:
-                                    nuovo_pdf = _rimuovi_pagine(pdf_bytes, sorted(st.session_state.pagine_selezionate))
-                                    credenziali = _credenziali_google_drive()
-                                    file_id = _carica_su_drive(nuovo_pdf, nome_file_output, DRIVE_FOLDER_ID, credenziali)
-                                    st.success(f"PDF caricato su Drive con successo (ID: {file_id}).")
-                                    st.session_state.pdf_bytes_originale = None
-                                    st.session_state.pagine_selezionate = set()
-                                    st.session_state.pulizia_pdf_path_corrente = None
-                                except Exception as e:
-                                    st.error(f"Errore durante il salvataggio su Drive: {e}")
+                                                n_da_eliminare = len(st.session_state.pagine_selezionate)
+                        st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
+
+                        tipo_destinatario = st.radio("Chi deve ricevere questo documento?",
+                                                      ["Per i soli anziani", "Per la congregazione"],
+                                                      key="pulizia_pdf_tipo_destinatario")
+
+                        nome_suggerito = _trasforma_nome_file(
+                            nome_scelto, aggiungi_v=(tipo_destinatario == "Per la congregazione"))
+
+                        nome_file_output = st.text_input(
+                            "Nome file da salvare su Drive",
+                            value=nome_suggerito,
+                            key=f"pulizia_pdf_nome_output_{file_scelto.path_lower}_{tipo_destinatario}")
+
+                        if st.session_state.get("pulizia_pdf_nome_in_conflitto") == nome_file_output:
+                            st.warning(f"⚠️ Esiste già un file chiamato «{nome_file_output}» in quella cartella Drive.")
+                            if st.button("⚠️ Carica comunque (crea un duplicato)",
+                                         key="pulizia_pdf_conferma_duplicato", use_container_width=True):
+                                st.session_state.pulizia_pdf_nome_confermato = nome_file_output
+                                st.session_state.pulizia_pdf_nome_in_conflitto = None
+                                st.rerun()
+                        else:
+                            if st.button("✅ Genera PDF ed invia a Drive", type="primary",
+                                         disabled=(n_da_eliminare == len(miniature)),
+                                         key="pulizia_pdf_invia"):
+                                with st.spinner("Controllo e carico su Drive..."):
+                                    try:
+                                        credenziali = _credenziali_google_drive()
+                                        gia_confermato = st.session_state.get("pulizia_pdf_nome_confermato") == nome_file_output
+                                        if not gia_confermato and _file_esiste_su_drive(nome_file_output, DRIVE_FOLDER_ID, credenziali):
+                                            st.session_state.pulizia_pdf_nome_in_conflitto = nome_file_output
+                                            st.rerun()
+                                        else:
+                                            nuovo_pdf = _rimuovi_pagine(pdf_bytes, sorted(st.session_state.pagine_selezionate))
+                                            file_id = _carica_su_drive(nuovo_pdf, nome_file_output, DRIVE_FOLDER_ID, credenziali)
+                                            st.success(f"PDF caricato su Drive con successo (ID: {file_id}).")
+                                            st.session_state.pdf_bytes_originale = None
+                                            st.session_state.pagine_selezionate = set()
+                                            st.session_state.pulizia_pdf_path_corrente = None
+                                            st.session_state.pulizia_pdf_nome_confermato = None
+                                            st.session_state.pulizia_pdf_nome_in_conflitto = None
+                                    except Exception as e:
+                                        st.error(f"Errore durante il salvataggio su Drive: {e}")
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: ACCESSI / GESTIONE UTENTI (solo Amministratore)
 # ─────────────────────────────────────────────────────────────────
