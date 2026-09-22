@@ -580,10 +580,10 @@ def _lista_pdf_dropbox(url_cartella_condivisa: str):
     return [v for v in voci if isinstance(v, dropbox.files.FileMetadata) and v.name.lower().endswith(".pdf")]
 
 
-def _scarica_pdf_da_percorso(percorso_file: str) -> bytes:
-    """Scarica un PDF da Dropbox dato il suo percorso completo nell'account."""
+def _scarica_pdf_da_percorso(url_cartella_condivisa: str, percorso_relativo: str) -> bytes:
+    """Scarica un PDF da una cartella Dropbox condivisa, dato il percorso relativo del file al suo interno."""
     dbx = _client_dropbox()
-    _, resp = dbx.files_download(percorso_file)
+    _, resp = dbx.sharing_get_shared_link_file(url=url_cartella_condivisa, path=percorso_relativo)
     return resp.content
 
 
@@ -614,15 +614,7 @@ def _carica_su_drive(pdf_bytes: bytes, nome_file: str, folder_id: str, credentia
     servizio = build("drive", "v3", credentials=credentials)
     metadata = {"name": nome_file, "parents": [folder_id]}
     media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf", resumable=False)
-    
-    # Aggiungiamo supportsAllDrives=True per permettere il caricamento sui Drive Condivisi
-    file = servizio.files().create(
-        body=metadata, 
-        media_body=media, 
-        fields="id",
-        supportsAllDrives=True
-    ).execute()
-    
+    file = servizio.files().create(body=metadata, media_body=media, fields="id").execute()
     return file.get("id")
 
 
