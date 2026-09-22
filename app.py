@@ -10,6 +10,8 @@ import os
 import re
 import zipfile
 import dropbox
+import httpx
+from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
@@ -2492,9 +2494,37 @@ def vai_a_home_reset_importa_s21():
     vai_a("home")
 
 
+# Gestisce il ritorno dall'autorizzazione OAuth di Google Drive (una tantum, da Impostazioni):
+# scambia il "code" ricevuto con un refresh token e lo mostra copiabile.
+if st.query_params.get("drive_auth") == "1" and st.query_params.get("code"):
+    _redirect_uri_drive = "https://gestioneseg-test.streamlit.app/?drive_auth=1"
+    try:
+        _risposta_oauth = httpx.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": st.query_params.get("code"),
+                "client_id": st.secrets["auth"]["client_id"],
+                "client_secret": st.secrets["auth"]["client_secret"],
+                "redirect_uri": _redirect_uri_drive,
+                "grant_type": "authorization_code",
+            },
+        )
+        _dati_oauth = _risposta_oauth.json()
+        if "refresh_token" in _dati_oauth:
+            st.session_state.drive_oauth_refresh_token = _dati_oauth["refresh_token"]
+        else:
+            st.session_state.drive_oauth_errore = _dati_oauth.get("error_description", str(_dati_oauth))
+    except Exception as _errore_oauth:
+        st.session_state.drive_oauth_errore = str(_errore_oauth)
+
+    del st.query_params["drive_auth"]
+    del st.query_params["code"]
+    st.query_params.pop("scope", None)
+    st.session_state.pagina = "impostazioni"
+
+
 workbook, errore = apri_foglio_dati()
 collegato = workbook is not None
-
 
 # ─────────────────────────────────────────────────────────────────
 # Pagina: per il controllo dell'Anno Teocratico nei Promemoria
@@ -6144,6 +6174,34 @@ def mostra_impostazioni():
         """
 
         components.html(html_copia_link, height=140)
+
+    with st.expander("🔑 Autorizzazione Google Drive (upload PDF)"):
+        st.caption("Necessaria una sola volta, per far salvare i PDF su Drive con il tuo account "
+                   "personale (i service account non hanno spazio di archiviazione proprio). "
+                   "Dopo aver copiato il refresh token e averlo messo nei secrets, questa sezione "
+                   "non ti serve più.")
+
+        token_ottenuto = st.session_state.get("drive_oauth_refresh_token")
+        errore_oauth = st.session_state.get("drive_oauth_errore")
+
+        if token_ottenuto:
+            st.success("✔ Refresh token ottenuto! Copialo (icona in alto a destra del riquadro) "
+                       "e mettilo nei secrets come `google_drive_refresh_token`.")
+            st.code(token_ottenuto, language=None)
+        elif errore_oauth:
+            st.error(f"Errore durante l'autorizzazione: {errore_oauth}")
+
+        _redirect_uri_drive = "https://gestioneseg-test.streamlit.app/?drive_auth=1"
+        _url_autorizza = (
+            "https://accounts.google.com/o/oauth2/v2/auth"
+            f"?client_id={st.secrets['auth']['client_id']}"
+            f"&redirect_uri={quote(_redirect_uri_drive, safe='')}"
+            "&response_type=code"
+            "&scope=https://www.googleapis.com/auth/drive"
+            "&access_type=offline"
+            "&prompt=consent"
+        )
+        st.link_button("🔓 Autorizza Google Drive", _url_autorizza, use_container_width=True)
 
     with st.expander("📄 Pulizia PDF da Dropbox"):
         st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
