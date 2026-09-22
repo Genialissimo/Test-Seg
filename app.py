@@ -6177,7 +6177,7 @@ def mostra_impostazioni():
                         with st.spinner(f"Scarico «{nome_scelto}» da Dropbox..."):
                             try:
                                 st.session_state.pdf_bytes_originale = _scarica_pdf_da_percorso(
-                                    DROPBOX_SHARED_FOLDER_URL, file_scelto.path_lower)
+                                    file_scelto.path_lower)
                             except Exception as e:
                                 st.error(f"Errore nel download da Dropbox: {e}")
 
