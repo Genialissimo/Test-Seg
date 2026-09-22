@@ -614,7 +614,15 @@ def _carica_su_drive(pdf_bytes: bytes, nome_file: str, folder_id: str, credentia
     servizio = build("drive", "v3", credentials=credentials)
     metadata = {"name": nome_file, "parents": [folder_id]}
     media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf", resumable=False)
-    file = servizio.files().create(body=metadata, media_body=media, fields="id").execute()
+    
+    # Aggiungiamo supportsAllDrives=True per permettere il caricamento sui Drive Condivisi
+    file = servizio.files().create(
+        body=metadata, 
+        media_body=media, 
+        fields="id",
+        supportsAllDrives=True
+    ).execute()
+    
     return file.get("id")
 
 
