@@ -6154,92 +6154,94 @@ def mostra_impostazioni():
         components.html(html_copia_link, height=140)
 
     with st.expander("📄 Pulizia PDF da Dropbox"):
-        st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
-                   "e carica il risultato in una cartella Google Drive fissa.")
+    st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
+               "e carica il risultato direttamente su Dropbox.")
 
-        if sola_lettura():
-            st.info("Modalità sola lettura: questa funzione non è disponibile.")
+    if sola_lettura():
+        st.info("Modalità sola lettura: questa funzione non è disponibile.")
+    else:
+        try:
+            file_pdf = _lista_pdf_dropbox(DROPBOX_SHARED_FOLDER_URL)
+        except Exception as e:
+            st.error(f"Errore nel leggere la cartella Dropbox: {e}")
+            file_pdf = []
+
+        if not file_pdf:
+            st.info("Nessun PDF trovato in questa cartella al momento.")
         else:
-            try:
-                file_pdf = _lista_pdf_dropbox(DROPBOX_SHARED_FOLDER_URL)
-            except Exception as e:
-                st.error(f"Errore nel leggere la cartella Dropbox: {e}")
-                file_pdf = []
+            nomi_file = [f.name for f in file_pdf]
+            nome_scelto = st.radio("Tocca il file da elaborare:", nomi_file,
+                                   key="pulizia_pdf_scelta_file", index=None)
 
-            if not file_pdf:
-                st.info("Nessun PDF trovato in questa cartella al momento.")
-            else:
-                nomi_file = [f.name for f in file_pdf]
-                nome_scelto = st.radio("Tocca il file da elaborare:", nomi_file,
-                                        key="pulizia_pdf_scelta_file", index=None)
+            if nome_scelto:
+                file_scelto = next(f for f in file_pdf if f.name == nome_scelto)
 
-                if nome_scelto:
-                    file_scelto = next(f for f in file_pdf if f.name == nome_scelto)
+                if st.session_state.get("pulizia_pdf_path_corrente") != file_scelto.path_lower:
+                    st.session_state.pdf_bytes_originale = None
+                    st.session_state.pagine_selezionate = set()
+                    st.session_state.pulizia_pdf_path_corrente = file_scelto.path_lower
 
-                    if st.session_state.get("pulizia_pdf_path_corrente") != file_scelto.path_lower:
-                        st.session_state.pdf_bytes_originale = None
+                if not st.session_state.get("pdf_bytes_originale"):
+                    with st.spinner(f"Scarico «{nome_scelto}» da Dropbox..."):
+                        try:
+                            st.session_state.pdf_bytes_originale = _scarica_pdf_da_percorso(
+                                file_scelto.path_lower)
+                        except Exception as e:
+                            st.error(f"Errore nel download da Dropbox: {e}")
+
+                if st.session_state.get("pdf_bytes_originale"):
+                    pdf_bytes = st.session_state.pdf_bytes_originale
+
+                    with st.spinner("Genero le anteprime delle pagine..."):
+                        miniature = _genera_miniature(pdf_bytes)
+
+                    if "pagine_selezionate" not in st.session_state:
                         st.session_state.pagine_selezionate = set()
-                        st.session_state.pulizia_pdf_path_corrente = file_scelto.path_lower
 
-                    if not st.session_state.get("pdf_bytes_originale"):
-                        with st.spinner(f"Scarico «{nome_scelto}» da Dropbox..."):
+                    st.caption(f"{len(miniature)} pagine trovate. Seleziona quelle da **eliminare**.")
+
+                    colonne_per_riga = 4
+                    for riga_inizio in range(0, len(miniature), colonne_per_riga):
+                        colonne = st.columns(colonne_per_riga)
+                        for offset, col in enumerate(colonne):
+                            indice = riga_inizio + offset
+                            if indice >= len(miniature):
+                                break
+                            with col:
+                                st.image(miniature[indice], caption=f"Pagina {indice + 1}", use_container_width=True)
+                                selezionata = st.checkbox(
+                                    "Elimina",
+                                    key=f"del_pagina_{indice}",
+                                    value=indice in st.session_state.pagine_selezionate,
+                                )
+                                if selezionata:
+                                    st.session_state.pagine_selezionate.add(indice)
+                                else:
+                                    st.session_state.pagine_selezionate.discard(indice)
+
+                    n_da_eliminare = len(st.session_state.pagine_selezionate)
+                    st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
+
+                    nome_file_output = st.text_input("Nome file da salvare su Dropbox",
+                                                     value=nome_scelto,
+                                                     key="pulizia_pdf_nome_output")
+
+                    if st.button("✅ Genera PDF ed invia a Dropbox", type="primary",
+                                 disabled=(n_da_eliminare == len(miniature)),
+                                 key="pulizia_pdf_invia"):
+                        with st.spinner("Genero il nuovo PDF e lo carico su Dropbox..."):
                             try:
-                                st.session_state.pdf_bytes_originale = _scarica_pdf_da_percorso(
-                                    file_scelto.path_lower)
+                                nuovo_pdf = _rimuovi_pagine(pdf_bytes, sorted(st.session_state.pagine_selezionate))
+                                
+                                # Caricamento tramite la nuova funzione Dropbox
+                                messaggio_esito = _carica_su_dropbox(nuovo_pdf, nome_file_output)
+                                
+                                st.success(f"PDF caricato su Dropbox con successo! {messaggio_esito}")
+                                st.session_state.pdf_bytes_originale = None
+                                st.session_state.pagine_selezionate = set()
+                                st.session_state.pulizia_pdf_path_corrente = None
                             except Exception as e:
-                                st.error(f"Errore nel download da Dropbox: {e}")
-
-                    if st.session_state.get("pdf_bytes_originale"):
-                        pdf_bytes = st.session_state.pdf_bytes_originale
-
-                        with st.spinner("Genero le anteprime delle pagine..."):
-                            miniature = _genera_miniature(pdf_bytes)
-
-                        if "pagine_selezionate" not in st.session_state:
-                            st.session_state.pagine_selezionate = set()
-
-                        st.caption(f"{len(miniature)} pagine trovate. Seleziona quelle da **eliminare**.")
-
-                        colonne_per_riga = 4
-                        for riga_inizio in range(0, len(miniature), colonne_per_riga):
-                            colonne = st.columns(colonne_per_riga)
-                            for offset, col in enumerate(colonne):
-                                indice = riga_inizio + offset
-                                if indice >= len(miniature):
-                                    break
-                                with col:
-                                    st.image(miniature[indice], caption=f"Pagina {indice + 1}", use_container_width=True)
-                                    selezionata = st.checkbox(
-                                        "Elimina",
-                                        key=f"del_pagina_{indice}",
-                                        value=indice in st.session_state.pagine_selezionate,
-                                    )
-                                    if selezionata:
-                                        st.session_state.pagine_selezionate.add(indice)
-                                    else:
-                                        st.session_state.pagine_selezionate.discard(indice)
-
-                        n_da_eliminare = len(st.session_state.pagine_selezionate)
-                        st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
-
-                        nome_file_output = st.text_input("Nome file da salvare su Drive",
-                                                          value=nome_scelto,
-                                                          key="pulizia_pdf_nome_output")
-
-                        if st.button("✅ Genera PDF ed invia a Drive", type="primary",
-                                     disabled=(n_da_eliminare == len(miniature)),
-                                     key="pulizia_pdf_invia"):
-                            with st.spinner("Genero il nuovo PDF e lo carico su Drive..."):
-                                try:
-                                    nuovo_pdf = _rimuovi_pagine(pdf_bytes, sorted(st.session_state.pagine_selezionate))
-                                    credenziali = _credenziali_google_drive()
-                                    file_id = _carica_su_drive(nuovo_pdf, nome_file_output, DRIVE_FOLDER_ID, credenziali)
-                                    st.success(f"PDF caricato su Drive con successo (ID: {file_id}).")
-                                    st.session_state.pdf_bytes_originale = None
-                                    st.session_state.pagine_selezionate = set()
-                                    st.session_state.pulizia_pdf_path_corrente = None
-                                except Exception as e:
-                                    st.error(f"Errore durante il salvataggio su Drive: {e}")
+                                st.error(f"Errore durante il salvataggio su Dropbox: {e}")
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: ACCESSI / GESTIONE UTENTI (solo Amministratore)
 # ─────────────────────────────────────────────────────────────────
