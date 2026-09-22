@@ -6153,7 +6153,7 @@ def mostra_impostazioni():
 
         components.html(html_copia_link, height=140)
 
-    with st.expander("📄 Pulizia PDF da Dropbox"):
+with st.expander("📄 Pulizia PDF da Dropbox"):
     st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
                "e carica il risultato direttamente su Dropbox.")
 
