@@ -34,6 +34,7 @@ from openpyxl.utils import get_column_letter
 import fitz
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+from google.oauth2.credentials import Credentials as GoogleUserCredentials
 
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
@@ -622,13 +623,17 @@ def _carica_su_drive(pdf_bytes: bytes, nome_file: str, folder_id: str, credentia
 
 @st.cache_resource(show_spinner=False)
 def _credenziali_google_drive():
-    """Credenziali del service account, con scope esteso a Drive oltre che a Sheets."""
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ]
-    return Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
-
+    """Credenziali OAuth del tuo account Google personale (non del service account),
+    con refresh token che si rinnova da solo — necessario perché i service account
+    non hanno spazio di archiviazione proprio su Drive."""
+    return GoogleUserCredentials(
+        token=None,
+        refresh_token=st.secrets["google_drive_refresh_token"],
+        client_id=st.secrets["auth"]["client_id"],
+        client_secret=st.secrets["auth"]["client_secret"],
+        token_uri="https://oauth2.googleapis.com/token",
+        scopes=["https://www.googleapis.com/auth/drive"],
+    )
 # ─────────────────────────────────────────────────────────────────
 # CONNESSIONE A GOOGLE
 # ─────────────────────────────────────────────────────────────────
