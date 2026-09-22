@@ -6307,7 +6307,7 @@ def mostra_impostazioni():
                                                           value=nome_scelto,
                                                           key="pulizia_pdf_nome_output")
 
-                                                n_da_eliminare = len(st.session_state.pagine_selezionate)
+                        n_da_eliminare = len(st.session_state.pagine_selezionate)
                         st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
 
                         tipo_destinatario = st.radio("Chi deve ricevere questo documento?",
