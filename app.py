@@ -559,8 +559,12 @@ DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 
 @st.cache_resource(show_spinner=False)
 def _client_dropbox():
-    """Client Dropbox autenticato con il token salvato nei secrets."""
-    return dropbox.Dropbox(st.secrets["dropbox_access_token"])
+    """Client Dropbox autenticato con refresh token (non scade mai)."""
+    return dropbox.Dropbox(
+        oauth2_refresh_token=st.secrets["dropbox_refresh_token"],
+        app_key=st.secrets["dropbox_app_key"],
+        app_secret=st.secrets["dropbox_app_secret"],
+    )
 
 
 @st.cache_data(ttl=60, show_spinner=False)
