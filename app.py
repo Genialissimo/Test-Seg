@@ -6209,7 +6209,7 @@ def mostra_impostazioni():
 
         components.html(html_copia_link, height=140)
 
-    with st.expander("🔑 Autorizzazione Google Drive (upload PDF)"):
+        with st.expander("🔑 Autorizzazione Google Drive (upload PDF)"):
         st.caption("Necessaria una sola volta, per far salvare i PDF su Drive con il tuo account "
                    "personale (i service account non hanno spazio di archiviazione proprio). "
                    "Dopo aver copiato il refresh token e averlo messo nei secrets, questa sezione "
@@ -6237,7 +6237,7 @@ def mostra_impostazioni():
         )
         st.link_button("🔓 Autorizza Google Drive", _url_autorizza, use_container_width=True)
 
-        with st.expander("📄 Estrai/Modifica fogli Pdf da Dropbox"):
+    with st.expander("📄 Estrai/Modifica fogli Pdf da Dropbox"):
         st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
                    "e carica il risultato in una cartella Google Drive fissa.")
 
@@ -6294,7 +6294,8 @@ def mostra_impostazioni():
                                 with col:
                                     st.image(miniature[indice], caption=f"Pagina {indice + 1}", use_container_width=True)
                                     if st.button("🔍 Ingrandisci", key=f"zoom_pagina_{indice}", use_container_width=True):
-                                        _mostra_pagina_ingrandita(miniature[indice], indice + 1)
+                                        immagine_hd = _genera_pagina_alta_risoluzione(pdf_bytes, indice, dpi=200)
+                                        _mostra_pagina_ingrandita(immagine_hd, indice + 1)
                                     selezionata = st.checkbox(
                                         "Elimina",
                                         key=f"del_pagina_{indice}",
@@ -6304,7 +6305,6 @@ def mostra_impostazioni():
                                         st.session_state.pagine_selezionate.add(indice)
                                     else:
                                         st.session_state.pagine_selezionate.discard(indice)
-
 
                         n_da_eliminare = len(st.session_state.pagine_selezionate)
                         st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
