@@ -6249,7 +6249,7 @@ def mostra_impostazioni():
         )
         st.link_button("🔓 Autorizza Google Drive", _url_autorizza, use_container_width=True)
 
-    with st.expander("📄 Estrai/Modifica fogli Pdf da Dropbox"):
+        with st.expander("📄 Estrai/Modifica fogli Pdf da Dropbox"):
         st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
                    "e carica il risultato in una cartella Google Drive fissa.")
 
@@ -6333,7 +6333,7 @@ def mostra_impostazioni():
                             value=nome_suggerito,
                             key=f"pulizia_pdf_nome_output_{file_scelto.path_lower}_{tipo_destinatario}")
 
-                                                if st.session_state.get("pulizia_pdf_nome_in_conflitto") == nome_file_output:
+                        if st.session_state.get("pulizia_pdf_nome_in_conflitto") == nome_file_output:
                             url_cartella_drive = f"https://drive.google.com/drive/folders/{DRIVE_FOLDER_ID}"
                             st.warning(f"⚠️ Esiste già un file chiamato «{nome_file_output}» in quella cartella Drive. "
                                        f"[Apri la cartella Drive]({url_cartella_drive}) per controllare.")
