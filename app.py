@@ -6237,7 +6237,7 @@ def mostra_impostazioni():
         )
         st.link_button("🔓 Autorizza Google Drive", _url_autorizza, use_container_width=True)
 
-    with st.expander("📄 Pulizia PDF da Dropbox"):
+        with st.expander("📄 Estrai/Modifica fogli Pdf da Dropbox"):
         st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
                    "e carica il risultato in una cartella Google Drive fissa.")
 
@@ -6342,7 +6342,8 @@ def mostra_impostazioni():
                                         else:
                                             nuovo_pdf = _rimuovi_pagine(pdf_bytes, sorted(st.session_state.pagine_selezionate))
                                             file_id = _carica_su_drive(nuovo_pdf, nome_file_output, DRIVE_FOLDER_ID, credenziali)
-                                            st.success(f"PDF caricato su Drive con successo (ID: {file_id}).")
+                                            url_cartella_drive = f"https://drive.google.com/drive/folders/{DRIVE_FOLDER_ID}"
+                                            st.success(f"✔ PDF caricato su Drive con successo. [Apri la cartella Drive]({url_cartella_drive})")
                                             st.session_state.pdf_bytes_originale = None
                                             st.session_state.pagine_selezionate = set()
                                             st.session_state.pulizia_pdf_path_corrente = None
