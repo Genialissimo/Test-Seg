@@ -602,7 +602,10 @@ def _genera_miniature(pdf_bytes: bytes, dpi: int = 100):
         miniature.append(pix.tobytes("png"))
     doc.close()
     return miniature
-
+    
+@st.dialog("Anteprima pagina", width="large")
+def _mostra_pagina_ingrandita(immagine_bytes, numero_pagina):
+    st.image(immagine_bytes, caption=f"Pagina {numero_pagina}", use_container_width=True)
 
 def _rimuovi_pagine(pdf_bytes: bytes, pagine_da_eliminare: list) -> bytes:
     """Restituisce un nuovo PDF (bytes) senza le pagine indicate (indici 0-based)."""
@@ -6290,6 +6293,8 @@ def mostra_impostazioni():
                                     break
                                 with col:
                                     st.image(miniature[indice], caption=f"Pagina {indice + 1}", use_container_width=True)
+                                    if st.button("🔍 Ingrandisci", key=f"zoom_pagina_{indice}", use_container_width=True):
+                                        _mostra_pagina_ingrandita(miniature[indice], indice + 1)
                                     selezionata = st.checkbox(
                                         "Elimina",
                                         key=f"del_pagina_{indice}",
@@ -6299,7 +6304,6 @@ def mostra_impostazioni():
                                         st.session_state.pagine_selezionate.add(indice)
                                     else:
                                         st.session_state.pagine_selezionate.discard(indice)
-
 
 
                         n_da_eliminare = len(st.session_state.pagine_selezionate)
