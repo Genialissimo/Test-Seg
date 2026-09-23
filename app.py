@@ -6249,7 +6249,7 @@ def mostra_impostazioni():
         )
         st.link_button("🔓 Autorizza Google Drive", _url_autorizza, use_container_width=True)
 
-        with st.expander("📄 Estrai/Modifica fogli Pdf da Dropbox"):
+    with st.expander("📄 Estrai/Modifica fogli Pdf da Dropbox"):
         st.caption("Sfoglia i PDF nella cartella Dropbox configurata, scegli quali pagine eliminare "
                    "e carica il risultato in una cartella Google Drive fissa.")
 
