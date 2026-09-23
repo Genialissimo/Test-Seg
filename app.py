@@ -6333,13 +6333,22 @@ def mostra_impostazioni():
                             value=nome_suggerito,
                             key=f"pulizia_pdf_nome_output_{file_scelto.path_lower}_{tipo_destinatario}")
 
-                        if st.session_state.get("pulizia_pdf_nome_in_conflitto") == nome_file_output:
-                            st.warning(f"⚠️ Esiste già un file chiamato «{nome_file_output}» in quella cartella Drive.")
-                            if st.button("⚠️ Carica comunque (crea un duplicato)",
-                                         key="pulizia_pdf_conferma_duplicato", use_container_width=True):
-                                st.session_state.pulizia_pdf_nome_confermato = nome_file_output
-                                st.session_state.pulizia_pdf_nome_in_conflitto = None
-                                st.rerun()
+                                                if st.session_state.get("pulizia_pdf_nome_in_conflitto") == nome_file_output:
+                            url_cartella_drive = f"https://drive.google.com/drive/folders/{DRIVE_FOLDER_ID}"
+                            st.warning(f"⚠️ Esiste già un file chiamato «{nome_file_output}» in quella cartella Drive. "
+                                       f"[Apri la cartella Drive]({url_cartella_drive}) per controllare.")
+                            col_si, col_no = st.columns(2)
+                            with col_si:
+                                if st.button("✅ Sì, carica comunque", key="pulizia_pdf_conferma_si",
+                                             type="primary", use_container_width=True):
+                                    st.session_state.pulizia_pdf_nome_confermato = nome_file_output
+                                    st.session_state.pulizia_pdf_nome_in_conflitto = None
+                                    st.rerun()
+                            with col_no:
+                                if st.button("❌ No, annulla", key="pulizia_pdf_conferma_no",
+                                             use_container_width=True):
+                                    st.session_state.pulizia_pdf_nome_in_conflitto = None
+                                    st.rerun()
                         else:
                             if st.button("✅ Genera PDF ed invia a Drive", type="primary",
                                          disabled=(n_da_eliminare == len(miniature)),
