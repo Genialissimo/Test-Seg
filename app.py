@@ -602,10 +602,23 @@ def _genera_miniature(pdf_bytes: bytes, dpi: int = 100):
         miniature.append(pix.tobytes("png"))
     doc.close()
     return miniature
-    
+
+
+def _genera_pagina_alta_risoluzione(pdf_bytes: bytes, indice_pagina: int, dpi: int = 200) -> bytes:
+    """Renderizza una singola pagina del PDF a risoluzione più alta, per lo zoom."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    zoom = dpi / 72
+    matrix = fitz.Matrix(zoom, zoom)
+    pix = doc[indice_pagina].get_pixmap(matrix=matrix)
+    immagine = pix.tobytes("png")
+    doc.close()
+    return immagine
+
+
 @st.dialog("Anteprima pagina", width="large")
 def _mostra_pagina_ingrandita(immagine_bytes, numero_pagina):
     st.image(immagine_bytes, caption=f"Pagina {numero_pagina}", use_container_width=True)
+
 
 def _rimuovi_pagine(pdf_bytes: bytes, pagine_da_eliminare: list) -> bytes:
     """Restituisce un nuovo PDF (bytes) senza le pagine indicate (indici 0-based)."""
@@ -614,7 +627,6 @@ def _rimuovi_pagine(pdf_bytes: bytes, pagine_da_eliminare: list) -> bytes:
     output = doc.tobytes()
     doc.close()
     return output
-
 
 def _trasforma_nome_file(nome_originale: str, aggiungi_v: bool) -> str:
     """Sposta la data (ultime 8 cifre AAAAMMGG prima dell'estensione) in testa al nome,
