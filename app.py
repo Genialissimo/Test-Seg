@@ -6209,7 +6209,7 @@ def mostra_impostazioni():
 
         components.html(html_copia_link, height=140)
 
-        with st.expander("🔑 Autorizzazione Google Drive (upload PDF)"):
+    with st.expander("🔑 Autorizzazione Google Drive (upload PDF)"):
         st.caption("Necessaria una sola volta, per far salvare i PDF su Drive con il tuo account "
                    "personale (i service account non hanno spazio di archiviazione proprio). "
                    "Dopo aver copiato il refresh token e averlo messo nei secrets, questa sezione "
