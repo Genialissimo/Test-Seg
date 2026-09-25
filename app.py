@@ -2575,6 +2575,32 @@ collegato = workbook is not None
 workbook_calendario, errore_calendario = apri_foglio_calendario()
 
 # ─────────────────────────────────────────────────────────────────
+# PAGINA: CALENDARIO IMPEGNI — foglio separato, visibile solo a un utente
+# ─────────────────────────────────────────────────────────────────
+NOME_FOGLIO_CALENDARIO_IMPEGNI = "Calendario Impegni"
+RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI = 1
+EMAIL_CALENDARIO_IMPEGNI = "putrino.fabrizio@gmail.com"
+
+
+@st.cache_resource(show_spinner=False)
+def apri_foglio_calendario():
+    """Apre il foglio Google 'Calendario Impegni' (workbook separato da quello
+    principale). Ritorna (workbook, errore)."""
+    try:
+        client = get_client()
+        wb = client.open_by_key(st.secrets["calendario_sheet_id"])
+        return wb, None
+    except gspread.exceptions.APIError:
+        email_sa = st.secrets["gcp_service_account"]["client_email"]
+        return None, (
+            "Impossibile aprire il foglio «Calendario Impegni». Controlla che sia stato "
+            f"condiviso (come Editor) con:\n`{email_sa}`"
+        )
+    except Exception as e:
+        return None, f"Errore durante il collegamento al foglio Calendario Impegni: {e}"
+
+
+# ─────────────────────────────────────────────────────────────────
 # Pagina: per il controllo dell'Anno Teocratico nei Promemoria
 # ─────────────────────────────────────────────────────────────────
 
@@ -8209,30 +8235,6 @@ def mostra_impegni_scadenze():
                 st.button(" ", key=f"impegno_apri_{rf}",
                           on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
 
-# ─────────────────────────────────────────────────────────────────
-# PAGINACALENDARIO IMPEGNI — foglio separato, visibile solo a un utente
-# ─────────────────────────────────────────────────────────────────
-NOME_FOGLIO_CALENDARIO_IMPEGNI = "Calendario Impegni"
-RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI = 1
-EMAIL_CALENDARIO_IMPEGNI = "putrino.fabrizio@gmail.com"
-
-
-@st.cache_resource(show_spinner=False)
-def apri_foglio_calendario():
-    """Apre il foglio Google 'Calendario Impegni' (workbook separato da quello
-    principale). Ritorna (workbook, errore)."""
-    try:
-        client = get_client()
-        wb = client.open_by_key(st.secrets["calendario_sheet_id"])
-        return wb, None
-    except gspread.exceptions.APIError:
-        email_sa = st.secrets["gcp_service_account"]["client_email"]
-        return None, (
-            "Impossibile aprire il foglio «Calendario Impegni». Controlla che sia stato "
-            f"condiviso (come Editor) con:\n`{email_sa}`"
-        )
-    except Exception as e:
-        return None, f"Errore durante il collegamento al foglio Calendario Impegni: {e}"
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
