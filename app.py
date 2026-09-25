@@ -1,6 +1,6 @@
 """
 app.py
-Gestione Registrazioni SEG - Web App (Streamlit + Google Sheets)
+Gestione TEST Registrazioni SEG - Web App (Streamlit + Google Sheets)
 """
 
 
