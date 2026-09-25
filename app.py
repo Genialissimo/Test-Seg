@@ -67,12 +67,6 @@ h3 { font-size: 1.1rem !important; }
 # 1.1. BARRA LATERALE CON NAVIGAZIONE RAPIDA FRA I PROGRAMMI
 # ==============================================================================
 with st.sidebar:
-    st.write("Utente connesso")
-    if st.button("Logout"):
-        st.success("Logout effettuato")
-
-    st.divider()
-
     st.markdown("### 📁 I miei Programmi")
 
     # Inserisci qui i link ufficiali dei tuoi programmi
@@ -83,16 +77,33 @@ with st.sidebar:
         ),
     }
 
-    # Creiamo un unico blocco HTML per raccogliere tutti i link in modo compatto e indentato
     links_html = ""
     for nome, url in programmi.items():
         links_html += f'<div style="margin-bottom: 2px;"><a href="{url}" target="_blank" style="text-decoration: none; color: #31333F; font-size: 14px; font-weight: 500;">📈 {nome}</a></div>'
 
-    # Stampiamo il blocco con un leggero margine a sinistra (indentazione)
     st.markdown(
-        f'<div style="padding-left: 12px;">{links_html}</div>',
+        f'<div style="padding-left: 12px; margin-bottom: 10px;">{links_html}</div>',
         unsafe_allow_html=True,
     )
+
+    # Linea separatrice e spazio
+    st.divider()
+
+    # Sezione Utente Connesso
+    st.markdown(
+        """
+        <div style="font-size: 14px; color: #31333F;">
+            <b>👤 Utente connesso:</b><br>
+            📧 putrino.fabrizio@gmail.com<br>
+            🏷️ Ruolo: Amministratore
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.write("")
+    if st.button("Logout"):
+        st.success("Logout effettuato")
 # ==============================================================================
 # 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
 # ==============================================================================
