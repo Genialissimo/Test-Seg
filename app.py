@@ -42,6 +42,8 @@ DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dh
 
 import streamlit as st
 
+import streamlit as st
+
 # ==============================================================================
 # 1. CONFIGURAZIONE PAGINA (Deve essere la prima istruzione Streamlit)
 # ==============================================================================
@@ -73,13 +75,13 @@ with st.sidebar:
 
     st.markdown("### 🚀 I miei Programmi")
 
-    # Mappa dei tuoi programmi con i rispettivi indirizzi web
+    # Inserisci qui i link ufficiali .streamlit.app dei tuoi 5 programmi
     programmi = {
-        "Gestione Registrazioni": "https://79idszaysngw7kstsznrg.streamlit.app/",
-        "Inserimento Ordini": "URL_SECONDO_PROGRAMMA",
-        "Report Vendite": "URL_TERZO_PROGRAMMA",
-        "Gestione Clienti": "URL_QUARTO_PROGRAMMA",
-        "Dashboard Finanziaria": "URL_QUINTO_PROGRAMMA",
+        "Gestione Registrazioni": "https://gestioneseg.streamlit.app/",
+        "Inserimento Ordini": "https://INSERISCI_QUI_IL_LINK_2.streamlit.app/",
+        "Report Vendite": "https://INSERISCI_QUI_IL_LINK_3.streamlit.app/",
+        "Gestione Clienti": "https://INSERISCI_QUI_IL_LINK_4.streamlit.app/",
+        "Dashboard Finanziaria": "https://INSERISCI_QUI_IL_LINK_5.streamlit.app/",
     }
 
     for nome, url in programmi.items():
@@ -87,7 +89,6 @@ with st.sidebar:
             f'<a href="{url}" target="_blank" style="text-decoration: none;"><div style="padding: 6px 10px; margin-bottom: 5px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">🔗 {nome}</div></a>',
             unsafe_allow_html=True,
         )
-
 # ==============================================================================
 # 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
 # ==============================================================================
