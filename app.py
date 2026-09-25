@@ -2570,10 +2570,6 @@ if st.query_params.get("drive_auth") == "1" and st.query_params.get("code"):
     st.session_state.pagina = "impostazioni"
 
 
-workbook, errore = apri_foglio_dati()
-collegato = workbook is not None
-workbook_calendario, errore_calendario = apri_foglio_calendario()
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: CALENDARIO IMPEGNI — foglio separato, visibile solo a un utente
 # ─────────────────────────────────────────────────────────────────
@@ -2599,6 +2595,9 @@ def apri_foglio_calendario():
     except Exception as e:
         return None, f"Errore durante il collegamento al foglio Calendario Impegni: {e}"
 
+workbook, errore = apri_foglio_dati()
+collegato = workbook is not None
+workbook_calendario, errore_calendario = apri_foglio_calendario()
 
 # ─────────────────────────────────────────────────────────────────
 # Pagina: per il controllo dell'Anno Teocratico nei Promemoria
