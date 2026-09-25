@@ -73,7 +73,7 @@ with st.sidebar:
 
     st.divider()
 
-    st.markdown("### 🚀 I miei Programmi")
+    st.markdown("### 📚 I miei Programmi")
 
     # Inserisci qui i link ufficiali .streamlit.app dei tuoi 5 programmi
     programmi = {
