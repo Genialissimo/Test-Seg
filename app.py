@@ -73,7 +73,7 @@ with st.sidebar:
 
     st.divider()
 
-    # Titolo della sezione con stile per azzerare il margine inferiore
+    # Titolo e stili CSS per azzerare i margini della lista
     st.markdown(
         """
         <style>
@@ -82,6 +82,10 @@ with st.sidebar:
             font-size: 1.1rem !important;
             font-weight: 600;
             color: #31333F;
+        }
+        .streamlit-expanderContent, div.stMarkdown {
+            margin-bottom: 0px !important;
+            padding-bottom: 0px !important;
         }
         </style>
         <p class="sidebar-title">📁 I miei Programmi</p>
@@ -100,7 +104,7 @@ with st.sidebar:
     for nome, url in programmi.items():
         st.markdown(
             f'<a href="{url}" target="_blank" style="text-decoration: none;">'
-            f'<div style="padding: 4px 8px; margin-top: 2px; margin-bottom: 0px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
+            f'<div style="padding: 2px 6px; margin-top: 1px; margin-bottom: 1px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
             f"📈 {nome}</div></a>",
             unsafe_allow_html=True,
         )
