@@ -89,21 +89,7 @@ with st.sidebar:
     # Linea separatrice
     st.divider()
 
-    # Sezione Utente Connesso (senza duplicazioni)
-    st.markdown(
-        """
-        <div style="font-size: 14px; color: #31333F;">
-            <b>👤 Utente connesso:</b><br>
-            📧 putrino.fabrizio@gmail.com<br>
-            🏷️ Ruolo: Amministratore
-        </div>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    st.write("")
-    if st.button("Logout"):
-        st.success("Logout effettuato")
+   
 # ==============================================================================
 # 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
 # ==============================================================================
