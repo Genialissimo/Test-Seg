@@ -168,7 +168,8 @@ with st.sidebar:
     st.markdown("### 📁 I miei Programmi")
 
     programmi = {
-        "Gestione Test Registrazioni Segretario": "https://gestioneseg-test.streamlit.app/",
+        "Gestione Test Registrazioni Segretario": "https://gestioneseg.streamlit.app/",
+        "Gestione Registrazioni Segretario": "https://gestioneseg.streamlit.app/",
         "Gestione Programmi": "https://gestione-programmi-7kb2cuwy6ntgwe7kufezrg.streamlit.app/",
     }
 
@@ -2839,7 +2840,7 @@ def mostra_home():
     st.markdown(
         f"""
         <div style="margin-bottom: 12px;">
-            <h3 style="font-size: 1.25rem; font-weight: 700; margin: 0; padding: 0;">📒 Gestione Registrazioni SEG</h3>
+            <h3 style="font-size: 1.25rem; font-weight: 700; margin: 0; padding: 0;">📒 Gestione Test Registrazioni SEG</h3>
             <p style="font-size: 0.8rem; color: #6b7280; margin: 2px 0 0 0; padding: 0;">
                 Ultimo aggiornamento: {ora_ora}
             </p>
