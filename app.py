@@ -121,6 +121,42 @@ def apri_foglio_dati():
     except Exception as e:
         return None, f"Errore durante il collegamento: {e}"
 # ─────────────────────────────────────────────────────────────────
+# ==============================================================================
+# 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
+# ==============================================================================
+NOME_FOGLIO_UTENTI = "Utenti"
+
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/documents",
+]
+
+@st.cache_resource(show_spinner=False)
+def get_client() -> gspread.Client:
+    """Autentica il programma verso Google tramite l'account di servizio."""
+    credenziali = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=SCOPES
+    )
+    return gspread.authorize(credenziali)
+
+
+@st.cache_resource(show_spinner=False)
+def apri_foglio_dati():
+    """Apre il foglio Google dati. Ritorna (workbook, errore)."""
+    try:
+        client = get_client()
+        wb = client.open_by_key(st.secrets["sheet_id"])
+        return wb, None
+    except gspread.exceptions.APIError:
+        email_sa = st.secrets["gcp_service_account"]["client_email"]
+        return None, (
+            "Impossibile aprire il foglio dati. Controlla che sia stato "
+            f"condiviso (come Editor) con:\n`{email_sa}`"
+        )
+    except Exception as e:
+        return None, f"Errore durante il collegamento: {e}"
+# ─────────────────────────────────────────────────────────────────
 
 
 # ==============================================================================
