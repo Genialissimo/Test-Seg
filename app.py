@@ -78,7 +78,7 @@ with st.sidebar:
         """
         <style>
         .sidebar-title {
-            margin-bottom: -10px !important;
+            margin-bottom: -5px !important;
             font-size: 1.1rem !important;
             font-weight: 600;
             color: #31333F;
@@ -100,7 +100,7 @@ with st.sidebar:
     for nome, url in programmi.items():
         st.markdown(
             f'<a href="{url}" target="_blank" style="text-decoration: none;">'
-            f'<div style="padding: 4px 8px; margin-top: 4px; margin-bottom: 2px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
+            f'<div style="padding: 4px 8px; margin-top: 2px; margin-bottom: 0px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
             f"📈 {nome}</div></a>",
             unsafe_allow_html=True,
         )
