@@ -48,7 +48,7 @@ import streamlit as st
 # 1. CONFIGURAZIONE PAGINA (Deve essere la prima istruzione Streamlit)
 # ==============================================================================
 st.set_page_config(
-    page_title="Gestione Registrazioni SEG",
+    page_title="Gestione TEST Registrazioni SEG",
     page_icon="📒",
     layout="wide",
     initial_sidebar_state="expanded",
