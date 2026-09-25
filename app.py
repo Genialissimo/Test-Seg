@@ -78,10 +78,7 @@ with st.sidebar:
     # Inserisci qui i link ufficiali .streamlit.app dei tuoi 5 programmi
     programmi = {
         "Gestione Registrazioni": "https://gestioneseg.streamlit.app/",
-        "Inserimento Ordini": "https://INSERISCI_QUI_IL_LINK_2.streamlit.app/",
-        "Report Vendite": "https://INSERISCI_QUI_IL_LINK_3.streamlit.app/",
-        "Gestione Clienti": "https://INSERISCI_QUI_IL_LINK_4.streamlit.app/",
-        "Dashboard Finanziaria": "https://INSERISCI_QUI_IL_LINK_5.streamlit.app/",
+        "Gestione Programmi": "https://gestione-programmi-7kb2cuwy6ntgwe7kufezrg.streamlit.app/",
     }
 
     for nome, url in programmi.items():
