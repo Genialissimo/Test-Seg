@@ -78,12 +78,16 @@ with st.sidebar:
     # Inserisci qui i link ufficiali .streamlit.app dei tuoi 5 programmi
     programmi = {
         "Gestione Registrazioni": "https://gestioneseg.streamlit.app/",
-        "Gestione Programmi": "https://gestione-programmi-7kb2cuwy6ntgwe7kufezrg.streamlit.app/",
+        "Gestione Programmi": (
+            "https://gestione-programmi-7kb2cuwy6ntgwe7kufezrg.streamlit.app/"
+        ),
     }
 
     for nome, url in programmi.items():
         st.markdown(
-            f'<a href="{url}" target="_blank" style="text-decoration: none;"><div style="padding: 6px 10px; margin-bottom: 5px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">📈 {nome}</div></a>',
+            f'<a href="{url}" target="_blank" style="text-decoration: none;">'
+            f'<div style="padding: 4px 8px; margin-bottom: 2px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
+            f"📈 {nome}</div></a>",
             unsafe_allow_html=True,
         )
 # ==============================================================================
