@@ -40,6 +40,8 @@ from google.oauth2.credentials import Credentials as GoogleUserCredentials
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
 
+import streamlit as st
+
 # ==============================================================================
 # 1. CONFIGURAZIONE PAGINA (Deve essere la prima istruzione Streamlit)
 # ==============================================================================
@@ -50,8 +52,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Titoli più piccoli in tutta l'app (Streamlit li rende parecchio grandi
-#    di default su mobile) ────────────────────────────────────────────────
+# ── Titoli più piccoli in tutta l'app ────────────────────────────────────────
 st.markdown("""
 <style>
 h1 { font-size: 1.5rem !important; }
@@ -59,6 +60,33 @@ h2 { font-size: 1.25rem !important; }
 h3 { font-size: 1.1rem !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# ==============================================================================
+# 1.1. BARRA LATERALE CON NAVIGAZIONE RAPIDA FRA I PROGRAMMI
+# ==============================================================================
+with st.sidebar:
+    st.write("Utente connesso")
+    if st.button("Logout"):
+        st.success("Logout effettuato")
+
+    st.divider()
+
+    st.markdown("### 🚀 I miei Programmi")
+
+    # Mappa dei tuoi programmi con i rispettivi indirizzi web
+    programmi = {
+        "Gestione Registrazioni": "https://79idszaysngw7kstsznrg.streamlit.app/",
+        "Inserimento Ordini": "URL_SECONDO_PROGRAMMA",
+        "Report Vendite": "URL_TERZO_PROGRAMMA",
+        "Gestione Clienti": "URL_QUARTO_PROGRAMMA",
+        "Dashboard Finanziaria": "URL_QUINTO_PROGRAMMA",
+    }
+
+    for nome, url in programmi.items():
+        st.markdown(
+            f'<a href="{url}" target="_blank" style="text-decoration: none;"><div style="padding: 6px 10px; margin-bottom: 5px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">🔗 {nome}</div></a>',
+            unsafe_allow_html=True,
+        )
 
 # ==============================================================================
 # 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
