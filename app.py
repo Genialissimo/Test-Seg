@@ -73,27 +73,9 @@ with st.sidebar:
 
     st.divider()
 
-    # Titolo e stili CSS per azzerare i margini della lista
-    st.markdown(
-        """
-        <style>
-        .sidebar-title {
-            margin-bottom: -5px !important;
-            font-size: 1.1rem !important;
-            font-weight: 600;
-            color: #31333F;
-        }
-        .streamlit-expanderContent, div.stMarkdown {
-            margin-bottom: 0px !important;
-            padding-bottom: 0px !important;
-        }
-        </style>
-        <p class="sidebar-title">📁 I miei Programmi</p>
-    """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("### 📁 I miei Programmi")
 
-    # Inserisci qui i link ufficiali .streamlit.app dei tuoi programmi
+    # Inserisci qui i link ufficiali dei tuoi programmi
     programmi = {
         "Gestione Registrazioni": "https://gestioneseg.streamlit.app/",
         "Gestione Programmi": (
@@ -101,13 +83,16 @@ with st.sidebar:
         ),
     }
 
+    # Creiamo un unico blocco HTML per raccogliere tutti i link in modo compatto e indentato
+    links_html = ""
     for nome, url in programmi.items():
-        st.markdown(
-            f'<a href="{url}" target="_blank" style="text-decoration: none;">'
-            f'<div style="padding: 2px 6px; margin-top: 1px; margin-bottom: 1px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
-            f"📈 {nome}</div></a>",
-            unsafe_allow_html=True,
-        )
+        links_html += f'<div style="margin-bottom: 2px;"><a href="{url}" target="_blank" style="text-decoration: none; color: #31333F; font-size: 14px; font-weight: 500;">📈 {nome}</a></div>'
+
+    # Stampiamo il blocco con un leggero margine a sinistra (indentazione)
+    st.markdown(
+        f'<div style="padding-left: 12px;">{links_html}</div>',
+        unsafe_allow_html=True,
+    )
 # ==============================================================================
 # 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
 # ==============================================================================
