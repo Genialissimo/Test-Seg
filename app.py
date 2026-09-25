@@ -1,6 +1,6 @@
 """
 app.py
-Gestione TEST Registrazioni SEG - Web App (Streamlit + Google Sheets)
+Gestione Registrazioni SEG - Web App (Streamlit + Google Sheets)
 """
 
 
@@ -11,7 +11,6 @@ import re
 import zipfile
 import dropbox
 import httpx
-import calendar
 from urllib.parse import quote
 
 import pandas as pd
@@ -40,21 +39,18 @@ from google.oauth2.credentials import Credentials as GoogleUserCredentials
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
 
-import streamlit as st
-
-import streamlit as st
-
 # ==============================================================================
 # 1. CONFIGURAZIONE PAGINA (Deve essere la prima istruzione Streamlit)
 # ==============================================================================
 st.set_page_config(
-    page_title="Gestione TEST Registrazioni SEG",
+    page_title="Gestione Registrazioni SEG",
     page_icon="📒",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Titoli più piccoli in tutta l'app ────────────────────────────────────────
+# ── Titoli più piccoli in tutta l'app (Streamlit li rende parecchio grandi
+#    di default su mobile) ────────────────────────────────────────────────
 st.markdown("""
 <style>
 h1 { font-size: 1.5rem !important; }
@@ -71,7 +67,7 @@ with st.sidebar:
 
     # Inserisci qui i link ufficiali dei tuoi programmi
     programmi = {
-        "Gestione Registrazioni Segretario": "https://gestioneseg.streamlit.app/",
+        "Gestione Test Registrazioni Segretario": "https://gestioneseg-test.streamlit.app/",
         "Gestione Programmi": (
             "https://gestione-programmi-7kb2cuwy6ntgwe7kufezrg.streamlit.app/"
         ),
@@ -88,8 +84,6 @@ with st.sidebar:
 
     # Linea separatrice
     st.divider()
-
-   
 # ==============================================================================
 # 2. CONFIGURAZIONE AUTENTICAZIONE GOOGLE OAUTH NATIVA (st.login())
 # ==============================================================================
@@ -2600,34 +2594,8 @@ if st.query_params.get("drive_auth") == "1" and st.query_params.get("code"):
     st.session_state.pagina = "impostazioni"
 
 
-# ─────────────────────────────────────────────────────────────────
-# PAGINA: CALENDARIO IMPEGNI — foglio separato, visibile solo a un utente
-# ─────────────────────────────────────────────────────────────────
-NOME_FOGLIO_CALENDARIO_IMPEGNI = "Calendario Impegni"
-RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI = 1
-EMAIL_CALENDARIO_IMPEGNI = "putrino.fabrizio@gmail.com"
-
-
-@st.cache_resource(show_spinner=False)
-def apri_foglio_calendario():
-    """Apre il foglio Google 'Calendario Impegni' (workbook separato da quello
-    principale). Ritorna (workbook, errore)."""
-    try:
-        client = get_client()
-        wb = client.open_by_key(st.secrets["calendario_sheet_id"])
-        return wb, None
-    except gspread.exceptions.APIError:
-        email_sa = st.secrets["gcp_service_account"]["client_email"]
-        return None, (
-            "Impossibile aprire il foglio «Calendario Impegni». Controlla che sia stato "
-            f"condiviso (come Editor) con:\n`{email_sa}`"
-        )
-    except Exception as e:
-        return None, f"Errore durante il collegamento al foglio Calendario Impegni: {e}"
-
 workbook, errore = apri_foglio_dati()
 collegato = workbook is not None
-workbook_calendario, errore_calendario = apri_foglio_calendario()
 
 # ─────────────────────────────────────────────────────────────────
 # Pagina: per il controllo dell'Anno Teocratico nei Promemoria
@@ -2848,7 +2816,7 @@ def mostra_home():
     st.markdown(
         f"""
         <div style="margin-bottom: 12px;">
-            <h3 style="font-size: 1.25rem; font-weight: 700; margin: 0; padding: 0;">📒 Gestione TEST Registrazioni SEG</h3>
+            <h3 style="font-size: 1.25rem; font-weight: 700; margin: 0; padding: 0;">📒 Gestione Registrazioni SEG</h3>
             <p style="font-size: 0.8rem; color: #6b7280; margin: 2px 0 0 0; padding: 0;">
                 Ultimo aggiornamento: {ora_ora}
             </p>
@@ -7877,8 +7845,7 @@ def vai_a_home_reset_impegni():
 
 
 
-def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
-                  riga_intestazione: int, prefisso: str):
+def _form_impegno(editor: dict, categorie_disponibili: list):
     modo = editor.get("modo")
     e = editor.get("riga", {}) if modo == "modifica" else {}
     chiave = editor.get("numero_riga_foglio", "nuovo")
@@ -7895,7 +7862,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, no
         except Exception:
             return None
 
-    with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
+    with st.form(f"form_impegno_{chiave}", clear_on_submit=False):
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
         descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=200, disabled=bloccato)
 
@@ -7942,11 +7909,11 @@ def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, no
                                             disabled=(bloccato or modo != "modifica"))
 
     if annulla:
-        st.session_state[f"{prefisso}_editor"] = None
+        st.session_state.impegni_editor = None
         st.rerun()
 
     if elimina and modo == "modifica":
-        st.session_state[f"{prefisso}_conferma_elimina"] = editor
+        st.session_state.impegni_conferma_elimina = editor
         st.rerun()
 
     if invia:
@@ -7973,40 +7940,44 @@ def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, no
                 "Collega Link": link.strip(),
             }
             numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
-            ok, err_salva = salva_riga_foglio(workbook_pagina, nome_foglio, riga_intestazione,
+            ok, err_salva = salva_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI,
                                               valori, riga_da_aggiornare=numero_riga)
             if ok:
                 st.cache_data.clear()
-                st.session_state[f"{prefisso}_editor"] = None
+                st.session_state.impegni_editor = None
+                st.session_state.impegni_tabella_versione = st.session_state.get(
+                    "impegni_tabella_versione", 0) + 1
                 st.success(f"✔ «{oggetto_pulito}» salvato correttamente.")
                 st.rerun()
             else:
                 st.error(err_salva)
 
-    conferma = st.session_state.get(f"{prefisso}_conferma_elimina")
+    conferma = st.session_state.get("impegni_conferma_elimina")
     if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
         st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? "
                    "L'operazione non è reversibile.")
         col_si, col_no = st.columns(2)
         with col_si:
-            if st.button("✔ Sì, elimina", key=f"{prefisso}_conf_si", type="primary", use_container_width=True):
-                ok, err_elim = elimina_riga_foglio(workbook_pagina, nome_foglio, editor["numero_riga_foglio"])
+            if st.button("✔ Sì, elimina", key="impegni_conf_si", type="primary", use_container_width=True):
+                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_IMPEGNI, editor["numero_riga_foglio"])
                 if ok:
                     st.cache_data.clear()
-                    st.session_state[f"{prefisso}_editor"] = None
-                    st.session_state[f"{prefisso}_conferma_elimina"] = None
+                    st.session_state.impegni_editor = None
+                    st.session_state.impegni_conferma_elimina = None
+                    st.session_state.impegni_tabella_versione = st.session_state.get(
+                        "impegni_tabella_versione", 0) + 1
                     st.success("✔ Impegno eliminato.")
                     st.rerun()
                 else:
                     st.error(err_elim)
         with col_no:
-            if st.button("No, annulla", key=f"{prefisso}_conf_no", use_container_width=True):
-                st.session_state[f"{prefisso}_conferma_elimina"] = None
+            if st.button("No, annulla", key="impegni_conf_no", use_container_width=True):
+                st.session_state.impegni_conferma_elimina = None
                 st.rerun()
 
 
-def _impegni_apri_modifica_generico(riga_dict: dict, rf: int, prefisso: str):
-    st.session_state[f"{prefisso}_editor"] = {
+def _impegni_apri_modifica(riga_dict: dict, rf: int):
+    st.session_state.impegni_editor = {
         "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
     }
 
@@ -8263,6 +8234,7 @@ def mostra_impegni_scadenze():
                 _render_corpo_impegno()
                 st.button(" ", key=f"impegno_apri_{rf}",
                           on_click=_impegni_apri_modifica, args=(r["riga_dict"], rf))
+
 
 
 # ─────────────────────────────────────────────────────────────────
