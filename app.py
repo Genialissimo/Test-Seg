@@ -73,9 +73,23 @@ with st.sidebar:
 
     st.divider()
 
-    st.markdown("### 📁 I miei Programmi")
+    # Titolo della sezione con stile per azzerare il margine inferiore
+    st.markdown(
+        """
+        <style>
+        .sidebar-title {
+            margin-bottom: -10px !important;
+            font-size: 1.1rem !important;
+            font-weight: 600;
+            color: #31333F;
+        }
+        </style>
+        <p class="sidebar-title">📁 I miei Programmi</p>
+    """,
+        unsafe_allow_html=True,
+    )
 
-    # Inserisci qui i link ufficiali .streamlit.app dei tuoi 5 programmi
+    # Inserisci qui i link ufficiali .streamlit.app dei tuoi programmi
     programmi = {
         "Gestione Registrazioni": "https://gestioneseg.streamlit.app/",
         "Gestione Programmi": (
@@ -86,7 +100,7 @@ with st.sidebar:
     for nome, url in programmi.items():
         st.markdown(
             f'<a href="{url}" target="_blank" style="text-decoration: none;">'
-            f'<div style="padding: 4px 8px; margin-bottom: 2px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
+            f'<div style="padding: 4px 8px; margin-top: 4px; margin-bottom: 2px; background-color: #f0f2f6; border-radius: 4px; color: #31333F; font-size: 14px; font-weight: 500;">'
             f"📈 {nome}</div></a>",
             unsafe_allow_html=True,
         )
