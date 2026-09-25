@@ -86,10 +86,10 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # Linea separatrice e spazio
+    # Linea separatrice
     st.divider()
 
-    # Sezione Utente Connesso
+    # Sezione Utente Connesso (senza duplicazioni)
     st.markdown(
         """
         <div style="font-size: 14px; color: #31333F;">
