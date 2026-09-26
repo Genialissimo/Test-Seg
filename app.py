@@ -8300,24 +8300,6 @@ def mostra_impegni_scadenze():
                           "🗓️ Impegni e scadenze", "impegni", vai_a_home_reset_impegni)
 
 
-def mostra_calendario_impegni_lista():
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button("🏠 Torna alla Home", key="home_da_calimp_negato",
-                  on_click=vai_a, args=("home",))
-        return
-    mese_filtro = st.session_state.get("calimp_mese_filtro")
-    _mostra_lista_impegni(workbook_calendario, NOME_FOGLIO_CALENDARIO_IMPEGNI,
-                          RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "🗓️ Calendario Impegni",
-                          "calimp", vai_a_home_reset_calendario_impegni,
-                          mese_filtro_fisso=mese_filtro)
-
-def vai_a_home_reset_calendario_impegni():
-    for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro", "calgrid_attivo"):
-        st.session_state.pop(chiave, None)
-    vai_a("home")
-
-
 def mostra_calendario_impegni_grid():
     if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
         st.warning("⚠️ Questa sezione è riservata.")
@@ -8335,12 +8317,12 @@ def mostra_calendario_impegni_grid():
             padding: 6px 0 !important;
             min-height: 0 !important;
         }
-        div[class*="st-key-calgrid_container"] div[data-testid="stHorizontalBlock"] {
+        div[class*="st-key-calgrid_"] div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             gap: 4px !important;
         }
-        div[class*="st-key-calgrid_container"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        div[class*="st-key-calgrid_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
             width: 100% !important;
             flex: 1 1 0% !important;
             min-width: 0 !important;
@@ -8355,25 +8337,25 @@ def mostra_calendario_impegni_grid():
         st.session_state.calgrid_mese = oggi.month
         st.session_state.calgrid_attivo = True
 
-    col_prev, col_label, col_next = st.columns([1, 3, 1])
-    with col_prev:
-        if st.button("◀", key="calgrid_prev", use_container_width=True):
-            st.session_state.calgrid_mese -= 1
-            if st.session_state.calgrid_mese < 1:
-                st.session_state.calgrid_mese = 12
-                st.session_state.calgrid_anno -= 1
-    with col_label:
-        st.markdown(
-            f"<div style='text-align:center; font-weight:700; font-size:1.1rem; padding-top:6px;'>"
-            f"{MESI_ITALIANI[st.session_state.calgrid_mese]} {st.session_state.calgrid_anno}</div>",
-            unsafe_allow_html=True,
-        )
-    with col_next:
-        if st.button("▶", key="calgrid_next", use_container_width=True):
-            st.session_state.calgrid_mese += 1
-            if st.session_state.calgrid_mese > 12:
-                st.session_state.calgrid_mese = 1
-                st.session_state.calgrid_anno += 1
+    st.markdown(
+        f"<div style='text-align:center; font-weight:700; font-size:1.1rem; margin-bottom:6px;'>"
+        f"{MESI_ITALIANI[st.session_state.calgrid_mese]} {st.session_state.calgrid_anno}</div>",
+        unsafe_allow_html=True,
+    )
+    with st.container(key="calgrid_frecce"):
+        col_prev, col_next = st.columns(2)
+        with col_prev:
+            if st.button("◀ Mese prec.", key="calgrid_prev", use_container_width=True):
+                st.session_state.calgrid_mese -= 1
+                if st.session_state.calgrid_mese < 1:
+                    st.session_state.calgrid_mese = 12
+                    st.session_state.calgrid_anno -= 1
+        with col_next:
+            if st.button("Mese succ. ▶", key="calgrid_next", use_container_width=True):
+                st.session_state.calgrid_mese += 1
+                if st.session_state.calgrid_mese > 12:
+                    st.session_state.calgrid_mese = 1
+                    st.session_state.calgrid_anno += 1
 
     anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
     indice_anno_corrente = (anni_disponibili.index(st.session_state.calgrid_anno)
@@ -8421,6 +8403,7 @@ def mostra_calendario_impegni_grid():
                             st.session_state.calimp_mese_filtro = (anno, mese)
                             vai_a("calendario_impegni_lista")
                             st.rerun()
+
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
