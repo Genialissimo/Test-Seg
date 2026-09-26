@@ -8312,6 +8312,12 @@ def mostra_calendario_impegni_lista():
                           "calimp", vai_a_home_reset_calendario_impegni,
                           mese_filtro_fisso=mese_filtro)
 
+def vai_a_home_reset_calendario_impegni():
+    for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro", "calgrid_attivo"):
+        st.session_state.pop(chiave, None)
+    vai_a("home")
+
+
 def mostra_calendario_impegni_grid():
     if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
         st.warning("⚠️ Questa sezione è riservata.")
@@ -8329,13 +8335,25 @@ def mostra_calendario_impegni_grid():
             padding: 6px 0 !important;
             min-height: 0 !important;
         }
+        div[class*="st-key-calgrid_container"] div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 4px !important;
+        }
+        div[class*="st-key-calgrid_container"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            width: 100% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            padding: 0 2px !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
-    if "calgrid_anno" not in st.session_state:
+    if not st.session_state.get("calgrid_attivo"):
         oggi = date.today()
         st.session_state.calgrid_anno = oggi.year
         st.session_state.calgrid_mese = oggi.month
+        st.session_state.calgrid_attivo = True
 
     col_prev, col_label, col_next = st.columns([1, 3, 1])
     with col_prev:
@@ -8371,37 +8389,38 @@ def mostra_calendario_impegni_grid():
 
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
-    etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
-    cols_head = st.columns(7)
-    for c, etichetta in zip(cols_head, etichette_giorni):
-        c.markdown(f"<div style='text-align:center; font-weight:600; color:#6b7280;'>{etichetta}</div>",
-                   unsafe_allow_html=True)
+    with st.container(key="calgrid_container"):
+        etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
+        cols_head = st.columns(7)
+        for c, etichetta in zip(cols_head, etichette_giorni):
+            c.markdown(f"<div style='text-align:center; font-weight:600; color:#6b7280;'>{etichetta}</div>",
+                       unsafe_allow_html=True)
 
-    giorno_corrente = 1
-    settimane = []
-    settimana = [None] * primo_giorno_settimana
-    while giorno_corrente <= giorni_nel_mese:
-        settimana.append(giorno_corrente)
-        if len(settimana) == 7:
+        giorno_corrente = 1
+        settimane = []
+        settimana = [None] * primo_giorno_settimana
+        while giorno_corrente <= giorni_nel_mese:
+            settimana.append(giorno_corrente)
+            if len(settimana) == 7:
+                settimane.append(settimana)
+                settimana = []
+            giorno_corrente += 1
+        if settimana:
+            settimana += [None] * (7 - len(settimana))
             settimane.append(settimana)
-            settimana = []
-        giorno_corrente += 1
-    if settimana:
-        settimana += [None] * (7 - len(settimana))
-        settimane.append(settimana)
 
-    for settimana in settimane:
-        cols = st.columns(7)
-        for col, giorno in zip(cols, settimana):
-            with col:
-                if giorno is None:
-                    st.write("")
-                else:
-                    if st.button(str(giorno), key=f"calgrid_giorno_{anno}_{mese}_{giorno}",
-                                 use_container_width=True):
-                        st.session_state.calimp_mese_filtro = (anno, mese)
-                        vai_a("calendario_impegni_lista")
-
+        for settimana in settimane:
+            cols = st.columns(7)
+            for col, giorno in zip(cols, settimana):
+                with col:
+                    if giorno is None:
+                        st.write("")
+                    else:
+                        if st.button(str(giorno), key=f"calgrid_giorno_{anno}_{mese}_{giorno}",
+                                     use_container_width=True):
+                            st.session_state.calimp_mese_filtro = (anno, mese)
+                            vai_a("calendario_impegni_lista")
+                            st.rerun()
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
