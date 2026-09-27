@@ -8337,25 +8337,28 @@ def mostra_calendario_impegni_grid():
         st.session_state.calgrid_mese = oggi.month
         st.session_state.calgrid_attivo = True
 
-    st.markdown(
-        f"<div style='text-align:center; font-weight:700; font-size:1.1rem; margin-bottom:6px;'>"
-        f"{MESI_ITALIANI[st.session_state.calgrid_mese]} {st.session_state.calgrid_anno}</div>",
-        unsafe_allow_html=True,
-    )
     with st.container(key="calgrid_frecce"):
-        col_prev, col_next = st.columns(2)
+        col_prev, col_label, col_next = st.columns([1, 3, 1])
         with col_prev:
-            if st.button("◀ Mese prec.", key="calgrid_prev", use_container_width=True):
+            if st.button("◀", key="calgrid_prev", use_container_width=True):
                 st.session_state.calgrid_mese -= 1
                 if st.session_state.calgrid_mese < 1:
                     st.session_state.calgrid_mese = 12
                     st.session_state.calgrid_anno -= 1
+                st.rerun()
+        with col_label:
+            st.markdown(
+                f"<div style='text-align:center; font-weight:700; font-size:1.1rem; padding-top:6px;'>"
+                f"{MESI_ITALIANI[st.session_state.calgrid_mese]} {st.session_state.calgrid_anno}</div>",
+                unsafe_allow_html=True,
+            )
         with col_next:
-            if st.button("Mese succ. ▶", key="calgrid_next", use_container_width=True):
+            if st.button("▶", key="calgrid_next", use_container_width=True):
                 st.session_state.calgrid_mese += 1
                 if st.session_state.calgrid_mese > 12:
                     st.session_state.calgrid_mese = 1
                     st.session_state.calgrid_anno += 1
+                st.rerun()
 
     anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
     indice_anno_corrente = (anni_disponibili.index(st.session_state.calgrid_anno)
@@ -8403,6 +8406,7 @@ def mostra_calendario_impegni_grid():
                             st.session_state.calimp_mese_filtro = (anno, mese)
                             vai_a("calendario_impegni_lista")
                             st.rerun()
+
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
