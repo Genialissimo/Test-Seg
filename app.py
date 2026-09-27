@@ -8295,9 +8295,38 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                           on_click=_impegni_apri_modifica_generico, args=(r["riga_dict"], rf, prefisso))
 
 
-def mostra_impegni_scadenze():
-    _mostra_lista_impegni(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI,
-                          "🗓️ Impegni e scadenze", "impegni", vai_a_home_reset_impegni)
+def vai_a_home_reset_calendario_impegni():
+    for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro",
+                  "calgrid_attivo", "calgrid_giorno_selezionato"):
+        st.session_state.pop(chiave, None)
+    vai_a("home")
+
+
+def vai_a_calendario_lista_completa():
+    st.session_state.pop("calimp_mese_filtro", None)
+    vai_a("calendario_impegni_lista")
+
+
+def _calgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
+    """Legge il foglio Calendario Impegni e ritorna {giorno: [righe]} per il mese indicato."""
+    risultato = {}
+    if workbook_calendario is None:
+        return risultato
+    df, err = leggi_foglio_come_df(workbook_calendario, NOME_FOGLIO_CALENDARIO_IMPEGNI,
+                                   RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI)
+    if err or df.empty:
+        return risultato
+    df = df.reset_index(drop=True)
+    for idx, riga in df.iterrows():
+        try:
+            scadenza_date = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
+        except Exception:
+            continue
+        if scadenza_date.year == anno and scadenza_date.month == mese:
+            riga_dict = riga.to_dict()
+            riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI + 1 + idx
+            risultato.setdefault(scadenza_date.day, []).append(riga_dict)
+    return risultato
 
 
 def mostra_calendario_impegni_grid():
@@ -8308,14 +8337,17 @@ def mostra_calendario_impegni_grid():
         return
 
     st.title("📅 Calendario Impegni")
-    st.button("🏠 Home", key="home_da_calendario_grid", use_container_width=True,
-              on_click=vai_a_home_reset_calendario_impegni)
 
     st.markdown("""
     <style>
         div[class*="st-key-calgrid_giorno_"] button {
             padding: 6px 0 !important;
             min-height: 0 !important;
+        }
+        div[class*="st-key-calgrid_giorno_con_"] button {
+            background: #bae6fd !important;
+            border-color: #7dd3fc !important;
+            font-weight: 700 !important;
         }
         div[class*="st-key-calgrid_"] div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -8328,14 +8360,36 @@ def mostra_calendario_impegni_grid():
             min-width: 0 !important;
             padding: 0 2px !important;
         }
+        div[class*="st-key-calgrid_riepilogo_"] button {
+            background: transparent !important;
+            border: none !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+            font-weight: 600 !important;
+            color: #0c4a6e !important;
+        }
     </style>
     """, unsafe_allow_html=True)
+
+    with st.container(key="calgrid_toolbar"):
+        col_home, col_nuovo, col_tutto = st.columns(3)
+        with col_home:
+            st.button("🏠 Home", key="home_da_calendario_grid", use_container_width=True,
+                      on_click=vai_a_home_reset_calendario_impegni)
+        with col_nuovo:
+            if st.button("➕ Nuovo", key="calgrid_nuovo_top", use_container_width=True,
+                         disabled=sola_lettura()):
+                st.session_state.calimp_editor = {"modo": "nuovo"}
+        with col_tutto:
+            st.button("📋 Mostra tutto", key="calgrid_mostra_tutto", use_container_width=True,
+                      disabled=(workbook_calendario is None), on_click=vai_a_calendario_lista_completa)
 
     if not st.session_state.get("calgrid_attivo"):
         oggi = date.today()
         st.session_state.calgrid_anno = oggi.year
         st.session_state.calgrid_mese = oggi.month
         st.session_state.calgrid_attivo = True
+        st.session_state.pop("calgrid_giorno_selezionato", None)
 
     with st.container(key="calgrid_frecce"):
         col_prev, col_label, col_next = st.columns([1, 3, 1])
@@ -8345,6 +8399,7 @@ def mostra_calendario_impegni_grid():
                 if st.session_state.calgrid_mese < 1:
                     st.session_state.calgrid_mese = 12
                     st.session_state.calgrid_anno -= 1
+                st.session_state.pop("calgrid_giorno_selezionato", None)
                 st.rerun()
         with col_label:
             st.markdown(
@@ -8358,6 +8413,7 @@ def mostra_calendario_impegni_grid():
                 if st.session_state.calgrid_mese > 12:
                     st.session_state.calgrid_mese = 1
                     st.session_state.calgrid_anno += 1
+                st.session_state.pop("calgrid_giorno_selezionato", None)
                 st.rerun()
 
     anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
@@ -8367,10 +8423,13 @@ def mostra_calendario_impegni_grid():
                                key="calgrid_anno_select")
     if anno_scelto != st.session_state.calgrid_anno:
         st.session_state.calgrid_anno = anno_scelto
+        st.session_state.pop("calgrid_giorno_selezionato", None)
         st.rerun()
 
     anno = st.session_state.calgrid_anno
     mese = st.session_state.calgrid_mese
+
+    impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
 
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
@@ -8401,11 +8460,50 @@ def mostra_calendario_impegni_grid():
                     if giorno is None:
                         st.write("")
                     else:
-                        if st.button(str(giorno), key=f"calgrid_giorno_{anno}_{mese}_{giorno}",
+                        ha_impegni = giorno in impegni_del_mese
+                        prefisso_chiave = "calgrid_giorno_con" if ha_impegni else "calgrid_giorno"
+                        if st.button(str(giorno), key=f"{prefisso_chiave}_{anno}_{mese}_{giorno}",
                                      use_container_width=True):
-                            st.session_state.calimp_mese_filtro = (anno, mese)
-                            vai_a("calendario_impegni_lista")
+                            st.session_state.calgrid_giorno_selezionato = giorno
                             st.rerun()
+
+    giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
+    if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+        data_sel = date(anno, mese, giorno_sel)
+        if st.button("➕ Nuovo per questo giorno", key="calgrid_nuovo_giorno", use_container_width=True,
+                     disabled=sola_lettura()):
+            data_str = data_sel.strftime("%d/%m/%Y")
+            st.session_state.calimp_editor = {
+                "modo": "nuovo",
+                "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
+            }
+
+    editor_calimp = st.session_state.get("calimp_editor")
+    if editor_calimp:
+        st.divider()
+        categorie_disponibili = leggi_categorie_impegni(workbook)
+        _form_impegno(editor_calimp, categorie_disponibili, workbook_calendario,
+                      NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
+        st.divider()
+
+    if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+        data_sel = date(anno, mese, giorno_sel)
+        st.markdown(f"#### 🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}")
+        impegni_giorno = impegni_del_mese.get(giorno_sel, [])
+        if not impegni_giorno:
+            st.caption("Nessun impegno in questa data.")
+        else:
+            for riga_dict in impegni_giorno:
+                rf = riga_dict["_riga_foglio"]
+                oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
+                scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
+                etichetta = f"{scadenza_str} — {oggetto}"
+                if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
+                    st.session_state.calimp_editor = {
+                        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+                    }
+                    st.rerun()
+
 
 
 # ─────────────────────────────────────────────────────────────────
