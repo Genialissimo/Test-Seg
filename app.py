@@ -3,38 +3,38 @@ app.py
 Gestione Registrazioni SEG - Web App (Streamlit + Google Sheets)
 """
 
+import calendar
 from datetime import datetime, date, timedelta
 import io
 import os
 import re
-import zipfile
-import dropbox
-import httpx
-import calendar
 from urllib.parse import quote
+import zipfile
 
-import pandas as pd
-import streamlit as st
-from st_keyup import st_keyup
-from streamlit_gsheets import GSheetsConnection
-
-import gspread
-from google.oauth2.service_account import Credentials
-import pdfplumber
-from pypdf import PdfReader, PdfWriter
-from reportlab.pdfgen import canvas as rl_canvas
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepTogether
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+import dropbox
 import fitz
+import gspread
+from google.oauth2.credentials import Credentials as GoogleUserCredentials
+from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-from google.oauth2.credentials import Credentials as GoogleUserCredentials
+import httpx
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+import pandas as pd
+import pdfplumber
+from pypdf import PdfReader, PdfWriter
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.pdfgen import canvas as rl_canvas
+from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+import streamlit as st
+import streamlit.components.v1 as components
+from streamlit_gsheets import GSheetsConnection
+from st_keyup import st_keyup
 
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
@@ -7859,6 +7859,8 @@ def mostra_domande_pioniere_ausiliario():
             _form_domanda_pioniere(editor, nomi_anagrafica)
 
 
+
+
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: IMPEGNI E SCADENZE
 # ─────────────────────────────────────────────────────────────────
@@ -8152,7 +8154,7 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                   on_click=funzione_reset_home)
     with col_nuovo:
         if st.button("➕ Nuovo", key=f"{prefisso}_nuovo_btn", use_container_width=True,
-                     disabled=not collegato_pagina or sola_lettura()):
+                      disabled=not collegato_pagina or sola_lettura()):
             st.session_state[f"{prefisso}_editor"] = {"modo": "nuovo"}
 
     if not collegato_pagina:
@@ -8473,6 +8475,51 @@ def mostra_calendario_impegni_grid():
                                      use_container_width=True):
                             st.session_state.calgrid_giorno_selezionato = giorno
                             st.rerun()
+
+    # Iniezione JS per la gestione degli eventi touch (Swipe Sx/Dx)
+    components.html("""
+    <script>
+    const doc = window.parent.document;
+    let startX = 0;
+    let startY = 0;
+
+    function applicaTouch() {
+        const areaCalendario = doc.querySelector('div[class*="st-key-calgrid_container"]') || doc.body;
+        if (!areaCalendario || areaCalendario.dataset.swipeAttivo) return;
+
+        areaCalendario.dataset.swipeAttivo = "true";
+
+        areaCalendario.addEventListener('touchstart', function(e) {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }, {passive: true});
+
+        areaCalendario.addEventListener('touchend', function(e) {
+            if (!startX || !startY) return;
+
+            let diffX = e.changedTouches[0].clientX - startX;
+            let diffY = e.changedTouches[0].clientY - startY;
+
+            // Rileva lo swipe solo se il movimento orizzontale è maggiore di quello verticale ed è almeno di 40px
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                if (diffX < 0) {
+                    // Swipe a sinistra -> Mese successivo
+                    const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
+                    if (btnNext) btnNext.click();
+                } else {
+                    // Swipe a destra -> Mese precedente
+                    const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
+                    if (btnPrev) btnPrev.click();
+                }
+            }
+            startX = 0;
+            startY = 0;
+        }, {passive: true});
+    }
+
+    setTimeout(applicaTouch, 300);
+    </script>
+    """, height=0, width=0)
 
     giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
