@@ -9296,7 +9296,7 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-        # Lista Riepilogo Impegni (Icona link davanti al pallino e puntata su "Collega Link")
+        # Lista Riepilogo Impegni (Icona link allineata sulla stessa riga a sinistra del pallino)
     with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
@@ -9357,36 +9357,26 @@ def mostra_calendario_impegni_grid():
 
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
                 
-                # Etichetta con il pallino
-                etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
+                # HTML per l'icona del link (attiva o sbiadita)
+                if ha_link:
+                    icona_html = f"<a href='{url_link}' target='_blank' title='Apri Link' style='font-size: 1.05rem; text-decoration: none; margin-right: 6px; vertical-align: middle;'>🔗</a>"
+                else:
+                    icona_html = "<span title='Nessun link disponibile' style='font-size: 1.05rem; opacity: 0.2; filter: grayscale(100%); margin-right: 6px; vertical-align: middle; cursor: not-allowed;'>🔗</span>"
+
+                etichetta = f"{icona_html}{pallino} **{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
-                    col_icon, col_item = st.columns([1, 11])
-                    
-                    with col_icon:
-                        if ha_link:
-                            st.markdown(
-                                f"<a href='{url_link}' target='_blank' title='Apri Link' style='line-height: 2.2; font-size: 1.1rem; text-decoration: none; text-align: center; display: block;'>🔗</a>",
-                                unsafe_allow_html=True,
-                            )
-                        else:
-                            st.markdown(
-                                "<span title='Nessun link disponibile' style='line-height: 2.2; font-size: 1.1rem; opacity: 0.2; filter: grayscale(100%); text-align: center; display: block; cursor: not-allowed;'>🔗</span>",
-                                unsafe_allow_html=True,
-                            )
-                            
-                    with col_item:
-                        if st.button(
-                            etichetta,
-                            key=f"calgrid_riepilogo_{rf}",
-                            use_container_width=True,
-                        ):
-                            st.session_state.calimp_editor = {
-                                "modo": "modifica",
-                                "riga": riga_dict,
-                                "numero_riga_foglio": rf,
-                            }
-                            st.rerun()
+                    if st.button(
+                        etichetta,
+                        key=f"calgrid_riepilogo_{rf}",
+                        use_container_width=True,
+                    ):
+                        st.session_state.calimp_editor = {
+                            "modo": "modifica",
+                            "riga": riga_dict,
+                            "numero_riga_foglio": rf,
+                        }
+                        st.rerun()
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
