@@ -9296,7 +9296,7 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-        # Lista Riepilogo Impegni con simbolo link dinamico (attivo/sbiadito)
+        # Lista Riepilogo Impegni (Icona link davanti al pallino e puntata su "Collega Link")
     with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
@@ -9348,21 +9348,33 @@ def mostra_calendario_impegni_grid():
                 ]
                 pallino = "🟢" if is_fatto else "🔴"
 
+                # Lettura mirata dalla colonna "Collega Link" (Colonna I)
                 url_link = str(
-                    riga_dict.get("Link", "")
-                    or riga_dict.get("URL", "")
-                    or riga_dict.get("Collegamento", "")
+                    riga_dict.get("Collega Link", "")
+                    or riga_dict.get("collega link", "")
+                    or ""
                 ).strip()
+
+                ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
                 
-                ha_link = url_link and url_link.startswith("http")
-                
-                # Etichetta principale con pallino, data e oggetto
+                # Etichetta con il pallino
                 etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
-                    # Dividiamo la riga: una parte larga per il testo/modifica, una piccola per il simbolo del link
-                    col_item, col_link_icon = st.columns([9, 1])
+                    col_icon, col_item = st.columns([1, 11])
                     
+                    with col_icon:
+                        if ha_link:
+                            st.markdown(
+                                f"<a href='{url_link}' target='_blank' title='Apri Link' style='line-height: 2.2; font-size: 1.1rem; text-decoration: none; text-align: center; display: block;'>🔗</a>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(
+                                "<span title='Nessun link disponibile' style='line-height: 2.2; font-size: 1.1rem; opacity: 0.2; filter: grayscale(100%); text-align: center; display: block; cursor: not-allowed;'>🔗</span>",
+                                unsafe_allow_html=True,
+                            )
+                            
                     with col_item:
                         if st.button(
                             etichetta,
@@ -9375,21 +9387,6 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
-                            
-                    with col_link_icon:
-                        if ha_link:
-                            # Link attivo e scuro, cliccabile
-                            st.markdown(
-                                f"<a href='{url_link}' target='_blank' title='Apri Link' style='line-height: 2.2; font-size: 1.1rem; text-decoration: none; text-align: center; display: block;'>🔗</a>",
-                                unsafe_allow_html=True,
-                            )
-                        else:
-                            # Link inibito, sbiadito e non cliccabile
-                            st.markdown(
-                                "<span title='Nessun link disponibile' style='line-height: 2.2; font-size: 1.1rem; opacity: 0.25; filter: grayscale(100%); text-align: center; display: block; cursor: not-allowed;'>🔗</span>",
-                                unsafe_allow_html=True,
-                            )
-
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
