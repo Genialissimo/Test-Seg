@@ -8800,6 +8800,11 @@ from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
+import calendar
+from datetime import date
+import streamlit as st
+import streamlit.components.v1 as components
+
 # ==============================================================================
 # CSS GLOBALE
 # ==============================================================================
@@ -9126,7 +9131,7 @@ def mostra_calendario_impegni_grid():
             "<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True
         )
 
-        # Navigazione Mese con cambio automatico dell'anno
+        # Navigazione Mese con aggiornamento sincronizzato della selectbox anno
         with st.container(key="calgrid_nav_row"):
             col_prev, col_label, col_next = st.columns([1, 6, 1])
             with col_prev:
@@ -9134,7 +9139,10 @@ def mostra_calendario_impegni_grid():
                     st.session_state.calgrid_mese -= 1
                     if st.session_state.calgrid_mese < 1:
                         st.session_state.calgrid_mese = 12
-                        st.session_state.calgrid_anno -= 1  # Torna all'anno precedente
+                        st.session_state.calgrid_anno -= 1
+                        st.session_state["calgrid_anno_select"] = (
+                            st.session_state.calgrid_anno
+                        )
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
@@ -9149,8 +9157,9 @@ def mostra_calendario_impegni_grid():
                     st.session_state.calgrid_mese += 1
                     if st.session_state.calgrid_mese > 12:
                         st.session_state.calgrid_mese = 1
-                        st.session_state.calgrid_anno += (
-                            1  # Passa all'anno successivo
+                        st.session_state.calgrid_anno += 1
+                        st.session_state["calgrid_anno_select"] = (
+                            st.session_state.calgrid_anno
                         )
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
@@ -9376,7 +9385,6 @@ def mostra_calendario_impegni_grid():
                                     "numero_riga_foglio": rf,
                                 }
                                 st.rerun()
-
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
