@@ -8811,10 +8811,13 @@ from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
+import calendar
+from datetime import date
+import streamlit as st
+import streamlit.components.v1 as components
+
 # ==============================================================================
 # CSS GLOBALE
-# Inserito fuori dalle funzioni per rimanere sempre attivo nel browser
-# ed evitare che gli elementi perdano la formattazione nei cambi pagina.
 # ==============================================================================
 st.markdown(
     """
@@ -8824,6 +8827,12 @@ st.markdown(
             opacity: 1 !important;
             filter: none !important;
             transition: none !important;
+        }
+
+        /* Disabilita evidenziazione/sbiadimento da tap su mobile */
+        * {
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
         }
 
         /* 2. BARRA SUPERIORE (Home, Nuovo, Mostra tutto) */
@@ -8845,7 +8854,7 @@ st.markdown(
             white-space: nowrap !important;
         }
 
-        /* 3. CARD CENTRATA PER IL CALENDARIO (Transizioni rimosse per effetto istantaneo) */
+        /* 3. CARD CENTRATA PER IL CALENDARIO */
         div[class*="st-key-calgrid_card_wrapper"] {
             background: #ffffff !important;
             border-radius: 20px !important;
@@ -8857,6 +8866,8 @@ st.markdown(
             width: 100% !important;
             animation: none !important;
             transition: none !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
         }
 
         /* 4. NAVIGAZIONE MESE (< Settembre 2026 >) */
@@ -9042,10 +9053,6 @@ st.markdown(
         div[class*="st-key-calgrid_riepilogo_"] button:hover {
             background: #f1f5f9 !important;
         }
-
-        .cal-swipe-active {
-            opacity: 0.6 !important;
-        }
     </style>
 """,
     unsafe_allow_html=True,
@@ -9211,7 +9218,7 @@ def mostra_calendario_impegni_grid():
                                 st.session_state.pop("calimp_editor", None)
                                 st.rerun()
 
-    # JS Touch Swipe
+    # JS Touch Swipe Ottimizzato (Senza sbiadimento/loss of focus)
     components.html(
         """
     <script>
@@ -9230,6 +9237,19 @@ def mostra_calendario_impegni_grid():
             startY = e.touches[0].clientY;
         }, {passive: true});
 
+        cardContainer.addEventListener('touchmove', function(e) {
+            if (!startX || !startY) return;
+            let currentX = e.touches[0].clientX;
+            let currentY = e.touches[0].clientY;
+            let diffX = currentX - startX;
+            let diffY = currentY - startY;
+
+            // Se lo scorrimento è prevalentemente orizzontale, blocca l'evento nativo per evitare lo sbiadimento/focus loss
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) {
+                if (e.cancelable) e.preventDefault();
+            }
+        }, {passive: false});
+
         cardContainer.addEventListener('touchend', function(e) {
             if (!startX || !startY) return;
 
@@ -9237,7 +9257,6 @@ def mostra_calendario_impegni_grid():
             let diffY = e.changedTouches[0].clientY - startY;
 
             if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-                cardContainer.classList.add('cal-swipe-active');
                 if (diffX < 0) {
                     const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
                     if (btnNext) btnNext.click();
@@ -9307,7 +9326,6 @@ def mostra_calendario_impegni_grid():
                     )
                     scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
 
-                    # Recupera il valore dello stato/fatto da varie possibili chiavi
                     stato_val = (
                         str(
                             riga_dict.get("Stato", "")
@@ -9319,7 +9337,6 @@ def mostra_calendario_impegni_grid():
                         .lower()
                     )
 
-                    # AGGIORNATO: inclusa 'x' tra i valori validi per il pallino verde
                     is_fatto = stato_val in [
                         "x",
                         "fatto",
@@ -9371,7 +9388,6 @@ def mostra_calendario_impegni_grid():
                                     "numero_riga_foglio": rf,
                                 }
                                 st.rerun()
-
 
 
 
