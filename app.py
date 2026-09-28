@@ -7878,7 +7878,7 @@ def vai_a_home_reset_impegni():
 def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
                   riga_intestazione: int, prefisso: str):
     modo = editor.get("modo")
-    e = editor.get("riga", {}) if modo == "modifica" else {}
+    e = editor.get("riga", {})
     chiave = editor.get("numero_riga_foglio", "nuovo")
     bloccato = sola_lettura()
 
