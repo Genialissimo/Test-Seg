@@ -8800,22 +8800,6 @@ from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
-
-import calendar
-from datetime import date
-import streamlit as st
-import streamlit.components.v1 as components
-
-import calendar
-from datetime import date
-import streamlit as st
-import streamlit.components.v1 as components
-
-import calendar
-from datetime import date
-import streamlit as st
-import streamlit.components.v1 as components
-
 # ==============================================================================
 # CSS GLOBALE
 # ==============================================================================
@@ -9114,14 +9098,17 @@ def mostra_calendario_impegni_grid():
 
     # CARD PRINCIPALE
     with st.container(key="calgrid_card_wrapper"):
-        # Selettore Anno
+        # Selettore Anno dinamico ed esteso
+        anno_corrente_reale = date.today().year
         anni_disponibili = list(
-            range(date.today().year - 5, date.today().year + 6)
+            range(anno_corrente_reale - 10, anno_corrente_reale + 15)
         )
-        indice_anno_corrente = (
-            anni_disponibili.index(st.session_state.calgrid_anno)
-            if st.session_state.calgrid_anno in anni_disponibili
-            else 5
+        if st.session_state.calgrid_anno not in anni_disponibili:
+            anni_disponibili.append(st.session_state.calgrid_anno)
+            anni_disponibili.sort()
+
+        indice_anno_corrente = anni_disponibili.index(
+            st.session_state.calgrid_anno
         )
         anno_scelto = st.selectbox(
             "Anno",
@@ -9139,7 +9126,7 @@ def mostra_calendario_impegni_grid():
             "<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True
         )
 
-        # Navigazione Mese (< Settembre 2026 >)
+        # Navigazione Mese con cambio automatico dell'anno
         with st.container(key="calgrid_nav_row"):
             col_prev, col_label, col_next = st.columns([1, 6, 1])
             with col_prev:
@@ -9147,7 +9134,7 @@ def mostra_calendario_impegni_grid():
                     st.session_state.calgrid_mese -= 1
                     if st.session_state.calgrid_mese < 1:
                         st.session_state.calgrid_mese = 12
-                        st.session_state.calgrid_anno -= 1
+                        st.session_state.calgrid_anno -= 1  # Torna all'anno precedente
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
@@ -9162,7 +9149,9 @@ def mostra_calendario_impegni_grid():
                     st.session_state.calgrid_mese += 1
                     if st.session_state.calgrid_mese > 12:
                         st.session_state.calgrid_mese = 1
-                        st.session_state.calgrid_anno += 1
+                        st.session_state.calgrid_anno += (
+                            1  # Passa all'anno successivo
+                        )
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
@@ -9218,7 +9207,7 @@ def mostra_calendario_impegni_grid():
                                 st.session_state.pop("calimp_editor", None)
                                 st.rerun()
 
-    # JS Touch Swipe Ottimizzato (Senza sbiadimento/loss of focus)
+    # JS Touch Swipe
     components.html(
         """
     <script>
@@ -9244,7 +9233,6 @@ def mostra_calendario_impegni_grid():
             let diffX = currentX - startX;
             let diffY = currentY - startY;
 
-            // Se lo scorrimento è prevalentemente orizzontale, blocca l'evento nativo per evitare lo sbiadimento/focus loss
             if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) {
                 if (e.cancelable) e.preventDefault();
             }
@@ -9388,7 +9376,6 @@ def mostra_calendario_impegni_grid():
                                     "numero_riga_foglio": rf,
                                 }
                                 st.rerun()
-
 
 
 # ─────────────────────────────────────────────────────────────────
