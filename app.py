@@ -8801,30 +8801,27 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-def mostra_calendario_impegni_grid():
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button("🏠 Torna alla Home", key="home_da_calgrid_negato",
-                  on_click=vai_a, args=("home",))
-        return
+import calendar
+from datetime import date
+import streamlit as st
+import streamlit.components.v1 as components
 
-    st.title("📅 Calendario Impegni")
-
-    # CSS Aggiornato: Allineamento Perfetto Mese/Anno e Frecce + Allineamento SX Riepilogo
-    st.markdown("""
+# ==============================================================================
+# CSS GLOBALE
+# Inserito fuori dalle funzioni per rimanere sempre attivo nel browser
+# ed evitare che gli elementi perdano la formattazione nei cambi pagina.
+# ==============================================================================
+st.markdown(
+    """
     <style>
-        @keyframes calCardEntrance {
-            0% {
-                opacity: 0.4;
-                transform: scale(0.98);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
+        /* 1. DISABILITA LO SBIADIMENTO E L'OPACITÀ RIDOTTA NATIVA DI STREAMLIT DURANTE IL RERUN */
+        .stApp [data-stale="true"] {
+            opacity: 1 !important;
+            filter: none !important;
+            transition: none !important;
         }
 
-        /* 1. BARRA SUPERIORE (Home, Nuovo, Mostra tutto) */
+        /* 2. BARRA SUPERIORE (Home, Nuovo, Mostra tutto) */
         div[class*="st-key-calgrid_toolbar"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -8843,7 +8840,7 @@ def mostra_calendario_impegni_grid():
             white-space: nowrap !important;
         }
 
-        /* 2. CARD CENTRATA PER IL CALENDARIO */
+        /* 3. CARD CENTRATA PER IL CALENDARIO (Transizioni rimosse per effetto istantaneo) */
         div[class*="st-key-calgrid_card_wrapper"] {
             background: #ffffff !important;
             border-radius: 20px !important;
@@ -8853,11 +8850,11 @@ def mostra_calendario_impegni_grid():
             margin: 0 auto !important;
             max-width: 400px !important;
             width: 100% !important;
-            animation: calCardEntrance 0.2s ease-out forwards !important;
-            transition: opacity 0.15s ease !important;
+            animation: none !important;
+            transition: none !important;
         }
 
-        /* 3. NAVIGAZIONE MESE (< Settembre 2026 >) - ALLINEAMENTO PERFETTO */
+        /* 4. NAVIGAZIONE MESE (< Settembre 2026 >) */
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -8907,7 +8904,7 @@ def mostra_calendario_impegni_grid():
             line-height: 1 !important;
         }
 
-        /* Banner Mese/Anno Centrato e Allineato */
+        /* Banner Mese/Anno Centrato */
         .cal-header-box {
             background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
             color: #ffffff !important;
@@ -8941,7 +8938,7 @@ def mostra_calendario_impegni_grid():
             justify-content: center !important;
         }
 
-        /* 4. GRIGLIA GIORNI */
+        /* 5. GRIGLIA GIORNI */
         div[class*="st-key-calgrid_grid_container"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -8975,7 +8972,7 @@ def mostra_calendario_impegni_grid():
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* 5. RIEPILOGO IMPEGNI GIUSTIFICATO A SINISTRA (SX) */
+        /* 6. RIEPILOGO IMPEGNI GIUSTIFICATO A SINISTRA (SX) */
         div[class*="st-key-calgrid_riepilogo_section"] {
             display: flex !important;
             flex-direction: column !important;
@@ -9045,21 +9042,50 @@ def mostra_calendario_impegni_grid():
             opacity: 0.6 !important;
         }
     </style>
-    """, unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
+
+def mostra_calendario_impegni_grid():
+    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
+        st.warning("⚠️ Questa sezione è riservata.")
+        st.button(
+            "🏠 Torna alla Home",
+            key="home_da_calgrid_negato",
+            on_click=vai_a,
+            args=("home",),
+        )
+        return
+
+    st.title("📅 Calendario Impegni")
 
     # Toolbar Top (Home, Nuovo, Mostra tutto)
     with st.container(key="calgrid_toolbar"):
         col_home, col_nuovo, col_tutto = st.columns(3)
         with col_home:
-            st.button("🏠 Home", key="home_da_calendario_grid", use_container_width=True,
-                      on_click=vai_a_home_reset_calendario_impegni)
+            st.button(
+                "🏠 Home",
+                key="home_da_calendario_grid",
+                use_container_width=True,
+                on_click=vai_a_home_reset_calendario_impegni,
+            )
         with col_nuovo:
-            if st.button("➕ Nuovo", key="calgrid_nuovo_top", use_container_width=True,
-                         disabled=sola_lettura()):
+            if st.button(
+                "➕ Nuovo",
+                key="calgrid_nuovo_top",
+                use_container_width=True,
+                disabled=sola_lettura(),
+            ):
                 st.session_state.calimp_editor = {"modo": "nuovo"}
         with col_tutto:
-            st.button("📋 Mostra tutto", key="calgrid_mostra_tutto", use_container_width=True,
-                      disabled=(workbook_calendario is None), on_click=vai_a_calendario_lista_completa)
+            st.button(
+                "📋 Mostra tutto",
+                key="calgrid_mostra_tutto",
+                use_container_width=True,
+                disabled=(workbook_calendario is None),
+                on_click=vai_a_calendario_lista_completa,
+            )
 
     if not st.session_state.get("calgrid_attivo"):
         oggi = date.today()
@@ -9077,18 +9103,29 @@ def mostra_calendario_impegni_grid():
     # CARD PRINCIPALE
     with st.container(key="calgrid_card_wrapper"):
         # Selettore Anno
-        anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
-        indice_anno_corrente = (anni_disponibili.index(st.session_state.calgrid_anno)
-                                if st.session_state.calgrid_anno in anni_disponibili else 5)
-        anno_scelto = st.selectbox("Anno", anni_disponibili, index=indice_anno_corrente,
-                                   key="calgrid_anno_select")
+        anni_disponibili = list(
+            range(date.today().year - 5, date.today().year + 6)
+        )
+        indice_anno_corrente = (
+            anni_disponibili.index(st.session_state.calgrid_anno)
+            if st.session_state.calgrid_anno in anni_disponibili
+            else 5
+        )
+        anno_scelto = st.selectbox(
+            "Anno",
+            anni_disponibili,
+            index=indice_anno_corrente,
+            key="calgrid_anno_select",
+        )
         if anno_scelto != st.session_state.calgrid_anno:
             st.session_state.calgrid_anno = anno_scelto
             st.session_state.pop("calgrid_giorno_selezionato", None)
             st.session_state.pop("calimp_editor", None)
             st.rerun()
 
-        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True
+        )
 
         # Navigazione Mese (< Settembre 2026 >)
         with st.container(key="calgrid_nav_row"):
@@ -9118,15 +9155,19 @@ def mostra_calendario_impegni_grid():
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
 
-        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True
+        )
 
         # Griglia Giorni
         with st.container(key="calgrid_grid_container"):
             etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
             cols_head = st.columns(7)
             for c, etichetta in zip(cols_head, etichette_giorni):
-                c.markdown(f"<div style='text-align:center; font-weight:700; color:#94a3b8; font-size:0.8rem;'>{etichetta}</div>",
-                           unsafe_allow_html=True)
+                c.markdown(
+                    f"<div style='text-align:center; font-weight:700; color:#94a3b8; font-size:0.8rem;'>{etichetta}</div>",
+                    unsafe_allow_html=True,
+                )
 
             giorno_corrente = 1
             settimane = []
@@ -9149,15 +9190,25 @@ def mostra_calendario_impegni_grid():
                             st.write("")
                         else:
                             ha_impegni = giorno in impegni_del_mese
-                            prefisso_chiave = "calgrid_giorno_con" if ha_impegni else "calgrid_giorno"
-                            if st.button(str(giorno), key=f"{prefisso_chiave}_{anno}_{mese}_{giorno}",
-                                         use_container_width=True):
-                                st.session_state.calgrid_giorno_selezionato = giorno
+                            prefisso_chiave = (
+                                "calgrid_giorno_con"
+                                if ha_impegni
+                                else "calgrid_giorno"
+                            )
+                            if st.button(
+                                str(giorno),
+                                key=f"{prefisso_chiave}_{anno}_{mese}_{giorno}",
+                                use_container_width=True,
+                            ):
+                                st.session_state.calgrid_giorno_selezionato = (
+                                    giorno
+                                )
                                 st.session_state.pop("calimp_editor", None)
                                 st.rerun()
 
     # JS Touch Swipe
-    components.html("""
+    components.html(
+        """
     <script>
     const doc = window.parent.document;
     let startX = 0;
@@ -9197,14 +9248,21 @@ def mostra_calendario_impegni_grid():
 
     setTimeout(applicaTouchCard, 200);
     </script>
-    """, height=0, width=0)
+    """,
+        height=0,
+        width=0,
+    )
 
     # Pulsante per aggiungere un nuovo impegno
     giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
-        if st.button("➕ Nuovo per questo giorno", key="calgrid_nuovo_giorno", use_container_width=True,
-                     disabled=sola_lettura()):
+        if st.button(
+            "➕ Nuovo per questo giorno",
+            key="calgrid_nuovo_giorno",
+            use_container_width=True,
+            disabled=sola_lettura(),
+        ):
             data_str = data_sel.strftime("%d/%m/%Y")
             st.session_state.calimp_editor = {
                 "modo": "nuovo",
@@ -9215,51 +9273,93 @@ def mostra_calendario_impegni_grid():
     editor_calimp = st.session_state.get("calimp_editor")
     if editor_calimp:
         categorie_disponibili = leggi_categorie_impegni(workbook_calendario)
-        _form_impegno_dialog(editor_calimp, categorie_disponibili, workbook_calendario,
-                             NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
+        _form_impegno_dialog(
+            editor_calimp,
+            categorie_disponibili,
+            workbook_calendario,
+            NOME_FOGLIO_CALENDARIO_IMPEGNI,
+            RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
+            "calimp",
+        )
 
     # Lista Riepilogo Impegni (Allineata a Sinistra SX)
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
         with st.container(key="calgrid_riepilogo_section"):
-            st.markdown(f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</h5>", unsafe_allow_html=True)
+            st.markdown(
+                f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</h5>",
+                unsafe_allow_html=True,
+            )
             impegni_giorno = impegni_del_mese.get(giorno_sel, [])
             if not impegni_giorno:
                 st.caption("Nessun impegno in questa data.")
             else:
                 for riga_dict in impegni_giorno:
                     rf = riga_dict["_riga_foglio"]
-                    oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
+                    oggetto = (
+                        str(riga_dict.get("Oggetto", "")).strip()
+                        or "(senza oggetto)"
+                    )
                     scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
 
-                    stato_val = str(riga_dict.get("Stato", "") or riga_dict.get("Fatto", "")).strip().lower()
-                    is_fatto = stato_val in ["fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
+                    stato_val = (
+                        str(
+                            riga_dict.get("Stato", "")
+                            or riga_dict.get("Fatto", "")
+                        )
+                        .strip()
+                        .lower()
+                    )
+                    is_fatto = stato_val in [
+                        "fatto",
+                        "completato",
+                        "si",
+                        "sì",
+                        "true",
+                        "eseguito",
+                        "ok",
+                    ]
                     pallino = "🟢" if is_fatto else "🔴"
 
-                    url_link = str(riga_dict.get("Link", "") or riga_dict.get("URL", "") or riga_dict.get("Collegamento", "")).strip()
+                    url_link = str(
+                        riga_dict.get("Link", "")
+                        or riga_dict.get("URL", "")
+                        or riga_dict.get("Collegamento", "")
+                    ).strip()
                     etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
 
                     with st.container(key=f"calgrid_riepilogo_row_{rf}"):
                         if url_link and url_link.startswith("http"):
                             col_item, col_link = st.columns([8, 2])
                             with col_item:
-                                if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
+                                if st.button(
+                                    etichetta,
+                                    key=f"calgrid_riepilogo_{rf}",
+                                    use_container_width=True,
+                                ):
                                     st.session_state.calimp_editor = {
-                                        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+                                        "modo": "modifica",
+                                        "riga": riga_dict,
+                                        "numero_riga_foglio": rf,
                                     }
                                     st.rerun()
                             with col_link:
                                 st.markdown(
                                     f"<a href='{url_link}' target='_blank' style='line-height: 2.2; font-size: 0.9rem; font-weight: 600; color: #0284c7; text-decoration: underline; text-align: left; display: block;'>— Link</a>",
-                                    unsafe_allow_html=True
+                                    unsafe_allow_html=True,
                                 )
                         else:
-                            if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
+                            if st.button(
+                                etichetta,
+                                key=f"calgrid_riepilogo_{rf}",
+                                use_container_width=True,
+                            ):
                                 st.session_state.calimp_editor = {
-                                    "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+                                    "modo": "modifica",
+                                    "riga": riga_dict,
+                                    "numero_riga_foglio": rf,
                                 }
                                 st.rerun()
-
 
 
 
