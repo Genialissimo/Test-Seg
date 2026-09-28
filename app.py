@@ -8337,7 +8337,7 @@ def mostra_calendario_impegni_grid():
 
     st.title("📅 Calendario Impegni")
 
-    # CSS per Layout Mobile Forzato (Elimina impilamento verticale su smartphone)
+    # CSS Aggiornato: Colore Azzurro Brillante e Riepilogo Allineato a SX Senza Riquadro
     st.markdown("""
     <style>
         @keyframes calCardEntrance {
@@ -8351,7 +8351,7 @@ def mostra_calendario_impegni_grid():
             }
         }
 
-        /* 1. BARRA SUPERIORE (Home, Nuovo, Mostra tutto) SU SINGOLA RIGA SU MOBILE */
+        /* 1. BARRA SUPERIORE (Home, Nuovo, Mostra tutto) */
         div[class*="st-key-calgrid_toolbar"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -8370,7 +8370,7 @@ def mostra_calendario_impegni_grid():
             white-space: nowrap !important;
         }
 
-        /* 2. CARD CENTRATA E COMPATTA */
+        /* 2. CARD CENTRATA */
         div[class*="st-key-calgrid_card_wrapper"] {
             background: #ffffff !important;
             border-radius: 20px !important;
@@ -8384,7 +8384,7 @@ def mostra_calendario_impegni_grid():
             transition: opacity 0.15s ease !important;
         }
 
-        /* 3. RIGA NAVIGAZIONE MESE (< Settembre 2026 >) FORZATA INLINE SU MOBILE */
+        /* 3. NAVIGAZIONE MESE (< Settembre 2026 >) INLINE */
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -8395,22 +8395,7 @@ def mostra_calendario_impegni_grid():
             width: 100% !important;
         }
 
-        /* Colonna 1: Freccia Sinistra (<) */
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) {
-            width: 44px !important;
-            flex: 0 0 44px !important;
-            min-width: 44px !important;
-            max-width: 44px !important;
-        }
-
-        /* Colonna 2: Banner Centrale Mese/Anno */
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
-            flex: 1 1 auto !important;
-            width: 100% !important;
-            min-width: 0 !important;
-        }
-
-        /* Colonna 3: Freccia Destra (>) */
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
             width: 44px !important;
             flex: 0 0 44px !important;
@@ -8418,7 +8403,12 @@ def mostra_calendario_impegni_grid():
             max-width: 44px !important;
         }
 
-        /* Tasti freccia stretti */
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+
         div[class*="st-key-calgrid_prev"] button, div[class*="st-key-calgrid_next"] button {
             width: 44px !important;
             min-height: 42px !important;
@@ -8431,10 +8421,10 @@ def mostra_calendario_impegni_grid():
             justify-content: center !important;
         }
 
-        /* Stile Banner Mese Anno */
+        /* Banner Mese/Anno: Azzurro Brillante */
         .cal-header-box {
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            color: #ffffff;
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
+            color: #ffffff !important;
             border-radius: 12px;
             padding: 10px 6px;
             font-weight: 700;
@@ -8443,7 +8433,7 @@ def mostra_calendario_impegni_grid():
             white-space: nowrap !important;
             overflow: hidden;
             text-overflow: ellipsis;
-            box-shadow: 0 4px 12px rgba(3, 105, 161, 0.22);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
             line-height: 1.2;
             width: 100% !important;
         }
@@ -8473,11 +8463,31 @@ def mostra_calendario_impegni_grid():
             color: #334155 !important;
             font-size: 0.85rem !important;
         }
+
+        /* Giorni con impegni: Azzurro Brillante */
         div[class*="st-key-calgrid_giorno_con_"] button {
             background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
             color: #ffffff !important;
             font-weight: 700 !important;
-            box-shadow: 0 3px 8px rgba(2, 132, 199, 0.3) !important;
+            box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
+        }
+
+        /* 5. RIEPILOGO IMPEGNI: Allineato a Sinistra, Senza Riquadro/Sfondo */
+        div[class*="st-key-calgrid_riepilogo_"] button {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+            justify-content: flex-start !important;
+            text-align: left !important;
+            color: #1e293b !important;
+            width: 100% !important;
+            padding: 6px 4px !important;
+            margin-bottom: 2px !important;
+            font-size: 0.92rem !important;
+        }
+        div[class*="st-key-calgrid_riepilogo_"] button:hover {
+            background: #f1f5f9 !important;
         }
 
         .cal-swipe-active {
@@ -8651,6 +8661,7 @@ def mostra_calendario_impegni_grid():
         _form_impegno_dialog(editor_calimp, categorie_disponibili, workbook_calendario,
                              NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
 
+    # Lista Riepilogo Impegni sotto il calendario
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
         st.markdown(f"##### 🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}")
