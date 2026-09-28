@@ -8337,17 +8337,65 @@ def mostra_calendario_impegni_grid():
 
     st.title("📅 Calendario Impegni")
 
+    # CSS Card Design & Animazioni di Scorrimento
     st.markdown("""
     <style>
+        /* Card Contenitore Principale */
+        div[class*="st-key-calgrid_card_wrapper"] {
+            background: #ffffff !important;
+            border-radius: 20px !important;
+            padding: 20px 16px !important;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
+            border: 1px solid #f1f5f9 !important;
+            transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            will-change: transform, opacity !important;
+        }
+
+        /* Classi dinamiche per l'effetto Slide */
+        .cal-slide-left {
+            transform: translateX(-90px) scale(0.96) !important;
+            opacity: 0 !important;
+        }
+        .cal-slide-right {
+            transform: translateX(90px) scale(0.96) !important;
+            opacity: 0 !important;
+        }
+
+        /* Intestazione Mese Sfumata */
+        .cal-header-box {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-weight: 700;
+            font-size: 1.15rem;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(3, 105, 161, 0.25);
+        }
+
+        /* Pulsanti Giorni (Pillole) */
         div[class*="st-key-calgrid_giorno_"] button {
-            padding: 6px 0 !important;
-            min-height: 0 !important;
+            border-radius: 100px !important;
+            padding: 8px 0 !important;
+            min-height: 38px !important;
+            font-weight: 500 !important;
+            border: 1px solid transparent !important;
+            background: #f8fafc !important;
+            color: #334155 !important;
+            transition: all 0.15s ease !important;
+        }
+        div[class*="st-key-calgrid_giorno_"] button:hover {
+            background: #e2e8f0 !important;
+            transform: translateY(-1px) !important;
         }
         div[class*="st-key-calgrid_giorno_con_"] button {
-            background: #bae6fd !important;
-            border-color: #7dd3fc !important;
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
+            color: #ffffff !important;
             font-weight: 700 !important;
+            box-shadow: 0 3px 8px rgba(2, 132, 199, 0.3) !important;
         }
+
+        /* Layout Colonne Griglia */
         div[class*="st-key-calgrid_"] div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -8357,29 +8405,25 @@ def mostra_calendario_impegni_grid():
             width: 100% !important;
             flex: 1 1 0% !important;
             min-width: 0 !important;
-            padding: 0 2px !important;
+            padding: 0 1px !important;
         }
+
+        /* Liste Riepilogo */
         div[class*="st-key-calgrid_riepilogo_"] button {
-            background: transparent !important;
-            border: none !important;
+            background: #f0f9ff !important;
+            border: 1px solid #bae6fd !important;
+            border-radius: 10px !important;
             justify-content: flex-start !important;
-            align-items: flex-start !important;
             text-align: left !important;
-            font-weight: 400 !important;
-            color: #0c4a6e !important;
+            color: #0369a1 !important;
             width: 100% !important;
-            padding-left: 0 !important;
-        }
-        div[class*="st-key-calgrid_riepilogo_"] button p,
-        div[class*="st-key-calgrid_riepilogo_"] button div,
-        div[class*="st-key-calgrid_riepilogo_"] button span {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            width: 100% !important;
+            padding: 8px 12px !important;
+            margin-bottom: 4px !important;
         }
     </style>
     """, unsafe_allow_html=True)
 
+    # Toolbar Top
     with st.container(key="calgrid_toolbar"):
         col_home, col_nuovo, col_tutto = st.columns(3)
         with col_home:
@@ -8400,7 +8444,14 @@ def mostra_calendario_impegni_grid():
         st.session_state.calgrid_attivo = True
         st.session_state.pop("calgrid_giorno_selezionato", None)
 
-    with st.container(key="calgrid_frecce"):
+    anno = st.session_state.calgrid_anno
+    mese = st.session_state.calgrid_mese
+    impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
+    primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
+
+    # CARD DEL CALENDARIO (Raggruppa Navigazione e Griglia)
+    with st.container(key="calgrid_card_wrapper"):
+        # Frecce e Titolo Mese
         col_prev, col_label, col_next = st.columns([1, 3, 1])
         with col_prev:
             if st.button("◀", key="calgrid_prev", use_container_width=True):
@@ -8412,7 +8463,7 @@ def mostra_calendario_impegni_grid():
                 st.rerun()
         with col_label:
             st.markdown(
-                f"<div style='text-align:center; font-weight:700; font-size:1.1rem; padding-top:6px;'>"
+                f"<div class='cal-header-box'>"
                 f"{MESI_ITALIANI[st.session_state.calgrid_mese]} {st.session_state.calgrid_anno}</div>",
                 unsafe_allow_html=True,
             )
@@ -8425,30 +8476,16 @@ def mostra_calendario_impegni_grid():
                 st.session_state.pop("calgrid_giorno_selezionato", None)
                 st.rerun()
 
-    anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
-    indice_anno_corrente = (anni_disponibili.index(st.session_state.calgrid_anno)
-                            if st.session_state.calgrid_anno in anni_disponibili else 5)
-    anno_scelto = st.selectbox("Vai all'anno", anni_disponibili, index=indice_anno_corrente,
-                               key="calgrid_anno_select")
-    if anno_scelto != st.session_state.calgrid_anno:
-        st.session_state.calgrid_anno = anno_scelto
-        st.session_state.pop("calgrid_giorno_selezionato", None)
-        st.rerun()
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-    anno = st.session_state.calgrid_anno
-    mese = st.session_state.calgrid_mese
-
-    impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
-
-    primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
-
-    with st.container(key="calgrid_container"):
+        # Intestazione Giorni della Settimana
         etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
         cols_head = st.columns(7)
         for c, etichetta in zip(cols_head, etichette_giorni):
-            c.markdown(f"<div style='text-align:center; font-weight:600; color:#6b7280;'>{etichetta}</div>",
+            c.markdown(f"<div style='text-align:center; font-weight:700; color:#94a3b8; font-size:0.85rem;'>{etichetta}</div>",
                        unsafe_allow_html=True)
 
+        # Costruzione settimane e giorni
         giorno_corrente = 1
         settimane = []
         settimana = [None] * primo_giorno_settimana
@@ -8462,9 +8499,10 @@ def mostra_calendario_impegni_grid():
             settimana += [None] * (7 - len(settimana))
             settimane.append(settimana)
 
-        for settimana in settimane:
+        # Rendering Griglia
+        for sem in settimane:
             cols = st.columns(7)
-            for col, giorno in zip(cols, settimana):
+            for col, giorno in zip(cols, sem):
                 with col:
                     if giorno is None:
                         st.write("")
@@ -8476,40 +8514,56 @@ def mostra_calendario_impegni_grid():
                             st.session_state.calgrid_giorno_selezionato = giorno
                             st.rerun()
 
-    # Iniezione JS per la gestione degli eventi touch (Swipe Sx/Dx)
+    # Selettore Anno Sotto la Card
+    anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
+    indice_anno_corrente = (anni_disponibili.index(st.session_state.calgrid_anno)
+                            if st.session_state.calgrid_anno in anni_disponibili else 5)
+    anno_scelto = st.selectbox("Anno", anni_disponibili, index=indice_anno_corrente,
+                               key="calgrid_anno_select")
+    if anno_scelto != st.session_state.calgrid_anno:
+        st.session_state.calgrid_anno = anno_scelto
+        st.session_state.pop("calgrid_giorno_selezionato", None)
+        st.rerun()
+
+    # JS per Gestione Swipe Animato
     components.html("""
     <script>
     const doc = window.parent.document;
     let startX = 0;
     let startY = 0;
 
-    function applicaTouch() {
-        const areaCalendario = doc.querySelector('div[class*="st-key-calgrid_container"]') || doc.body;
-        if (!areaCalendario || areaCalendario.dataset.swipeAttivo) return;
+    function applicaTouchCard() {
+        const cardContainer = doc.querySelector('div[class*="st-key-calgrid_card_wrapper"]');
+        if (!cardContainer || cardContainer.dataset.swipeAttivo) return;
 
-        areaCalendario.dataset.swipeAttivo = "true";
+        cardContainer.dataset.swipeAttivo = "true";
 
-        areaCalendario.addEventListener('touchstart', function(e) {
+        cardContainer.addEventListener('touchstart', function(e) {
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
         }, {passive: true});
 
-        areaCalendario.addEventListener('touchend', function(e) {
+        cardContainer.addEventListener('touchend', function(e) {
             if (!startX || !startY) return;
 
             let diffX = e.changedTouches[0].clientX - startX;
             let diffY = e.changedTouches[0].clientY - startY;
 
-            // Rileva lo swipe solo se il movimento orizzontale è maggiore di quello verticale ed è almeno di 40px
             if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
                 if (diffX < 0) {
-                    // Swipe a sinistra -> Mese successivo
-                    const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
-                    if (btnNext) btnNext.click();
+                    // Swipe a sinistra -> Anima e passa al Mese successivo
+                    cardContainer.classList.add('cal-slide-left');
+                    setTimeout(() => {
+                        const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
+                        if (btnNext) btnNext.click();
+                    }, 180);
                 } else {
-                    // Swipe a destra -> Mese precedente
-                    const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
-                    if (btnPrev) btnPrev.click();
+                    // Swipe a destra -> Anima e torna al Mese precedente
+                    cardContainer.classList.add('cal-slide-right');
+                    setTimeout(() => {
+                        const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
+                        if (btnPrev) btnPrev.click();
+                    }, 180);
                 }
             }
             startX = 0;
@@ -8517,10 +8571,11 @@ def mostra_calendario_impegni_grid():
         }, {passive: true});
     }
 
-    setTimeout(applicaTouch, 300);
+    setTimeout(applicaTouchCard, 300);
     </script>
     """, height=0, width=0)
 
+    # Gestione Dettaglio Giorno Selezionato
     giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
