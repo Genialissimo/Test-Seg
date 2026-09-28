@@ -8033,7 +8033,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
                 st.rerun()
 
 def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titolo_pagina,
-                          prefisso, funzione_reset_home, mese_filtro_fisso=None):
+                         prefisso, funzione_reset_home, mese_filtro_fisso=None):
     st.title(titolo_pagina)
 
     st.markdown(f"""
@@ -8073,40 +8073,46 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
         div[class*="st-key-{prefisso}_card_"] div[data-testid="stHorizontalBlock"] {{
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 10px !important;
+            gap: 6px !important;
             align-items: center !important;
         }}
-        div[class*="st-key-{prefisso}_card_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {{
+        div[class*="st-key-{prefisso}_card_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) {{
+            flex: 0 0 28px !important;
+            width: 28px !important;
+            min-width: 28px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }}
+        div[class*="st-key-{prefisso}_card_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {{
+            flex: 1 1 auto !important;
             width: 100% !important;
-            flex: 1 1 0% !important;
             min-width: 0 !important;
         }}
         div[class*="st-key-{prefisso}_link_present_"] button {{
             background: transparent !important;
             border: none !important;
             color: #2563eb !important;
-            text-decoration: underline !important;
-            font-weight: 500 !important;
-            padding: 0 4px !important;
+            text-decoration: none !important;
+            font-size: 1.1rem !important;
+            padding: 0 !important;
             min-height: 0 !important;
             height: auto !important;
-            line-height: 1.2 !important;
-        }}
-        div[class*="st-key-{prefisso}_link_present_"] button p,
-        div[class*="st-key-{prefisso}_link_absent_"] button p {{
-            margin: 0 !important;
-            line-height: 1.2 !important;
+            line-height: 1 !important;
         }}
         div[class*="st-key-{prefisso}_link_absent_"] button {{
             background: transparent !important;
             border: none !important;
             color: #cbd5e1 !important;
+            opacity: 0.25 !important;
+            filter: grayscale(100%) !important;
             text-decoration: none !important;
-            font-weight: 500 !important;
-            padding: 0 4px !important;
+            font-size: 1.1rem !important;
+            padding: 0 !important;
             min-height: 0 !important;
             height: auto !important;
-            line-height: 1.2 !important;
+            line-height: 1 !important;
+            cursor: not-allowed !important;
         }}
         div[class*="st-key-{prefisso}_card_fatto_"] {{
             background: #f0fdf4 !important;
@@ -8154,13 +8160,12 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                   on_click=funzione_reset_home)
     with col_nuovo:
         if st.button("➕ Nuovo", key=f"{prefisso}_nuovo_btn", use_container_width=True,
-                      disabled=not collegato_pagina or sola_lettura()):
+                     disabled=not collegato_pagina or sola_lettura()):
             st.session_state[f"{prefisso}_editor"] = {"modo": "nuovo"}
 
     if not collegato_pagina:
         st.warning("⚠️ Nessun foglio dati collegato.")
         return
-
     df_impegni, err = leggi_foglio_come_df(workbook_pagina, nome_foglio, riga_intestazione)
     if err:
         st.error(err)
@@ -9296,7 +9301,7 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-        # Lista Riepilogo Impegni (Icona link allineata sulla stessa riga a sinistra del pallino)
+        # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
     with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
@@ -9357,26 +9362,36 @@ def mostra_calendario_impegni_grid():
 
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
                 
-                # HTML per l'icona del link (attiva o sbiadita)
-                if ha_link:
-                    icona_html = f"<a href='{url_link}' target='_blank' title='Apri Link' style='font-size: 1.05rem; text-decoration: none; margin-right: 6px; vertical-align: middle;'>🔗</a>"
-                else:
-                    icona_html = "<span title='Nessun link disponibile' style='font-size: 1.05rem; opacity: 0.2; filter: grayscale(100%); margin-right: 6px; vertical-align: middle; cursor: not-allowed;'>🔗</span>"
-
-                etichetta = f"{icona_html}{pallino} **{scadenza_str}** — {oggetto}"
+                # Etichetta pulita per il bottone (con il pallino, senza tag HTML rotti)
+                etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
-                    if st.button(
-                        etichetta,
-                        key=f"calgrid_riepilogo_{rf}",
-                        use_container_width=True,
-                    ):
-                        st.session_state.calimp_editor = {
-                            "modo": "modifica",
-                            "riga": riga_dict,
-                            "numero_riga_foglio": rf,
-                        }
-                        st.rerun()
+                    col_icon, col_item = st.columns([1, 11])
+                    
+                    with col_icon:
+                        if ha_link:
+                            st.markdown(
+                                f"<a href='{url_link}' target='_blank' title='Apri Link' style='font-size: 1.1rem; text-decoration: none; display: block; text-align: center;'>🔗</a>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(
+                                "<span title='Nessun link disponibile' style='font-size: 1.1rem; opacity: 0.2; filter: grayscale(100%); display: block; text-align: center; cursor: not-allowed;'>🔗</span>",
+                                unsafe_allow_html=True,
+                            )
+                            
+                    with col_item:
+                        if st.button(
+                            etichetta_bottone,
+                            key=f"calgrid_riepilogo_{rf}",
+                            use_container_width=True,
+                        ):
+                            st.session_state.calimp_editor = {
+                                "modo": "modifica",
+                                "riga": riga_dict,
+                                "numero_riga_foglio": rf,
+                            }
+                            st.rerun()
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
