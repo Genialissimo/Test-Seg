@@ -8337,7 +8337,7 @@ def mostra_calendario_impegni_grid():
 
     st.title("📅 Calendario Impegni")
 
-    # CSS Aggiornato: Colore Azzurro Brillante e Riepilogo Allineato a SX Senza Riquadro
+    # CSS Aggiornato: Pallini Verde/Rosso, Allineamento SX e Nessun Riquadro
     st.markdown("""
     <style>
         @keyframes calCardEntrance {
@@ -8472,7 +8472,7 @@ def mostra_calendario_impegni_grid():
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* 5. RIEPILOGO IMPEGNI: Allineato a Sinistra, Senza Riquadro/Sfondo */
+        /* 5. RIEPILOGO IMPEGNI ALLINEATO A SX SENZA RIQUADRO */
         div[class*="st-key-calgrid_riepilogo_"] button {
             background: transparent !important;
             border: none !important;
@@ -8482,10 +8482,21 @@ def mostra_calendario_impegni_grid():
             text-align: left !important;
             color: #1e293b !important;
             width: 100% !important;
-            padding: 6px 4px !important;
+            padding: 6px 0px !important;
             margin-bottom: 2px !important;
             font-size: 0.92rem !important;
+            display: flex !important;
+            align-items: center !important;
         }
+
+        div[class*="st-key-calgrid_riepilogo_"] button p,
+        div[class*="st-key-calgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"] {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            margin: 0 !important;
+        }
+
         div[class*="st-key-calgrid_riepilogo_"] button:hover {
             background: #f1f5f9 !important;
         }
@@ -8524,7 +8535,7 @@ def mostra_calendario_impegni_grid():
 
     # CARD PRINCIPALE
     with st.container(key="calgrid_card_wrapper"):
-        # 1. Selettore Anno sopra la navigazione mese
+        # Selettore Anno
         anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
         indice_anno_corrente = (anni_disponibili.index(st.session_state.calgrid_anno)
                                 if st.session_state.calgrid_anno in anni_disponibili else 5)
@@ -8537,7 +8548,7 @@ def mostra_calendario_impegni_grid():
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-        # 2. Navigazione Mese (< Settembre 2026 >)
+        # Navigazione Mese (< Settembre 2026 >)
         with st.container(key="calgrid_nav_row"):
             col_prev, col_label, col_next = st.columns([1, 6, 1])
             with col_prev:
@@ -8565,7 +8576,7 @@ def mostra_calendario_impegni_grid():
 
         st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        # 3. Griglia Giorni
+        # Griglia Giorni
         with st.container(key="calgrid_grid_container"):
             etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
             cols_head = st.columns(7)
@@ -8643,7 +8654,7 @@ def mostra_calendario_impegni_grid():
     </script>
     """, height=0, width=0)
 
-    # Gestione Dettaglio Giorno Selezionato
+    # Dettaglio Giorno Selezionato
     giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
@@ -8661,7 +8672,7 @@ def mostra_calendario_impegni_grid():
         _form_impegno_dialog(editor_calimp, categorie_disponibili, workbook_calendario,
                              NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
 
-    # Lista Riepilogo Impegni sotto il calendario
+    # Lista Riepilogo Impegni con Pallino Verde/Rosso
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
         st.markdown(f"##### 🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}")
@@ -8673,12 +8684,36 @@ def mostra_calendario_impegni_grid():
                 rf = riga_dict["_riga_foglio"]
                 oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
                 scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
-                etichetta = f"**{scadenza_str}** — {oggetto}"
-                if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
-                    st.session_state.calimp_editor = {
-                        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
-                    }
-                    st.rerun()
+
+                # Verifica se completato -> Pallino verde o rosso
+                stato_val = str(riga_dict.get("Stato", "") or riga_dict.get("Fatto", "")).strip().lower()
+                is_fatto = stato_val in ["fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
+                pallino = "🟢" if is_fatto else "🔴"
+
+                # Estrazione URL
+                url_link = str(riga_dict.get("Link", "") or riga_dict.get("URL", "") or riga_dict.get("Collegamento", "")).strip()
+
+                etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
+
+                if url_link and url_link.startswith("http"):
+                    col_item, col_link = st.columns([8, 2])
+                    with col_item:
+                        if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
+                            st.session_state.calimp_editor = {
+                                "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+                            }
+                            st.rerun()
+                    with col_link:
+                        st.markdown(
+                            f"<a href='{url_link}' target='_blank' style='line-height: 2.2; font-size: 0.9rem; font-weight: 600; color: #0284c7; text-decoration: underline;'>— Link</a>",
+                            unsafe_allow_html=True
+                        )
+                else:
+                    if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
+                        st.session_state.calimp_editor = {
+                            "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+                        }
+                        st.rerun()
 
 
 # ─────────────────────────────────────────────────────────────────
