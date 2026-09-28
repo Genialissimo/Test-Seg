@@ -8806,6 +8806,11 @@ from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
+import calendar
+from datetime import date
+import streamlit as st
+import streamlit.components.v1 as components
+
 # ==============================================================================
 # CSS GLOBALE
 # Inserito fuori dalle funzioni per rimanere sempre attivo nel browser
@@ -9302,15 +9307,21 @@ def mostra_calendario_impegni_grid():
                     )
                     scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
 
+                    # Recupera il valore dello stato/fatto da varie possibili chiavi
                     stato_val = (
                         str(
                             riga_dict.get("Stato", "")
                             or riga_dict.get("Fatto", "")
+                            or riga_dict.get("Eseguito", "")
+                            or riga_dict.get("Completato", "")
                         )
                         .strip()
                         .lower()
                     )
+
+                    # AGGIORNATO: inclusa 'x' tra i valori validi per il pallino verde
                     is_fatto = stato_val in [
+                        "x",
                         "fatto",
                         "completato",
                         "si",
@@ -9360,7 +9371,6 @@ def mostra_calendario_impegni_grid():
                                     "numero_riga_foglio": rf,
                                 }
                                 st.rerun()
-
 
 
 
