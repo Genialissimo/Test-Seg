@@ -8337,7 +8337,7 @@ def mostra_calendario_impegni_grid():
 
     st.title("📅 Calendario Impegni")
 
-    # CSS Aggiornato: Pallini Verde/Rosso, Allineamento SX e Nessun Riquadro
+    # CSS Aggiornato: Allineamento SX Rigoroso, Nessun Riquadro, Colori Vividi
     st.markdown("""
     <style>
         @keyframes calCardEntrance {
@@ -8370,7 +8370,7 @@ def mostra_calendario_impegni_grid():
             white-space: nowrap !important;
         }
 
-        /* 2. CARD CENTRATA */
+        /* 2. CARD CENTRATA PER IL CALENDARIO */
         div[class*="st-key-calgrid_card_wrapper"] {
             background: #ffffff !important;
             border-radius: 20px !important;
@@ -8472,7 +8472,43 @@ def mostra_calendario_impegni_grid():
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* 5. RIEPILOGO IMPEGNI ALLINEATO A SX SENZA RIQUADRO */
+        /* 5. RIEPILOGO IMPEGNI GIUSTIFICATO A SINISTRA (SX) RIGOROSO */
+        div[class*="st-key-calgrid_riepilogo_section"] {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: flex-start !important;
+            text-align: left !important;
+            width: 100% !important;
+            margin-top: 16px !important;
+        }
+
+        div[class*="st-key-calgrid_riepilogo_section"] div[data-testid="stHorizontalBlock"] {
+            justify-content: flex-start !important;
+            align-items: center !important;
+            width: 100% !important;
+        }
+
+        div[class*="st-key-calgrid_riepilogo_section"] div[data-testid="stColumn"] {
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            text-align: left !important;
+        }
+
+        div[class*="st-key-calgrid_riepilogo_"] {
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            width: 100% !important;
+        }
+
+        div[class*="st-key-calgrid_riepilogo_"] div[data-testid="stButton"] {
+            display: flex !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+        }
+
         div[class*="st-key-calgrid_riepilogo_"] button {
             background: transparent !important;
             border: none !important;
@@ -8490,7 +8526,8 @@ def mostra_calendario_impegni_grid():
         }
 
         div[class*="st-key-calgrid_riepilogo_"] button p,
-        div[class*="st-key-calgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"] {
+        div[class*="st-key-calgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"],
+        div[class*="st-key-calgrid_riepilogo_"] button span {
             text-align: left !important;
             justify-content: flex-start !important;
             width: 100% !important;
@@ -8527,6 +8564,7 @@ def mostra_calendario_impegni_grid():
         st.session_state.calgrid_mese = oggi.month
         st.session_state.calgrid_attivo = True
         st.session_state.pop("calgrid_giorno_selezionato", None)
+        st.session_state.pop("calimp_editor", None)
 
     anno = st.session_state.calgrid_anno
     mese = st.session_state.calgrid_mese
@@ -8544,6 +8582,7 @@ def mostra_calendario_impegni_grid():
         if anno_scelto != st.session_state.calgrid_anno:
             st.session_state.calgrid_anno = anno_scelto
             st.session_state.pop("calgrid_giorno_selezionato", None)
+            st.session_state.pop("calimp_editor", None)
             st.rerun()
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
@@ -8558,6 +8597,7 @@ def mostra_calendario_impegni_grid():
                         st.session_state.calgrid_mese = 12
                         st.session_state.calgrid_anno -= 1
                     st.session_state.pop("calgrid_giorno_selezionato", None)
+                    st.session_state.pop("calimp_editor", None)
                     st.rerun()
             with col_label:
                 st.markdown(
@@ -8572,6 +8612,7 @@ def mostra_calendario_impegni_grid():
                         st.session_state.calgrid_mese = 1
                         st.session_state.calgrid_anno += 1
                     st.session_state.pop("calgrid_giorno_selezionato", None)
+                    st.session_state.pop("calimp_editor", None)
                     st.rerun()
 
         st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
@@ -8609,6 +8650,7 @@ def mostra_calendario_impegni_grid():
                             if st.button(str(giorno), key=f"{prefisso_chiave}_{anno}_{mese}_{giorno}",
                                          use_container_width=True):
                                 st.session_state.calgrid_giorno_selezionato = giorno
+                                st.session_state.pop("calimp_editor", None)  # Rimuove il form di modifica
                                 st.rerun()
 
     # JS Touch Swipe
@@ -8654,7 +8696,7 @@ def mostra_calendario_impegni_grid():
     </script>
     """, height=0, width=0)
 
-    # Dettaglio Giorno Selezionato
+    # Pulsante per aggiungere un nuovo impegno
     giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
@@ -8666,54 +8708,57 @@ def mostra_calendario_impegni_grid():
                 "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
             }
 
+    # Apre il form solo quando esplicitamente richiesto
     editor_calimp = st.session_state.get("calimp_editor")
     if editor_calimp:
         categorie_disponibili = leggi_categorie_impegni(workbook_calendario)
         _form_impegno_dialog(editor_calimp, categorie_disponibili, workbook_calendario,
                              NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
 
-    # Lista Riepilogo Impegni con Pallino Verde/Rosso
+    # Lista Riepilogo Impegni sotto il calendario (Allineata a Sinistra SX)
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
-        st.markdown(f"##### 🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}")
-        impegni_giorno = impegni_del_mese.get(giorno_sel, [])
-        if not impegni_giorno:
-            st.caption("Nessun impegno in questa data.")
-        else:
-            for riga_dict in impegni_giorno:
-                rf = riga_dict["_riga_foglio"]
-                oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
-                scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
+        with st.container(key="calgrid_riepilogo_section"):
+            st.markdown(f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</h5>", unsafe_allow_html=True)
+            impegni_giorno = impegni_del_mese.get(giorno_sel, [])
+            if not impegni_giorno:
+                st.caption("Nessun impegno in questa data.")
+            else:
+                for riga_dict in impegni_giorno:
+                    rf = riga_dict["_riga_foglio"]
+                    oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
+                    scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
 
-                # Verifica se completato -> Pallino verde o rosso
-                stato_val = str(riga_dict.get("Stato", "") or riga_dict.get("Fatto", "")).strip().lower()
-                is_fatto = stato_val in ["fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
-                pallino = "🟢" if is_fatto else "🔴"
+                    # Verifica se completato -> Pallino verde 🟢 o rosso 🔴
+                    stato_val = str(riga_dict.get("Stato", "") or riga_dict.get("Fatto", "")).strip().lower()
+                    is_fatto = stato_val in ["fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
+                    pallino = "🟢" if is_fatto else "🔴"
 
-                # Estrazione URL
-                url_link = str(riga_dict.get("Link", "") or riga_dict.get("URL", "") or riga_dict.get("Collegamento", "")).strip()
+                    # Estrazione URL
+                    url_link = str(riga_dict.get("Link", "") or riga_dict.get("URL", "") or riga_dict.get("Collegamento", "")).strip()
 
-                etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
+                    etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
 
-                if url_link and url_link.startswith("http"):
-                    col_item, col_link = st.columns([8, 2])
-                    with col_item:
-                        if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
-                            st.session_state.calimp_editor = {
-                                "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
-                            }
-                            st.rerun()
-                    with col_link:
-                        st.markdown(
-                            f"<a href='{url_link}' target='_blank' style='line-height: 2.2; font-size: 0.9rem; font-weight: 600; color: #0284c7; text-decoration: underline;'>— Link</a>",
-                            unsafe_allow_html=True
-                        )
-                else:
-                    if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
-                        st.session_state.calimp_editor = {
-                            "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
-                        }
-                        st.rerun()
+                    with st.container(key=f"calgrid_riepilogo_row_{rf}"):
+                        if url_link and url_link.startswith("http"):
+                            col_item, col_link = st.columns([8, 2])
+                            with col_item:
+                                if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
+                                    st.session_state.calimp_editor = {
+                                        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+                                    }
+                                    st.rerun()
+                            with col_link:
+                                st.markdown(
+                                    f"<a href='{url_link}' target='_blank' style='line-height: 2.2; font-size: 0.9rem; font-weight: 600; color: #0284c7; text-decoration: underline; text-align: left; display: block;'>— Link</a>",
+                                    unsafe_allow_html=True
+                                )
+                        else:
+                            if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
+                                st.session_state.calimp_editor = {
+                                    "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+                                }
+                                st.rerun()
 
 
 # ─────────────────────────────────────────────────────────────────
