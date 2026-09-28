@@ -9296,8 +9296,7 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-    # Lista Riepilogo Impegni: Mostra tutti gli impegni del mese se nessun giorno è selezionato,
-    # oppure filtra per il giorno specifico se l'utente lo ha cliccato.
+        # Lista Riepilogo Impegni con simbolo link dinamico (attivo/sbiadito)
     with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
@@ -9305,14 +9304,12 @@ def mostra_calendario_impegni_grid():
                 f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</h5>",
                 unsafe_allow_html=True,
             )
-            # Raccogliamo solo gli impegni del giorno selezionato
             lista_impegni_da_mostrare = impegni_del_mese.get(giorno_sel, [])
         else:
             st.markdown(
                 f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</h5>",
                 unsafe_allow_html=True,
             )
-            # Raccogliamo e appiattiamo tutti gli impegni di tutti i giorni del mese ordinati per giorno
             lista_impegni_da_mostrare = []
             for g in sorted(impegni_del_mese.keys()):
                 lista_impegni_da_mostrare.extend(impegni_del_mese[g])
@@ -9356,29 +9353,17 @@ def mostra_calendario_impegni_grid():
                     or riga_dict.get("URL", "")
                     or riga_dict.get("Collegamento", "")
                 ).strip()
+                
+                ha_link = url_link and url_link.startswith("http")
+                
+                # Etichetta principale con pallino, data e oggetto
                 etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
-                    if url_link and url_link.startswith("http"):
-                        col_item, col_link = st.columns([8, 2])
-                        with col_item:
-                            if st.button(
-                                etichetta,
-                                key=f"calgrid_riepilogo_{rf}",
-                                use_container_width=True,
-                            ):
-                                st.session_state.calimp_editor = {
-                                    "modo": "modifica",
-                                    "riga": riga_dict,
-                                    "numero_riga_foglio": rf,
-                                }
-                                st.rerun()
-                        with col_link:
-                            st.markdown(
-                                f"<a href='{url_link}' target='_blank' style='line-height: 2.2; font-size: 0.9rem; font-weight: 600; color: #0284c7; text-decoration: underline; text-align: left; display: block;'>— Link</a>",
-                                unsafe_allow_html=True,
-                            )
-                    else:
+                    # Dividiamo la riga: una parte larga per il testo/modifica, una piccola per il simbolo del link
+                    col_item, col_link_icon = st.columns([9, 1])
+                    
+                    with col_item:
                         if st.button(
                             etichetta,
                             key=f"calgrid_riepilogo_{rf}",
@@ -9390,6 +9375,21 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
+                            
+                    with col_link_icon:
+                        if ha_link:
+                            # Link attivo e scuro, cliccabile
+                            st.markdown(
+                                f"<a href='{url_link}' target='_blank' title='Apri Link' style='line-height: 2.2; font-size: 1.1rem; text-decoration: none; text-align: center; display: block;'>🔗</a>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            # Link inibito, sbiadito e non cliccabile
+                            st.markdown(
+                                "<span title='Nessun link disponibile' style='line-height: 2.2; font-size: 1.1rem; opacity: 0.25; filter: grayscale(100%); text-align: center; display: block; cursor: not-allowed;'>🔗</span>",
+                                unsafe_allow_html=True,
+                            )
+
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
