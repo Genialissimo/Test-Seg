@@ -8337,7 +8337,7 @@ def mostra_calendario_impegni_grid():
 
     st.title("📅 Calendario Impegni")
 
-    # CSS per Centratura Card, Pulsanti Compatti e Titolo Esteso
+    # CSS per Layout Mobile Forzato (Elimina impilamento verticale su smartphone)
     st.markdown("""
     <style>
         @keyframes calCardEntrance {
@@ -8351,26 +8351,40 @@ def mostra_calendario_impegni_grid():
             }
         }
 
-        /* Centratura rigida della Card al centro dello schermo */
+        /* 1. BARRA SUPERIORE (Home, Nuovo, Mostra tutto) SU SINGOLA RIGA SU MOBILE */
+        div[class*="st-key-calgrid_toolbar"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+            width: 100% !important;
+        }
+        div[class*="st-key-calgrid_toolbar"] div[data-testid="stColumn"] {
+            width: 33.33% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+        }
+        div[class*="st-key-calgrid_toolbar"] button {
+            padding: 6px 4px !important;
+            font-size: 0.82rem !important;
+            white-space: nowrap !important;
+        }
+
+        /* 2. CARD CENTRATA E COMPATTA */
         div[class*="st-key-calgrid_card_wrapper"] {
             background: #ffffff !important;
             border-radius: 20px !important;
-            padding: 20px 16px !important;
+            padding: 16px 12px !important;
             box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
             border: 1px solid #f1f5f9 !important;
             margin: 0 auto !important;
-            max-width: 440px !important;
+            max-width: 400px !important;
             width: 100% !important;
             animation: calCardEntrance 0.2s ease-out forwards !important;
             transition: opacity 0.15s ease !important;
         }
 
-        /* Effetto swipe senza disallineare la card */
-        .cal-swipe-active {
-            opacity: 0.6 !important;
-        }
-
-        /* Layout riga navigazione mese */
+        /* 3. RIGA NAVIGAZIONE MESE (< Settembre 2026 >) FORZATA INLINE SU MOBILE */
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -8378,17 +8392,35 @@ def mostra_calendario_impegni_grid():
             align-items: center !important;
             justify-content: space-between !important;
             gap: 6px !important;
+            width: 100% !important;
         }
 
-        /* Tasti freccia compatti ed estremi */
-        div[class*="st-key-calgrid_prev"], div[class*="st-key-calgrid_next"] {
-            flex: 0 0 42px !important;
-            min-width: 42px !important;
-            max-width: 42px !important;
+        /* Colonna 1: Freccia Sinistra (<) */
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) {
+            width: 44px !important;
+            flex: 0 0 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
         }
 
+        /* Colonna 2: Banner Centrale Mese/Anno */
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        /* Colonna 3: Freccia Destra (>) */
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
+            width: 44px !important;
+            flex: 0 0 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
+        }
+
+        /* Tasti freccia stretti */
         div[class*="st-key-calgrid_prev"] button, div[class*="st-key-calgrid_next"] button {
-            width: 42px !important;
+            width: 44px !important;
             min-height: 42px !important;
             height: 42px !important;
             padding: 0 !important;
@@ -8399,40 +8431,47 @@ def mostra_calendario_impegni_grid():
             justify-content: center !important;
         }
 
-        /* Colonna centrale con etichetta Mese Anno estesa su una sola riga */
-        div[class*="st-key-calgrid_label_col"] {
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-        }
-
+        /* Stile Banner Mese Anno */
         .cal-header-box {
             background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
             color: #ffffff;
             border-radius: 12px;
-            padding: 10px 12px;
+            padding: 10px 6px;
             font-weight: 700;
-            font-size: 1.05rem;
+            font-size: 0.95rem;
             text-align: center;
             white-space: nowrap !important;
             overflow: hidden;
             text-overflow: ellipsis;
             box-shadow: 0 4px 12px rgba(3, 105, 161, 0.22);
             line-height: 1.2;
+            width: 100% !important;
         }
 
-        /* Pulsanti Giorni (Pillole) */
+        /* 4. GRIGLIA GIORNI */
+        div[class*="st-key-calgrid_grid_container"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 2px !important;
+            width: 100% !important;
+        }
+        div[class*="st-key-calgrid_grid_container"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            width: 14.28% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+        }
+
         div[class*="st-key-calgrid_giorno_"] button {
             border-radius: 100px !important;
-            padding: 8px 0 !important;
-            min-height: 38px !important;
+            padding: 6px 0 !important;
+            min-height: 36px !important;
             font-weight: 500 !important;
             border: 1px solid transparent !important;
             background: #f8fafc !important;
             color: #334155 !important;
-            transition: all 0.15s ease !important;
-        }
-        div[class*="st-key-calgrid_giorno_"] button:hover {
-            background: #e2e8f0 !important;
+            font-size: 0.85rem !important;
         }
         div[class*="st-key-calgrid_giorno_con_"] button {
             background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
@@ -8441,35 +8480,13 @@ def mostra_calendario_impegni_grid():
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.3) !important;
         }
 
-        /* Layout Griglia Giorni */
-        div[class*="st-key-calgrid_grid_container"] div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 4px !important;
-        }
-        div[class*="st-key-calgrid_grid_container"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-            width: 100% !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-            padding: 0 1px !important;
-        }
-
-        /* Liste Riepilogo */
-        div[class*="st-key-calgrid_riepilogo_"] button {
-            background: #f0f9ff !important;
-            border: 1px solid #bae6fd !important;
-            border-radius: 10px !important;
-            justify-content: flex-start !important;
-            text-align: left !important;
-            color: #0369a1 !important;
-            width: 100% !important;
-            padding: 8px 12px !important;
-            margin-bottom: 4px !important;
+        .cal-swipe-active {
+            opacity: 0.6 !important;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    # Toolbar Top
+    # Toolbar Top (Home, Nuovo, Mostra tutto)
     with st.container(key="calgrid_toolbar"):
         col_home, col_nuovo, col_tutto = st.columns(3)
         with col_home:
@@ -8495,9 +8512,9 @@ def mostra_calendario_impegni_grid():
     impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
-    # CARD PRINCIPALE CENTRATA
+    # CARD PRINCIPALE
     with st.container(key="calgrid_card_wrapper"):
-        # 1. Listbox Anno posizionata in alto DENTRO la card sopra i tasti mese
+        # 1. Selettore Anno sopra la navigazione mese
         anni_disponibili = list(range(date.today().year - 5, date.today().year + 6))
         indice_anno_corrente = (anni_disponibili.index(st.session_state.calgrid_anno)
                                 if st.session_state.calgrid_anno in anni_disponibili else 5)
@@ -8510,7 +8527,7 @@ def mostra_calendario_impegni_grid():
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-        # 2. Navigazione Mese (< Settembre 2026 >) estesa su una riga con frecce agli estremi
+        # 2. Navigazione Mese (< Settembre 2026 >)
         with st.container(key="calgrid_nav_row"):
             col_prev, col_label, col_next = st.columns([1, 6, 1])
             with col_prev:
@@ -8522,7 +8539,6 @@ def mostra_calendario_impegni_grid():
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.rerun()
             with col_label:
-                st.container(key="calgrid_label_col")
                 st.markdown(
                     f"<div class='cal-header-box'>"
                     f"{MESI_ITALIANI[st.session_state.calgrid_mese]} {st.session_state.calgrid_anno}</div>",
@@ -8537,14 +8553,14 @@ def mostra_calendario_impegni_grid():
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.rerun()
 
-        st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
         # 3. Griglia Giorni
         with st.container(key="calgrid_grid_container"):
             etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
             cols_head = st.columns(7)
             for c, etichetta in zip(cols_head, etichette_giorni):
-                c.markdown(f"<div style='text-align:center; font-weight:700; color:#94a3b8; font-size:0.85rem;'>{etichetta}</div>",
+                c.markdown(f"<div style='text-align:center; font-weight:700; color:#94a3b8; font-size:0.8rem;'>{etichetta}</div>",
                            unsafe_allow_html=True)
 
             giorno_corrente = 1
@@ -8574,7 +8590,7 @@ def mostra_calendario_impegni_grid():
                                 st.session_state.calgrid_giorno_selezionato = giorno
                                 st.rerun()
 
-    # JS Touch Swipe con opacità temporanea senza spostamento orizzontale
+    # JS Touch Swipe
     components.html("""
     <script>
     const doc = window.parent.document;
