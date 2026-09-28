@@ -7892,8 +7892,9 @@ def _impegni_apri_modifica_generico(riga_dict: dict, rf: int, prefisso: str):
     }
 
 
-def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
-                  riga_intestazione: int, prefisso: str):
+@st.dialog("Gestione Impegno")
+def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
+                         riga_intestazione: int, prefisso: str):
     modo = editor.get("modo")
     e = editor.get("riga", {})
     chiave = editor.get("numero_riga_foglio", "nuovo")
@@ -7912,7 +7913,7 @@ def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, no
 
     with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
-        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=200, disabled=bloccato)
+        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
 
         opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
         categoria_corrente = e.get("Categoria", "")
@@ -8162,9 +8163,7 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
 
     editor = st.session_state.get(f"{prefisso}_editor")
     if editor:
-        st.divider()
-        _form_impegno(editor, categorie_disponibili, workbook_pagina, nome_foglio, riga_intestazione, prefisso)
-        st.divider()
+        _form_impegno_dialog(editor, categorie_disponibili, workbook_pagina, nome_foglio, riga_intestazione, prefisso)
 
     if mese_filtro_fisso:
         anno_f, mese_f = mese_filtro_fisso
@@ -8479,11 +8478,9 @@ def mostra_calendario_impegni_grid():
 
     editor_calimp = st.session_state.get("calimp_editor")
     if editor_calimp:
-        st.divider()
         categorie_disponibili = leggi_categorie_impegni(workbook_calendario)
-        _form_impegno(editor_calimp, categorie_disponibili, workbook_calendario,
-                      NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
-        st.divider()
+        _form_impegno_dialog(editor_calimp, categorie_disponibili, workbook_calendario,
+                             NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
 
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
