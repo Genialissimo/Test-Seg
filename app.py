@@ -7895,6 +7895,22 @@ def _impegni_apri_modifica_generico(riga_dict: dict, rf: int, prefisso: str):
 @st.dialog("Gestione Impegno")
 def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
                          riga_intestazione: int, prefisso: str):
+    # CSS per forzare le colonne affiancate su smartphone (evita l'impilamento verticale)
+    st.markdown("""
+    <style>
+        div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 8px !important;
+        }
+        div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            width: 50% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     modo = editor.get("modo")
     e = editor.get("riga", {})
     chiave = editor.get("numero_riga_foglio", "nuovo")
@@ -8013,7 +8029,6 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             if st.button("No, annulla", key=f"{prefisso}_conf_no", use_container_width=True):
                 st.session_state[f"{prefisso}_conferma_elimina"] = None
                 st.rerun()
-
 
 def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titolo_pagina,
                           prefisso, funzione_reset_home, mese_filtro_fisso=None):
