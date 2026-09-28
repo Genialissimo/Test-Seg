@@ -8364,14 +8364,20 @@ def mostra_calendario_impegni_grid():
         div[class*="st-key-calgrid_riepilogo_"] button {
             background: transparent !important;
             border: none !important;
-            text-align: left !important;
             justify-content: flex-start !important;
+            align-items: flex-start !important;
+            text-align: left !important;
             font-weight: 400 !important;
             color: #0c4a6e !important;
             width: 100% !important;
+            padding-left: 0 !important;
         }
-        div[class*="st-key-calgrid_riepilogo_"] button p {
+        div[class*="st-key-calgrid_riepilogo_"] button p,
+        div[class*="st-key-calgrid_riepilogo_"] button div,
+        div[class*="st-key-calgrid_riepilogo_"] button span {
             text-align: left !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
         }
     </style>
     """, unsafe_allow_html=True)
