@@ -9257,62 +9257,6 @@ def mostra_calendario_impegni_grid():
 
 
 
-# ==============================================================================
-# 2. FUNZIONE PRINCIPALE DI CONTROLLO ACCESSI ED ESECUZIONE
-# ==============================================================================
-def mostra_calendario_impegni_grid():
-    # Verifica Permessi
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button(
-            "🏠 Torna alla Home",
-            key="home_da_calgrid_negato",
-            on_click=vai_a,
-            args=("home",),
-        )
-        return
-
-    # Se la vista è stata disattivata (chiusa), non riaprire il dialog
-    if not st.session_state.get("calgrid_attivo", True):
-        return
-
-    # Inizializzazione Session State
-    if "calgrid_anno" not in st.session_state:
-        oggi = date.today()
-        st.session_state.calgrid_anno = oggi.year
-        st.session_state.calgrid_mese = oggi.month
-
-    # Invocazione del Dialog
-    apri_dialog_calendario_impegni()
-
-
-# ==============================================================================
-# 2. FUNZIONE PRINCIPALE DI CONTROLLO ACCESSI ED ESECUZIONE
-# ==============================================================================
-def mostra_calendario_impegni_grid():
-    # Verifica Permessi
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button(
-            "🏠 Torna alla Home",
-            key="home_da_calgrid_negato",
-            on_click=vai_a,
-            args=("home",),
-        )
-        return
-
-    # Inizializzazione Session State
-    if not st.session_state.get("calgrid_attivo"):
-        oggi = date.today()
-        st.session_state.calgrid_anno = oggi.year
-        st.session_state.calgrid_mese = oggi.month
-        st.session_state.calgrid_attivo = True
-        st.session_state.pop("calgrid_giorno_selezionato", None)
-        st.session_state.pop("calimp_editor", None)
-
-    # Invocazione del Dialog
-    apri_dialog_calendario_impegni()
-
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
