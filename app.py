@@ -8337,9 +8337,20 @@ def mostra_calendario_impegni_grid():
 
     st.title("📅 Calendario Impegni")
 
-    # CSS Card Design & Animazioni di Scorrimento
+    # CSS Card Design con Animazione di Ingresso Fluida
     st.markdown("""
     <style>
+        @keyframes calCardEntrance {
+            0% {
+                opacity: 0.3;
+                transform: scale(0.97) translateY(6px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
         /* Card Contenitore Principale */
         div[class*="st-key-calgrid_card_wrapper"] {
             background: #ffffff !important;
@@ -8347,18 +8358,19 @@ def mostra_calendario_impegni_grid():
             padding: 20px 16px !important;
             box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
             border: 1px solid #f1f5f9 !important;
-            transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            animation: calCardEntrance 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+            transition: transform 0.15s ease, opacity 0.15s ease !important;
             will-change: transform, opacity !important;
         }
 
-        /* Classi dinamiche per l'effetto Slide */
-        .cal-slide-left {
-            transform: translateX(-90px) scale(0.96) !important;
-            opacity: 0 !important;
+        /* Feedback visivo swipe senza opacità zero */
+        .cal-swipe-left {
+            transform: translateX(-20px) scale(0.98) !important;
+            opacity: 0.7 !important;
         }
-        .cal-slide-right {
-            transform: translateX(90px) scale(0.96) !important;
-            opacity: 0 !important;
+        .cal-swipe-right {
+            transform: translateX(20px) scale(0.98) !important;
+            opacity: 0.7 !important;
         }
 
         /* Intestazione Mese Sfumata */
@@ -8449,7 +8461,7 @@ def mostra_calendario_impegni_grid():
     impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
-    # CARD DEL CALENDARIO (Raggruppa Navigazione e Griglia)
+    # CARD DEL CALENDARIO
     with st.container(key="calgrid_card_wrapper"):
         # Frecce e Titolo Mese
         col_prev, col_label, col_next = st.columns([1, 3, 1])
@@ -8525,7 +8537,7 @@ def mostra_calendario_impegni_grid():
         st.session_state.pop("calgrid_giorno_selezionato", None)
         st.rerun()
 
-    # JS per Gestione Swipe Animato
+    # JS per Gestione Swipe
     components.html("""
     <script>
     const doc = window.parent.document;
@@ -8551,19 +8563,13 @@ def mostra_calendario_impegni_grid():
 
             if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
                 if (diffX < 0) {
-                    // Swipe a sinistra -> Anima e passa al Mese successivo
-                    cardContainer.classList.add('cal-slide-left');
-                    setTimeout(() => {
-                        const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
-                        if (btnNext) btnNext.click();
-                    }, 180);
+                    cardContainer.classList.add('cal-swipe-left');
+                    const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
+                    if (btnNext) btnNext.click();
                 } else {
-                    // Swipe a destra -> Anima e torna al Mese precedente
-                    cardContainer.classList.add('cal-slide-right');
-                    setTimeout(() => {
-                        const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
-                        if (btnPrev) btnPrev.click();
-                    }, 180);
+                    cardContainer.classList.add('cal-swipe-right');
+                    const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
+                    if (btnPrev) btnPrev.click();
                 }
             }
             startX = 0;
@@ -8571,7 +8577,7 @@ def mostra_calendario_impegni_grid():
         }, {passive: true});
     }
 
-    setTimeout(applicaTouchCard, 300);
+    setTimeout(applicaTouchCard, 200);
     </script>
     """, height=0, width=0)
 
@@ -8610,7 +8616,6 @@ def mostra_calendario_impegni_grid():
                         "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
                     }
                     st.rerun()
-
 
 
 # ─────────────────────────────────────────────────────────────────
