@@ -8977,7 +8977,7 @@ st.markdown(
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* 6. RIEPILOGO IMPEGNI GIUSTIFICATO A SINISTRA (SX) */
+        /* 6. RIEPILOGO IMPEGNI GIUSTIFICATO A SINISTRA (SX) CON FORZATURA ORIZZONTALE MOBILE */
         div[class*="st-key-calgrid_riepilogo_section"] {
             display: flex !important;
             flex-direction: column !important;
@@ -8988,17 +8988,26 @@ st.markdown(
             margin-top: 16px !important;
         }
 
-        div[class*="st-key-calgrid_riepilogo_section"] div[data-testid="stHorizontalBlock"] {
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
             justify-content: flex-start !important;
             align-items: center !important;
             width: 100% !important;
+            gap: 4px !important;
         }
 
-        div[class*="st-key-calgrid_riepilogo_section"] div[data-testid="stColumn"] {
-            display: flex !important;
-            justify-content: flex-start !important;
-            align-items: center !important;
-            text-align: left !important;
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) {
+            flex: 0 0 32px !important;
+            width: 32px !important;
+            min-width: 32px !important;
+        }
+
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
         }
 
         div[class*="st-key-calgrid_riepilogo_"] {
@@ -9301,7 +9310,7 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-        # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
+    # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
     with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
@@ -9362,7 +9371,7 @@ def mostra_calendario_impegni_grid():
 
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
                 
-                # Etichetta pulita per il bottone (con il pallino, senza tag HTML rotti)
+                # Etichetta pulita per il bottone
                 etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
