@@ -7874,6 +7874,23 @@ def vai_a_home_reset_impegni():
     vai_a("home")
 
 
+def vai_a_home_reset_calendario_impegni():
+    for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro",
+                  "calgrid_attivo", "calgrid_giorno_selezionato"):
+        st.session_state.pop(chiave, None)
+    vai_a("home")
+
+
+def vai_a_calendario_lista_completa():
+    st.session_state.pop("calimp_mese_filtro", None)
+    vai_a("calendario_impegni_lista")
+
+
+def _impegni_apri_modifica_generico(riga_dict: dict, rf: int, prefisso: str):
+    st.session_state[f"{prefisso}_editor"] = {
+        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
+    }
+
 
 def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
                   riga_intestazione: int, prefisso: str):
@@ -7957,12 +7974,12 @@ def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, no
             categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
                                 else scelta_categoria)
             if scelta_categoria == "➕ Nuova categoria…" and categoria_finale:
-                aggiungi_categoria_impegno(workbook, categoria_finale)
+                aggiungi_categoria_impegno(workbook_pagina, categoria_finale)
 
             valori = {
                 "Data Iniziale": data_iniziale.strftime("%d/%m/%Y") if data_iniziale else "",
                 "Scadenza": scadenza.strftime("%d/%m/%Y"),
-                "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x))),
+                "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x) if str(x).isdigit() else 0)),
                 "Categoria": categoria_finale,
                 "Assegnato": assegnato.strip(),
                 "Oggetto": oggetto_pulito,
@@ -8001,23 +8018,6 @@ def _form_impegno(editor: dict, categorie_disponibili: list, workbook_pagina, no
             if st.button("No, annulla", key=f"{prefisso}_conf_no", use_container_width=True):
                 st.session_state[f"{prefisso}_conferma_elimina"] = None
                 st.rerun()
-
-def _impegni_apri_modifica_generico(riga_dict: dict, rf: int, prefisso: str):
-    st.session_state[f"{prefisso}_editor"] = {
-        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
-    }
-
-
-def vai_a_home_reset_impegni():
-    for chiave in ("impegni_editor", "impegni_conferma_elimina"):
-        st.session_state.pop(chiave, None)
-    vai_a("home")
-
-
-def vai_a_home_reset_calendario_impegni():
-    for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro"):
-        st.session_state.pop(chiave, None)
-    vai_a("home")
 
 
 def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titolo_pagina,
@@ -8154,7 +8154,7 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
         st.error(err)
         return
 
-    categorie_disponibili = leggi_categorie_impegni(workbook)
+    categorie_disponibili = leggi_categorie_impegni(workbook_pagina)
 
     df_impegni = df_impegni.reset_index(drop=True)
     if not df_impegni.empty:
@@ -8294,18 +8294,6 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                 _render_corpo_impegno()
                 st.button(" ", key=f"{prefisso}_apri_{rf}",
                           on_click=_impegni_apri_modifica_generico, args=(r["riga_dict"], rf, prefisso))
-
-
-def vai_a_home_reset_calendario_impegni():
-    for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro",
-                  "calgrid_attivo", "calgrid_giorno_selezionato"):
-        st.session_state.pop(chiave, None)
-    vai_a("home")
-
-
-def vai_a_calendario_lista_completa():
-    st.session_state.pop("calimp_mese_filtro", None)
-    vai_a("calendario_impegni_lista")
 
 
 def _calgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
@@ -8492,7 +8480,7 @@ def mostra_calendario_impegni_grid():
     editor_calimp = st.session_state.get("calimp_editor")
     if editor_calimp:
         st.divider()
-        categorie_disponibili = leggi_categorie_impegni(workbook)
+        categorie_disponibili = leggi_categorie_impegni(workbook_calendario)
         _form_impegno(editor_calimp, categorie_disponibili, workbook_calendario,
                       NOME_FOGLIO_CALENDARIO_IMPEGNI, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI, "calimp")
         st.divider()
