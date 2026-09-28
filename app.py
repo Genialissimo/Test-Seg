@@ -7947,19 +7947,13 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")), disabled=bloccato)
         link = st.text_input("Collega Link", value=e.get("Collega Link", ""), disabled=bloccato)
 
-        col_salva, col_annulla, col_elimina = st.columns(3)
+        col_salva, col_elimina = st.columns(2)
         with col_salva:
             invia = st.form_submit_button("✔ Salva", type="primary", use_container_width=True,
                                           disabled=bloccato)
-        with col_annulla:
-            annulla = st.form_submit_button("✖ Annulla", use_container_width=True)
         with col_elimina:
             elimina = st.form_submit_button("🗑️ Elimina", use_container_width=True,
                                             disabled=(bloccato or modo != "modifica"))
-
-    if annulla:
-        st.session_state[f"{prefisso}_editor"] = None
-        st.rerun()
 
     if elimina and modo == "modifica":
         st.session_state[f"{prefisso}_conferma_elimina"] = editor
