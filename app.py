@@ -8335,9 +8335,25 @@ import streamlit.components.v1 as components
 
 
 # ==============================================================================
+# 0. FUNZIONE DI CALLBACK PER LA CHIUSURA / RITORNO ALLA HOME
+# ==============================================================================
+def chiudi_dialog_e_vai_home():
+    """Disattiva il calendario e reindirizza lo stato alla Home."""
+    st.session_state.calgrid_attivo = False
+    st.session_state.pop("calgrid_giorno_selezionato", None)
+    st.session_state.pop("calimp_editor", None)
+    if "vai_a" in globals() and callable(globals()["vai_a"]):
+        vai_a("home")
+    else:
+        st.session_state.pagina = "home"
+
+
+# ==============================================================================
 # 1. DEFINIZIONE DELLA FINESTRA MODALE CON @st.dialog
 # ==============================================================================
-@st.dialog("📅 Calendario Impegni", width="large")
+@st.dialog(
+    "📅 Calendario Impegni", width="large", on_dismiss=chiudi_dialog_e_vai_home
+)
 def apri_dialog_calendario_impegni():
     # CSS Custom ottimizzato per il rendering all'interno della finestra dialog
     st.markdown(
@@ -8357,7 +8373,6 @@ def apri_dialog_calendario_impegni():
             width: 100% !important;
         }
         div[class*="st-key-calgrid_toolbar"] div[data-testid="stColumn"] {
-            width: 50% !important;
             flex: 1 1 0% !important;
             min-width: 0 !important;
         }
@@ -8530,9 +8545,9 @@ def apri_dialog_calendario_impegni():
         unsafe_allow_html=True,
     )
 
-    # Toolbar dentro la modal (Nuovo e Lista Completa)
+    # Toolbar dentro la modal (Nuovo, Lista Completa, Home)
     with st.container(key="calgrid_toolbar"):
-        col_nuovo, col_tutto = st.columns(2)
+        col_nuovo, col_tutto, col_chiudi = st.columns(3)
         with col_nuovo:
             if st.button(
                 "➕ Nuovo",
@@ -8549,6 +8564,12 @@ def apri_dialog_calendario_impegni():
                 disabled=(workbook_calendario is None),
                 on_click=vai_a_calendario_lista_completa,
             )
+        with col_chiudi:
+            if st.button(
+                "🏠 Home", key="calgrid_chiudi_top", use_container_width=True
+            ):
+                chiudi_dialog_e_vai_home()
+                st.rerun()
 
     anno = st.session_state.calgrid_anno
     mese = st.session_state.calgrid_mese
@@ -8813,6 +8834,35 @@ def apri_dialog_calendario_impegni():
                                     "numero_riga_foglio": rf,
                                 }
                                 st.rerun()
+
+
+# ==============================================================================
+# 2. FUNZIONE PRINCIPALE DI CONTROLLO ACCESSI ED ESECUZIONE
+# ==============================================================================
+def mostra_calendario_impegni_grid():
+    # Verifica Permessi
+    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
+        st.warning("⚠️ Questa sezione è riservata.")
+        st.button(
+            "🏠 Torna alla Home",
+            key="home_da_calgrid_negato",
+            on_click=vai_a,
+            args=("home",),
+        )
+        return
+
+    # Se la vista è stata disattivata (chiusa), non riaprire il dialog
+    if not st.session_state.get("calgrid_attivo", True):
+        return
+
+    # Inizializzazione Session State
+    if "calgrid_anno" not in st.session_state:
+        oggi = date.today()
+        st.session_state.calgrid_anno = oggi.year
+        st.session_state.calgrid_mese = oggi.month
+
+    # Invocazione del Dialog
+    apri_dialog_calendario_impegni()
 
 
 # ==============================================================================
