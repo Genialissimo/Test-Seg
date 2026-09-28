@@ -8800,11 +8800,6 @@ from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
-import calendar
-from datetime import date
-import streamlit as st
-import streamlit.components.v1 as components
-
 # ==============================================================================
 # CSS GLOBALE
 # ==============================================================================
@@ -9135,7 +9130,7 @@ def mostra_calendario_impegni_grid():
             "<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True
         )
 
-        # Navigazione Mese
+        # Navigazione Mese con cambio automatico anno
         with st.container(key="calgrid_nav_row"):
             col_prev, col_label, col_next = st.columns([1, 6, 1])
             with col_prev:
@@ -9301,77 +9296,72 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-    # Lista Riepilogo Impegni (Allineata a Sinistra SX)
-    if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
-        data_sel = date(anno, mese, giorno_sel)
-        with st.container(key="calgrid_riepilogo_section"):
+    # Lista Riepilogo Impegni: Mostra tutti gli impegni del mese se nessun giorno è selezionato,
+    # oppure filtra per il giorno specifico se l'utente lo ha cliccato.
+    with st.container(key="calgrid_riepilogo_section"):
+        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+            data_sel = date(anno, mese, giorno_sel)
             st.markdown(
                 f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</h5>",
                 unsafe_allow_html=True,
             )
-            impegni_giorno = impegni_del_mese.get(giorno_sel, [])
-            if not impegni_giorno:
-                st.caption("Nessun impegno in questa data.")
-            else:
-                for riga_dict in impegni_giorno:
-                    rf = riga_dict["_riga_foglio"]
-                    oggetto = (
-                        str(riga_dict.get("Oggetto", "")).strip()
-                        or "(senza oggetto)"
+            # Raccogliamo solo gli impegni del giorno selezionato
+            lista_impegni_da_mostrare = impegni_del_mese.get(giorno_sel, [])
+        else:
+            st.markdown(
+                f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</h5>",
+                unsafe_allow_html=True,
+            )
+            # Raccogliamo e appiattiamo tutti gli impegni di tutti i giorni del mese ordinati per giorno
+            lista_impegni_da_mostrare = []
+            for g in sorted(impegni_del_mese.keys()):
+                lista_impegni_da_mostrare.extend(impegni_del_mese[g])
+
+        if not lista_impegni_da_mostrare:
+            st.caption("Nessun impegno trovato.")
+        else:
+            for riga_dict in lista_impegni_da_mostrare:
+                rf = riga_dict["_riga_foglio"]
+                oggetto = (
+                    str(riga_dict.get("Oggetto", "")).strip()
+                    or "(senza oggetto)"
+                )
+                scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
+
+                stato_val = (
+                    str(
+                        riga_dict.get("Stato", "")
+                        or riga_dict.get("Fatto", "")
+                        or riga_dict.get("Eseguito", "")
+                        or riga_dict.get("Completato", "")
                     )
-                    scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
+                    .strip()
+                    .lower()
+                )
 
-                    stato_val = (
-                        str(
-                            riga_dict.get("Stato", "")
-                            or riga_dict.get("Fatto", "")
-                            or riga_dict.get("Eseguito", "")
-                            or riga_dict.get("Completato", "")
-                        )
-                        .strip()
-                        .lower()
-                    )
+                is_fatto = stato_val in [
+                    "x",
+                    "fatto",
+                    "completato",
+                    "si",
+                    "sì",
+                    "true",
+                    "eseguito",
+                    "ok",
+                ]
+                pallino = "🟢" if is_fatto else "🔴"
 
-                    is_fatto = stato_val in [
-                        "x",
-                        "fatto",
-                        "completato",
-                        "si",
-                        "sì",
-                        "true",
-                        "eseguito",
-                        "ok",
-                    ]
-                    pallino = "🟢" if is_fatto else "🔴"
+                url_link = str(
+                    riga_dict.get("Link", "")
+                    or riga_dict.get("URL", "")
+                    or riga_dict.get("Collegamento", "")
+                ).strip()
+                etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
 
-                    url_link = str(
-                        riga_dict.get("Link", "")
-                        or riga_dict.get("URL", "")
-                        or riga_dict.get("Collegamento", "")
-                    ).strip()
-                    etichetta = f"{pallino} **{scadenza_str}** — {oggetto}"
-
-                    with st.container(key=f"calgrid_riepilogo_row_{rf}"):
-                        if url_link and url_link.startswith("http"):
-                            col_item, col_link = st.columns([8, 2])
-                            with col_item:
-                                if st.button(
-                                    etichetta,
-                                    key=f"calgrid_riepilogo_{rf}",
-                                    use_container_width=True,
-                                ):
-                                    st.session_state.calimp_editor = {
-                                        "modo": "modifica",
-                                        "riga": riga_dict,
-                                        "numero_riga_foglio": rf,
-                                    }
-                                    st.rerun()
-                            with col_link:
-                                st.markdown(
-                                    f"<a href='{url_link}' target='_blank' style='line-height: 2.2; font-size: 0.9rem; font-weight: 600; color: #0284c7; text-decoration: underline; text-align: left; display: block;'>— Link</a>",
-                                    unsafe_allow_html=True,
-                                )
-                        else:
+                with st.container(key=f"calgrid_riepilogo_row_{rf}"):
+                    if url_link and url_link.startswith("http"):
+                        col_item, col_link = st.columns([8, 2])
+                        with col_item:
                             if st.button(
                                 etichetta,
                                 key=f"calgrid_riepilogo_{rf}",
@@ -9383,6 +9373,23 @@ def mostra_calendario_impegni_grid():
                                     "numero_riga_foglio": rf,
                                 }
                                 st.rerun()
+                        with col_link:
+                            st.markdown(
+                                f"<a href='{url_link}' target='_blank' style='line-height: 2.2; font-size: 0.9rem; font-weight: 600; color: #0284c7; text-decoration: underline; text-align: left; display: block;'>— Link</a>",
+                                unsafe_allow_html=True,
+                            )
+                    else:
+                        if st.button(
+                            etichetta,
+                            key=f"calgrid_riepilogo_{rf}",
+                            use_container_width=True,
+                        ):
+                            st.session_state.calimp_editor = {
+                                "modo": "modifica",
+                                "riga": riga_dict,
+                                "numero_riga_foglio": rf,
+                            }
+                            st.rerun()
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
