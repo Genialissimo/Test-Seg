@@ -7862,6 +7862,7 @@ def mostra_domande_pioniere_ausiliario():
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: IMPEGNI E SCADENZE
 # ─────────────────────────────────────────────────────────────────
+
 def vai_a_impegni_nuovo():
     st.session_state.impegni_editor = {"modo": "nuovo"}
     vai_a("impegni_scadenze")
@@ -8365,8 +8366,12 @@ def mostra_calendario_impegni_grid():
             border: none !important;
             text-align: left !important;
             justify-content: flex-start !important;
-            font-weight: 600 !important;
+            font-weight: 400 !important;
             color: #0c4a6e !important;
+            width: 100% !important;
+        }
+        div[class*="st-key-calgrid_riepilogo_"] button p {
+            text-align: left !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -8488,7 +8493,7 @@ def mostra_calendario_impegni_grid():
 
     if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
         data_sel = date(anno, mese, giorno_sel)
-        st.markdown(f"#### 🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}")
+        st.markdown(f"##### 🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}")
         impegni_giorno = impegni_del_mese.get(giorno_sel, [])
         if not impegni_giorno:
             st.caption("Nessun impegno in questa data.")
@@ -8497,7 +8502,7 @@ def mostra_calendario_impegni_grid():
                 rf = riga_dict["_riga_foglio"]
                 oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
                 scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
-                etichetta = f"{scadenza_str} — {oggetto}"
+                etichetta = f"**{scadenza_str}** — {oggetto}"
                 if st.button(etichetta, key=f"calgrid_riepilogo_{rf}", use_container_width=True):
                     st.session_state.calimp_editor = {
                         "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
