@@ -9431,8 +9431,6 @@ elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
 elif st.session_state.pagina == "calendario_impegni":
     mostra_calendario_impegni_grid()
-elif st.session_state.pagina == "calendario_impegni_lista":
-    mostra_calendario_impegni_lista()
 else:
     mostra_home()
 
