@@ -3503,12 +3503,23 @@ def mostra_home():
     else:
         impegni_widget_html = contenuto_widget_html
 
-    lista_impostazioni = [
+   lista_impostazioni = [
         ("⚙️", "bg-slate",  "Impostazioni", "Configura i giorni delle adunanze e altre opzioni.", "impostazioni", ""),
     ]
     if st.session_state.get("ruolo") == "amministratore":
         lista_impostazioni.append(
             ("🔐", "bg-purple", "Accessi", "Gestisci chi può accedere all'app e con quale ruolo.", "utenti", "")
+        )
+
+    lista_impegni_tab = [
+        ("📅", "bg-cyan", "Impegni e scadenze",
+         "Gestisci impegni, scadenze e promemoria personali.", "impegni_scadenze", badge_impegni),
+    ]
+    if st.session_state.get("email_logged") == EMAIL_CALENDARIO_IMPEGNI:
+        lista_impegni_tab.append(
+            ("📅", "bg-cyan", "Calendario Impegni",
+             "Solo per te: sfoglia il calendario e apri gli impegni di quel mese.",
+             "calendario_impegni", "")
         )
 
     sezioni = {
@@ -3531,18 +3542,10 @@ def mostra_home():
             ("📝", "bg-amber", "Domande di pioniere ausiliario",
              "Compila, archivia ed esporta le domande S-205b.", "domande_pionieri", ""),
         ],
-        "📅 Impegni": [
-            ("📅", "bg-cyan", "Impegni e scadenze",
-             "Gestisci impegni, scadenze e promemoria personali.", "impegni_scadenze", badge_impegni),
-        ],
+        "📅 Impegni": lista_impegni_tab,
         "⚙️ Impostazioni": lista_impostazioni,
     }
-    if st.session_state.get("email_logged") == EMAIL_CALENDARIO_IMPEGNI:
-        sezioni["📅 Calendario Impegni"] = [
-            ("📅", "bg-cyan", "Calendario Impegni",
-             "Solo per te: sfoglia il calendario e apri gli impegni di quel mese.",
-             "calendario_impegni", ""),
-        ]
+
     def mostra_griglia_card(lista_card):
         """Mostra le card di una tab in una griglia a 2 colonne."""
         for i in range(0, len(lista_card), 2):
