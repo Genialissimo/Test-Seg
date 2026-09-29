@@ -3503,7 +3503,7 @@ def mostra_home():
     else:
         impegni_widget_html = contenuto_widget_html
 
-   lista_impostazioni = [
+    lista_impostazioni = [
         ("⚙️", "bg-slate",  "Impostazioni", "Configura i giorni delle adunanze e altre opzioni.", "impostazioni", ""),
     ]
     if st.session_state.get("ruolo") == "amministratore":
