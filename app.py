@@ -9105,13 +9105,17 @@ def mostra_calendario_impegni_grid():
         st.session_state.calgrid_anno = oggi.year
         st.session_state.calgrid_mese = oggi.month
         st.session_state.calgrid_attivo = True
-        st.session_state.pop("calgrid_giorno_selezionato", None)
+        st.session_state.calgrid_giorno_selezionato = oggi.day if oggi.month == st.session_state.calgrid_mese else 1
         st.session_state.pop("calimp_editor", None)
 
     anno = st.session_state.calgrid_anno
     mese = st.session_state.calgrid_mese
     impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
+
+    # Se non c'è un giorno selezionato, imposta di default il primo giorno del mese
+    if "calgrid_giorno_selezionato" not in st.session_state or not st.session_state.calgrid_giorno_selezionato:
+        st.session_state.calgrid_giorno_selezionato = 1
 
     # CARD PRINCIPALE
     with st.container(key="calgrid_card_wrapper"):
@@ -9132,7 +9136,7 @@ def mostra_calendario_impegni_grid():
             st.session_state.calgrid_anno = st.session_state[
                 "calgrid_anno_select"
             ]
-            st.session_state.pop("calgrid_giorno_selezionato", None)
+            st.session_state.calgrid_giorno_selezionato = 1
             st.session_state.pop("calimp_editor", None)
 
         st.selectbox(
@@ -9156,7 +9160,7 @@ def mostra_calendario_impegni_grid():
                     if st.session_state.calgrid_mese < 1:
                         st.session_state.calgrid_mese = 12
                         st.session_state.calgrid_anno -= 1
-                    st.session_state.pop("calgrid_giorno_selezionato", None)
+                    st.session_state.calgrid_giorno_selezionato = 1
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
             with col_label:
@@ -9171,7 +9175,7 @@ def mostra_calendario_impegni_grid():
                     if st.session_state.calgrid_mese > 12:
                         st.session_state.calgrid_mese = 1
                         st.session_state.calgrid_anno += 1
-                    st.session_state.pop("calgrid_giorno_selezionato", None)
+                    st.session_state.calgrid_giorno_selezionato = 1
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
 
@@ -9313,7 +9317,7 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-    # ── CORRETTO: Spostato fuori dall'if per essere sempre visibile ──
+    # Lista Riepilogo Impegni (Spostata correttamente fuori dall'if dell'editor)
     with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
@@ -9403,6 +9407,7 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
+
 
 # ─────────────────────────────────────────────────────────────────
 # WRAPPER PAGINE LISTA IMPEGNI
