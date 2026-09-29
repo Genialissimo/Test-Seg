@@ -9315,7 +9315,7 @@ def mostra_calendario_impegni_grid():
 
     # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
         with st.container(key="calgrid_riepilogo_section"):
-        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
