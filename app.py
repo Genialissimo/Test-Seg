@@ -9105,17 +9105,13 @@ def mostra_calendario_impegni_grid():
         st.session_state.calgrid_anno = oggi.year
         st.session_state.calgrid_mese = oggi.month
         st.session_state.calgrid_attivo = True
-        st.session_state.calgrid_giorno_selezionato = oggi.day if oggi.month == st.session_state.calgrid_mese else 1
+        st.session_state.calgrid_giorno_selezionato = None  # Di default all'avvio mostra tutto il mese
         st.session_state.pop("calimp_editor", None)
 
     anno = st.session_state.calgrid_anno
     mese = st.session_state.calgrid_mese
     impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
-
-    # Se non c'è un giorno selezionato, imposta di default il primo giorno del mese
-    if "calgrid_giorno_selezionato" not in st.session_state or not st.session_state.calgrid_giorno_selezionato:
-        st.session_state.calgrid_giorno_selezionato = 1
 
     # CARD PRINCIPALE
     with st.container(key="calgrid_card_wrapper"):
@@ -9136,7 +9132,7 @@ def mostra_calendario_impegni_grid():
             st.session_state.calgrid_anno = st.session_state[
                 "calgrid_anno_select"
             ]
-            st.session_state.calgrid_giorno_selezionato = 1
+            st.session_state.calgrid_giorno_selezionato = None  # Reset del giorno per mostrare tutto il mese
             st.session_state.pop("calimp_editor", None)
 
         st.selectbox(
@@ -9160,7 +9156,7 @@ def mostra_calendario_impegni_grid():
                     if st.session_state.calgrid_mese < 1:
                         st.session_state.calgrid_mese = 12
                         st.session_state.calgrid_anno -= 1
-                    st.session_state.calgrid_giorno_selezionato = 1
+                    st.session_state.calgrid_giorno_selezionato = None  # Reset del giorno al cambio mese
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
             with col_label:
@@ -9175,7 +9171,7 @@ def mostra_calendario_impegni_grid():
                     if st.session_state.calgrid_mese > 12:
                         st.session_state.calgrid_mese = 1
                         st.session_state.calgrid_anno += 1
-                    st.session_state.calgrid_giorno_selezionato = 1
+                    st.session_state.calgrid_giorno_selezionato = None  # Reset del giorno al cambio mese
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
 
@@ -9317,7 +9313,7 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-    # Lista Riepilogo Impegni (Spostata correttamente fuori dall'if dell'editor)
+    # Lista Riepilogo Impegni (Ordinata per intero mese o filtrata per giorno)
     with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
@@ -9330,7 +9326,7 @@ def mostra_calendario_impegni_grid():
         else:
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
-                f"🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</div>",
+                f"🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno} (in ordine di scadenza)</div>",
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = []
@@ -9408,42 +9404,6 @@ def mostra_calendario_impegni_grid():
                             }
                             st.rerun()
 
-
-# ─────────────────────────────────────────────────────────────────
-# WRAPPER PAGINE LISTA IMPEGNI
-# ─────────────────────────────────────────────────────────────────
-
-def mostra_impegni_scadenze():
-    _mostra_lista_impegni(
-        workbook,
-        NOME_FOGLIO_IMPEGNI,
-        RIGA_INTESTAZIONE_IMPEGNI,
-        "📋 Impegni e scadenze",
-        "impegni",
-        vai_a_home_reset_impegni,
-    )
-
-
-def mostra_calendario_impegni_lista():
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button(
-            "🏠 Torna alla Home",
-            key="home_da_calimp_lista_negato",
-            on_click=vai_a,
-            args=("home",),
-        )
-        return
-
-    _mostra_lista_impegni(
-        workbook_calendario,
-        NOME_FOGLIO_CALENDARIO_IMPEGNI,
-        RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
-        "📅 Calendario Impegni — Elenco",
-        "calimp",
-        vai_a_home_reset_calendario_impegni,
-        mese_filtro_fisso=st.session_state.get("calimp_mese_filtro"),
-    )
 
 
 # ─────────────────────────────────────────────────────────────────
