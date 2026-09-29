@@ -9404,67 +9404,6 @@ def mostra_calendario_impegni_grid():
                             }
                             st.rerun()
 
-def mostra_calendario_impegni_lista():
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button(
-            "🏠 Torna alla Home",
-            key="home_da_callist_negato",
-            on_click=vai_a,
-            args=("home",),
-        )
-        return
-
-    st.title("📋 Lista Completa Impegni")
-
-    if st.button("📅 Vista Calendario", key="callist_torna_grid", use_container_width=True):
-        st.session_state.pagina = "calendario_impegni"
-        st.rerun()
-
-    # Raccogliamo tutti gli impegni dell'anno corrente e vicini o usiamo il metodo di caricamento globale
-    impegni = []
-    
-    # Cerchiamo di prenderli in base alle funzioni esistenti nel file
-    try:
-        # Usiamo l'anno corrente e i mesi chiave o un intervallo per popolare la lista completa
-        anno_corrente = date.today().year
-        for m in range(1, 13):
-            impegni_mese = _calgrid_carica_impegni_mese(anno_corrente, m)
-            for g in impegni_mese:
-                impegni.extend(impegni_mese[g])
-    except Exception:
-        pass
-
-    if not impegni:
-        st.info("Nessun impegno trovato.")
-        return
-
-    for riga_dict in impegni:
-        rf = riga_dict.get("_riga_foglio", 0)
-        oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
-        scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
-        
-        stato_val = str(
-            riga_dict.get("Stato", "")
-            or riga_dict.get("Fatto", "")
-            or riga_dict.get("Eseguito", "")
-            or riga_dict.get("Completato", "")
-        ).strip().lower()
-
-        is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
-        pallino = "🟢" if is_fatto else "🔴"
-        
-        etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
-        
-        if st.button(etichetta_bottone, key=f"callist_item_{rf}_{scadenza_str}", use_container_width=True):
-            st.session_state.calimp_editor = {
-                "modo": "modifica",
-                "riga": riga_dict,
-                "numero_riga_foglio": rf,
-            }
-            st.session_state.pagina = "calendario_impegni"
-            st.rerun()
-
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
@@ -9497,8 +9436,6 @@ elif st.session_state.pagina == "impegni_scadenze":
     mostra_impegni_scadenze()
 elif st.session_state.pagina == "calendario_impegni":
     mostra_calendario_impegni_grid()
-elif st.session_state.pagina == "calendario_impegni_lista":
-    mostra_calendario_impegni_lista()
 elif st.session_state.pagina == "calendario_impegni_lista":
     mostra_calendario_impegni_lista()
 else:
