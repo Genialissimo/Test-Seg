@@ -9313,9 +9313,9 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-    # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
-        with st.container(key="calgrid_riepilogo_section"):
-         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+    # ── CORRETTO: Spostato fuori dall'if per essere sempre visibile ──
+    with st.container(key="calgrid_riepilogo_section"):
+        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
@@ -9323,7 +9323,7 @@ def mostra_calendario_impegni_grid():
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = impegni_del_mese.get(giorno_sel, [])
-         else:
+        else:
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
                 f"🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</div>",
@@ -9367,7 +9367,6 @@ def mostra_calendario_impegni_grid():
                 ]
                 pallino = "🟢" if is_fatto else "🔴"
 
-                # Lettura mirata dalla colonna "Collega Link" (Colonna I)
                 url_link = str(
                     riga_dict.get("Collega Link", "")
                     or riga_dict.get("collega link", "")
@@ -9375,8 +9374,6 @@ def mostra_calendario_impegni_grid():
                 ).strip()
 
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
-                
-                # Etichetta pulita per il bottone
                 etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
