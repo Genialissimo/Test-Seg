@@ -9314,17 +9314,19 @@ def mostra_calendario_impegni_grid():
         )
 
     # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
-    with st.container(key="calgrid_riepilogo_section"):
+        with st.container(key="calgrid_riepilogo_section"):
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
             st.markdown(
-                f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</h5>",
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</div>",
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = impegni_del_mese.get(giorno_sel, [])
         else:
             st.markdown(
-                f"<h5 style='text-align: left; margin-bottom: 8px;'>🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</h5>",
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</div>",
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = []
