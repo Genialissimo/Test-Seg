@@ -7933,28 +7933,28 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             return None
 
     with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
-        oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
-        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
+        oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), key=f"{prefisso}_form_oggetto", disabled=bloccato)
+        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, key=f"{prefisso}_form_desc", disabled=bloccato)
 
         opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
         categoria_corrente = e.get("Categoria", "")
         if categoria_corrente and categoria_corrente not in opzioni_categoria:
             opzioni_categoria = [categoria_corrente] + opzioni_categoria
         indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
-        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato)
+        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, key=f"{prefisso}_form_cat", disabled=bloccato)
         nuova_categoria_testo = ""
         if scelta_categoria == "➕ Nuova categoria…":
-            nuova_categoria_testo = st.text_input("Nome della nuova categoria", disabled=bloccato)
+            nuova_categoria_testo = st.text_input("Nome della nuova categoria", key=f"{prefisso}_form_nuova_cat", disabled=bloccato)
 
         col_d1, col_d2 = st.columns(2)
         with col_d1:
             data_iniziale = st.date_input("Data Iniziale",
                                           value=parse_data(e.get("Data Iniziale", "")) or date.today(),
-                                          format="DD/MM/YYYY", disabled=bloccato)
+                                          format="DD/MM/YYYY", key=f"{prefisso}_form_datainiz", disabled=bloccato)
         with col_d2:
             scadenza = st.date_input("Scadenza *",
                                      value=parse_data(e.get("Scadenza", "")) or date.today(),
-                                     format="DD/MM/YYYY", disabled=bloccato)
+                                     format="DD/MM/YYYY", key=f"{prefisso}_form_scadenza", disabled=blopportunità if 'blopportunità' in locals() else bloccato)
 
         valori_preavviso_correnti = [v.strip() for v in str(e.get("Preavviso", "")).split(",") if v.strip()]
         opzioni_preavviso = list(OPZIONI_PREAVVISO_IMPEGNI)
@@ -7962,18 +7962,18 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             if v not in opzioni_preavviso:
                 opzioni_preavviso.append(v)
         preavviso_scelto = st.multiselect("Avvisami (giorni prima della scadenza)", opzioni_preavviso,
-                                          default=valori_preavviso_correnti, disabled=bloccato)
+                                          default=valori_preavviso_correnti, key=f"{prefisso}_form_preavviso", disabled=bloccato)
 
-        assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), disabled=bloccato)
-        fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")), disabled=bloccato)
-        link = st.text_input("Collega Link", value=e.get("Collega Link", ""), disabled=bloccato)
+        assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), key=f"{prefisso}_form_assegnato", disabled=bloccato)
+        fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")), key=f"{prefisso}_form_fatto", disabled=bloccato)
+        link = st.text_input("Collega Link", value=e.get("Collega Link", ""), key=f"{prefisso}_form_link", disabled=bloccato)
 
         col_salva, col_elimina = st.columns(2)
         with col_salva:
             invia = st.form_submit_button("✔ Salva", type="primary", use_container_width=True,
                                           disabled=bloccato)
         with col_elimina:
-            elimina = st.form_submit_button("🗑️ Elimina", use_container_width=True,
+            elimina = st.form_submit_button("🗑️️ Elimina", use_container_width=True,
                                             disabled=(bloccato or modo != "modifica"))
 
     if elimina and modo == "modifica":
@@ -8034,6 +8034,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             if st.button("No, annulla", key=f"{prefisso}_conf_no", use_container_width=True):
                 st.session_state[f"{prefisso}_conferma_elimina"] = None
                 st.rerun()
+
 
 def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titolo_pagina,
                          prefisso, funzione_reset_home, mese_filtro_fisso=None):
