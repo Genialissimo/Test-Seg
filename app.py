@@ -9323,7 +9323,7 @@ def mostra_calendario_impegni_grid():
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = impegni_del_mese.get(giorno_sel, [])
-        else:
+          else:
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
                 f"🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</div>",
