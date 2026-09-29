@@ -9404,6 +9404,66 @@ def mostra_calendario_impegni_grid():
                             }
                             st.rerun()
 
+def mostra_calendario_impegni_lista():
+    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
+        st.warning("⚠️ Questa sezione è riservata.")
+        st.button(
+            "🏠 Torna alla Home",
+            key="home_da_callist_negato",
+            on_click=vai_a,
+            args=("home",),
+        )
+        return
+
+    st.title("📋 Lista Completa Impegni")
+
+    if st.button("📅 Vista Calendario", key="callist_torna_grid", use_container_width=True):
+        st.session_state.pagina = "calendario_impegni"
+        st.rerun()
+
+    # Caricamento di tutti gli impegni ordinati
+    impegni = []
+    if workbook_calendario and NOME_FOGLIO_CALENDARIO_IMPEGNI in workbook_calendario.sheetnames:
+        foglio = workbook_calendario[NOME_FOGLIO_CALENDARIO_IMPEGNI]
+        righe = list(foglio.iter_rows(values_only=True))
+        if len(righe) >= RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI:
+            intestazioni = [str(c).strip() for c in righe[RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI - 1]]
+            for idx, riga in enumerate(righe[RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI:], start=RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI + 1):
+                if not any(riga):
+                    continue
+                riga_dict = {intestazioni[i]: riga[i] for i in range(min(len(intestazioni), len(riga))) if intestazioni[i]}
+                riga_dict["_riga_foglio"] = idx
+                impegni.append(riga_dict)
+
+    if not impegni:
+        st.info("Nessun impegno trovato.")
+        return
+
+    for riga_dict in impegni:
+        rf = riga_dict["_riga_foglio"]
+        oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
+        scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
+        
+        stato_val = str(
+            riga_dict.get("Stato", "")
+            or riga_dict.get("Fatto", "")
+            or riga_dict.get("Eseguito", "")
+            or riga_dict.get("Completato", "")
+        ).strip().lower()
+
+        is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
+        pallino = "🟢" if is_fatto else "🔴"
+        
+        etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
+        
+        if st.button(etichetta_bottone, key=f"callist_item_{rf}", use_container_width=True):
+            st.session_state.calimp_editor = {
+                "modo": "modifica",
+                "riga": riga_dict,
+                "numero_riga_foglio": rf,
+            }
+            st.session_state.pagina = "calendario_impegni"
+            st.rerun()
 
 
 # ─────────────────────────────────────────────────────────────────
