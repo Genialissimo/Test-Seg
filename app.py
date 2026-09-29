@@ -9421,26 +9421,26 @@ def mostra_calendario_impegni_lista():
         st.session_state.pagina = "calendario_impegni"
         st.rerun()
 
-    # Caricamento di tutti gli impegni ordinati
+    # Raccogliamo tutti gli impegni dell'anno corrente e vicini o usiamo il metodo di caricamento globale
     impegni = []
-    if workbook_calendario and NOME_FOGLIO_CALENDARIO_IMPEGNI in workbook_calendario.sheetnames:
-        foglio = workbook_calendario[NOME_FOGLIO_CALENDARIO_IMPEGNI]
-        righe = list(foglio.iter_rows(values_only=True))
-        if len(righe) >= RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI:
-            intestazioni = [str(c).strip() for c in righe[RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI - 1]]
-            for idx, riga in enumerate(righe[RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI:], start=RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI + 1):
-                if not any(riga):
-                    continue
-                riga_dict = {intestazioni[i]: riga[i] for i in range(min(len(intestazioni), len(riga))) if intestazioni[i]}
-                riga_dict["_riga_foglio"] = idx
-                impegni.append(riga_dict)
+    
+    # Cerchiamo di prenderli in base alle funzioni esistenti nel file
+    try:
+        # Usiamo l'anno corrente e i mesi chiave o un intervallo per popolare la lista completa
+        anno_corrente = date.today().year
+        for m in range(1, 13):
+            impegni_mese = _calgrid_carica_impegni_mese(anno_corrente, m)
+            for g in impegni_mese:
+                impegni.extend(impegni_mese[g])
+    except Exception:
+        pass
 
     if not impegni:
         st.info("Nessun impegno trovato.")
         return
 
     for riga_dict in impegni:
-        rf = riga_dict["_riga_foglio"]
+        rf = riga_dict.get("_riga_foglio", 0)
         oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
         scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
         
@@ -9456,7 +9456,7 @@ def mostra_calendario_impegni_lista():
         
         etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
         
-        if st.button(etichetta_bottone, key=f"callist_item_{rf}", use_container_width=True):
+        if st.button(etichetta_bottone, key=f"callist_item_{rf}_{scadenza_str}", use_container_width=True):
             st.session_state.calimp_editor = {
                 "modo": "modifica",
                 "riga": riga_dict,
