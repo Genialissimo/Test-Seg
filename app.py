@@ -7965,28 +7965,32 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         st.markdown(f"#### ✏️ Modifica impegno — {e.get('Oggetto', '')}")
     else:
         st.markdown("#### ➕ Nuovo impegno")
-    def parse_data(s):
-        try:
-            return datetime.strptime(s, "%d/%m/%Y").date()
-        except Exception:
-            return None
+
+    opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
+    categoria_corrente = e.get("Categoria", "")
+    if categoria_corrente and categoria_corrente not in opzioni_categoria:
+        opzioni_categoria = [categoria_corrente] + opzioni_categoria
+
+    # Chiave di sessione dedicata per la selectbox della categoria
+    key_sel_cat = f"sel_cat_val_{prefisso}_{chiave}"
+    if key_sel_cat not in st.session_state:
+        st.session_state[key_sel_cat] = categoria_corrente if categoria_corrente in opzioni_categoria else (opzioni_categoria[0] if opzioni_categoria else "")
+
+    # Selectbox fuori dal form per garantire la reattività immediata del campo "Nuova categoria"
+    scelta_categoria = st.selectbox(
+        "Categoria",
+        opzioni_categoria,
+        key=key_sel_cat,
+        disabled=bloccato
+    )
+
+    nuova_categoria_testo = ""
+    if scelta_categoria == "➕ Nuova categoria…":
+        nuova_categoria_testo = st.text_input("Nome della nuova categoria *", key=f"txt_nuova_cat_{prefisso}_{chiave}", disabled=bloccato)
 
     with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
         descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
-
-        opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
-        categoria_corrente = e.get("Categoria", "")
-        if categoria_corrente and categoria_corrente not in opzioni_categoria:
-            opzioni_categoria = [categoria_corrente] + opzioni_categoria
-        indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
-        
-        # Salviamo la scelta della categoria nel session_state per gestire la reattività nel form
-        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato, key=f"sel_cat_{prefisso}_{chiave}")
-        
-        nuova_categoria_testo = ""
-        if scelta_categoria == "➕ Nuova categoria…":
-            nuova_categoria_testo = st.text_input("Nome della nuova categoria *", key=f"txt_nuova_cat_{prefisso}_{chiave}", disabled=bloccato)
 
         col_d1, col_d2 = st.columns(2)
         with col_d1:
