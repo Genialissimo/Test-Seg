@@ -8125,33 +8125,6 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
             flex: 1 1 0% !important;
             min-width: 0 !important;
         }}
-        div[class*="st-key-{prefisso}_link_present_"] button {{
-            background: transparent !important;
-            border: none !important;
-            color: #2563eb !important;
-            text-decoration: underline !important;
-            font-weight: 500 !important;
-            padding: 0 4px !important;
-            min-height: 0 !important;
-            height: auto !important;
-            line-height: 1.2 !important;
-        }}
-        div[class*="st-key-{prefisso}_link_present_"] button p,
-        div[class*="st-key-{prefisso}_link_absent_"] button p {{
-            margin: 0 !important;
-            line-height: 1.2 !important;
-        }}
-        div[class*="st-key-{prefisso}_link_absent_"] button {{
-            background: transparent !important;
-            border: none !important;
-            color: #cbd5e1 !important;
-            text-decoration: none !important;
-            font-weight: 500 !important;
-            padding: 0 4px !important;
-            min-height: 0 !important;
-            height: auto !important;
-            line-height: 1.2 !important;
-        }}
         div[class*="st-key-{prefisso}_card_fatto_"] {{
             background: #f0fdf4 !important;
             border-color: #bbf7d0 !important;
@@ -8314,8 +8287,10 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                 col_link, col_stato = st.columns([1, 2])
                 with col_link:
                     ha_link = bool(r["link"])
-                    key_link = f"{prefisso}_link_present_{rf}" if ha_link else f"{prefisso}_link_absent_{rf}"
-                    st.link_button("Link", r["link"] or "#", disabled=not ha_link, key=key_link)
+                    if ha_link:
+                        st.markdown(f'<a href="{r["link"]}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 500;">Link</a>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<span style="color: #cbd5e1; font-weight: 500;">Link</span>', unsafe_allow_html=True)
                 with col_stato:
                     fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
                     valore_corrente = "Fatti" if fatto_corrente else "Da fare"
