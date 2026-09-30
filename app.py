@@ -7959,17 +7959,25 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
     else:
         st.markdown("#### ➕ Nuovo impegno")
 
-    opzioni_categoria = list(categorie_disponibili)
-    categoria_corrente = e.get("Categoria", "")
-    if categoria_corrente and categoria_corrente not in opzioni_categoria:
-        opzioni_categoria = [categoria_corrente] + opzioni_categoria
-    indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
+    def parse_data(s):
+        try:
+            return datetime.strptime(s, "%d/%m/%Y").date()
+        except Exception:
+            return None
 
     with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
         descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
 
-        categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato, key=f"sel_cat_{prefisso}_{chiave}")
+        opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
+        categoria_corrente = e.get("Categoria", "")
+        if categoria_corrente and categoria_corrente not in opzioni_categoria:
+            opzioni_categoria = [categoria_corrente] + opzioni_categoria
+        indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
+        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato)
+        nuova_categoria_testo = ""
+        if scelta_categoria == "➕ Nuova categoria…":
+            nuova_categoria_testo = st.text_input("Nome della nuova categoria", disabled=bloccato)
 
         col_d1, col_d2 = st.columns(2)
         with col_d1:
@@ -8012,11 +8020,16 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         elif scadenza is None:
             st.error("Il campo «Scadenza» è obbligatorio.")
         else:
+            categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
+                                else scelta_categoria)
+            if scelta_categoria == "➕ Nuova categoria…" and categoria_finale:
+                aggiungi_categoria_impegno(workbook_pagina, categoria_finale)
+
             valori = {
                 "Data Iniziale": data_iniziale.strftime("%d/%m/%Y") if data_iniziale else "",
                 "Scadenza": scadenza.strftime("%d/%m/%Y"),
                 "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x) if str(x).isdigit() else 0)),
-                "Categoria": categoria,
+                "Categoria": categoria_finale,
                 "Assegnato": assegnato.strip(),
                 "Oggetto": oggetto_pulito,
                 "Descrizione": descrizione.strip(),
@@ -8034,6 +8047,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
                 st.rerun()
             else:
                 st.error(err_salva)
+
     conferma = st.session_state.get(f"{prefisso}_conferma_elimina")
     if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
         st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? "
@@ -8862,10 +8876,8 @@ def mostra_calendario_impegni_grid():
         )
 
     # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
-    with st.container(key="calgrid_riepilogo_section"):
-        giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
-        
-        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+        with st.container(key="calgrid_riepilogo_section"):
+         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
@@ -8873,10 +8885,10 @@ def mostra_calendario_impegni_grid():
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = impegni_del_mese.get(giorno_sel, [])
-        else:
+         else:
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
-                f"🗓️ Riepilogo impegni di {MESI_ITALIANI[mese]} {anno}</div>",
+                f"🗓️ Tutti gli impegni di {MESI_ITALIANI[mese]} {anno}</div>",
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = []
@@ -8884,7 +8896,7 @@ def mostra_calendario_impegni_grid():
                 lista_impegni_da_mostrare.extend(impegni_del_mese[g])
 
         if not lista_impegni_da_mostrare:
-            st.caption("Nessun impegno trovato per questo periodo.")
+            st.caption("Nessun impegno trovato.")
         else:
             for riga_dict in lista_impegni_da_mostrare:
                 rf = riga_dict["_riga_foglio"]
@@ -8917,6 +8929,7 @@ def mostra_calendario_impegni_grid():
                 ]
                 pallino = "🟢" if is_fatto else "🔴"
 
+                # Lettura mirata dalla colonna "Collega Link" (Colonna I)
                 url_link = str(
                     riga_dict.get("Collega Link", "")
                     or riga_dict.get("collega link", "")
@@ -8924,6 +8937,8 @@ def mostra_calendario_impegni_grid():
                 ).strip()
 
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
+                
+                # Etichetta pulita per il bottone
                 etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
@@ -8953,6 +8968,7 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
+
 # ─────────────────────────────────────────────────────────────────
 # WRAPPER PAGINE LISTA IMPEGNI
 # ─────────────────────────────────────────────────────────────────
