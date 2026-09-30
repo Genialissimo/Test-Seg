@@ -8876,7 +8876,7 @@ def mostra_calendario_impegni_grid():
         )
 
     # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
-        with st.container(key="calgrid_riepilogo_section"):
+    with st.container(key="calgrid_riepilogo_section"):
         giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
         
         if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
