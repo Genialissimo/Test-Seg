@@ -8590,6 +8590,7 @@ def mostra_calendario_impegni_grid():
 
     anno = st.session_state.calgrid_anno
     mese = st.session_state.calgrid_mese
+    # L'elaborazione ora è istantanea grazie alla cache
     impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
@@ -8700,9 +8701,7 @@ def mostra_calendario_impegni_grid():
                                 key=f"{prefisso_chiave}_{anno}_{mese}_{giorno}",
                                 use_container_width=True,
                             ):
-                                st.session_state.calgrid_giorno_selezionato = (
-                                    giorno
-                                )
+                                st.session_state.calgrid_giorno_selezionato = giorno
                                 st.session_state.pop("calimp_editor", None)
                                 st.rerun()
 
@@ -8885,6 +8884,42 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
+
+# ─────────────────────────────────────────────────────────────────
+# WRAPPER PAGINE LISTA IMPEGNI
+# ─────────────────────────────────────────────────────────────────
+
+def mostra_impegni_scadenze():
+    _mostra_lista_impegni(
+        workbook,
+        NOME_FOGLIO_IMPEGNI,
+        RIGA_INTESTAZIONE_IMPEGNI,
+        "📋 Impegni e scadenze",
+        "impegni",
+        vai_a_home_reset_impegni,
+    )
+
+
+def mostra_calendario_impegni_lista():
+    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
+        st.warning("⚠️ Questa sezione è riservata.")
+        st.button(
+            "🏠 Torna alla Home",
+            key="home_da_calimp_lista_negato",
+            on_click=vai_a,
+            args=("home",),
+        )
+        return
+
+    _mostra_lista_impegni(
+        workbook_calendario,
+        NOME_FOGLIO_CALENDARIO_IMPEGNI,
+        RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
+        "📅 Calendario Impegni — Elenco",
+        "calimp",
+        vai_a_home_reset_calendario_impegni,
+        mese_filtro_fisso=st.session_state.get("calimp_mese_filtro"),
+    )
 
 # ─────────────────────────────────────────────────────────────────
 # WRAPPER PAGINE LISTA IMPEGNI
