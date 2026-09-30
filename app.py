@@ -8454,7 +8454,6 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
 
         for i, r in enumerate(righe_gruppo):
             rf = r["riga_foglio"]
-            # Aggiungiamo l'indice 'i' per garantire l'assoluta unicità della chiave in ogni circostanza
             id_univoco = f"{rf}_{i}"
 
             if raggruppa_per_mese and r["categoria"]:
@@ -8519,7 +8518,6 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                             st.rerun()
                         else:
                             st.error(err_f)
-
             fatto_card = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
             scaduto_card = (not fatto_card and r["scadenza_date"] is not None
                             and r["scadenza_date"] < date.today())
