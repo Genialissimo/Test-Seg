@@ -7971,7 +7971,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         except Exception:
             return None
 
-    with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
+   with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
         descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
 
@@ -7980,10 +7980,13 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         if categoria_corrente and categoria_corrente not in opzioni_categoria:
             opzioni_categoria = [categoria_corrente] + opzioni_categoria
         indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
-        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato)
+        
+        # Salviamo la scelta della categoria nel session_state per gestire la reattività nel form
+        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato, key=f"sel_cat_{prefisso}_{chiave}")
+        
         nuova_categoria_testo = ""
         if scelta_categoria == "➕ Nuova categoria…":
-            nuova_categoria_testo = st.text_input("Nome della nuova categoria", disabled=bloccato)
+            nuova_categoria_testo = st.text_input("Nome della nuova categoria *", key=f"txt_nuova_cat_{prefisso}_{chiave}", disabled=bloccato)
 
         col_d1, col_d2 = st.columns(2)
         with col_d1:
@@ -8021,13 +8024,16 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
 
     if invia:
         oggetto_pulito = oggetto.strip()
+        categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
+                            else scelta_categoria)
+        
         if not oggetto_pulito:
             st.error("Il campo «Oggetto» è obbligatorio.")
         elif scadenza is None:
             st.error("Il campo «Scadenza» è obbligatorio.")
+        elif scelta_categoria == "➕ Nuova categoria…" and not categoria_finale:
+            st.error("Inserisci il nome della nuova categoria nel campo di testo dedicato.")
         else:
-            categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
-                                else scelta_categoria)
             if scelta_categoria == "➕ Nuova categoria…" and categoria_finale:
                 aggiungi_categoria_impegno(workbook_pagina, categoria_finale)
 
@@ -8053,7 +8059,6 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
                 st.rerun()
             else:
                 st.error(err_salva)
-
     conferma = st.session_state.get(f"{prefisso}_conferma_elimina")
     if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
         st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? "
