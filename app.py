@@ -8452,8 +8452,11 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
     for etichetta_gruppo, righe_gruppo in gruppi:
         st.markdown(f'<div class="{prefisso}-gruppo-titolo">📅 {etichetta_gruppo}</div>', unsafe_allow_html=True)
 
-        for r in righe_gruppo:
+        for i, r in enumerate(righe_gruppo):
             rf = r["riga_foglio"]
+            # Aggiungiamo l'indice 'i' per garantire l'assoluta unicità della chiave in ogni circostanza
+            id_univoco = f"{rf}_{i}"
+
             if raggruppa_per_mese and r["categoria"]:
                 riga1_testo = f'{r["scadenza_str"]} — {r["categoria"]}'
             else:
@@ -8469,14 +8472,14 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
             else:
                 stato_card = "dafare"
 
-            with st.container(key=f"{prefisso}_card_{stato_card}_{rf}", border=True):
+            with st.container(key=f"{prefisso}_card_{stato_card}_{id_univoco}", border=True):
                 col_testo, col_edit = st.columns([5, 1])
                 with col_testo:
                     st.markdown(f'<div class="{prefisso}-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
                     if r["oggetto"]:
                         st.markdown(f'<div class="{prefisso}-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
                 with col_edit:
-                    if st.button("✏️", key=f"{prefisso}_edit_{rf}", help="Modifica impegno", use_container_width=True):
+                    if st.button("✏️", key=f"{prefisso}_edit_{id_univoco}", help="Modifica impegno", use_container_width=True):
                         st.session_state[f"{prefisso}_editor"] = {
                             "modo": "modifica",
                             "riga": r["riga_dict"],
@@ -8487,7 +8490,7 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                 col_link, col_stato = st.columns([1, 2])
                 with col_link:
                     ha_link = bool(r["link"])
-                    key_link = f"{prefisso}_link_present_{rf}" if ha_link else f"{prefisso}_link_absent_{rf}"
+                    key_link = f"{prefisso}_link_present_{id_univoco}" if ha_link else f"{prefisso}_link_absent_{id_univoco}"
                     st.link_button("🔗 Link", r["link"] or "#", disabled=not ha_link, key=key_link)
 
                 with col_stato:
@@ -8497,7 +8500,7 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
                         " ",
                         ["Da fare", "Fatti"],
                         index=(1 if fatto_corrente else 0),
-                        key=f"{prefisso}_stato_{rf}",
+                        key=f"{prefisso}_stato_{id_univoco}",
                         horizontal=True,
                         label_visibility="collapsed",
                         disabled=sola_lettura(),
