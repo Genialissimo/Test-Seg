@@ -8364,7 +8364,7 @@ def _filtra_impegni_cached(records_dict, filtro_stato, filtro_categoria, mese_fi
     return righe_valide
 
 def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titolo_pagina,
-                          prefisso, funzione_reset_home, mese_filtro_fisso=None):
+                         prefisso, funzione_reset_home, mese_filtro_fisso=None):
     st.title(titolo_pagina)
     collegato_pagina = workbook_pagina is not None
 
@@ -8388,7 +8388,6 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
 
     categorie_disponibili = leggi_categorie_impegni(workbook_pagina, nome_foglio)
 
-    # Convertiamo in dizionario per cachare l'elaborazione (più veloce di iterrows)
     df_impegni = df_impegni.reset_index(drop=True)
     if not df_impegni.empty:
         df_impegni["_riga_foglio"] = riga_intestazione + 1 + df_impegni.index
@@ -8413,7 +8412,6 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
     opzioni_categoria_filtro = ["Tutte le categorie"] + categorie_disponibili
     filtro_categoria = st.selectbox("Categoria", opzioni_categoria_filtro, key=f"{prefisso}_filtro_categoria")
 
-    # USO LA FUNZIONE IN CACHE INVECE DI ITERROWS
     righe_valide = _filtra_impegni_cached(records_dict, filtro_stato, filtro_categoria, mese_filtro_fisso)
 
     if not righe_valide:
@@ -8461,28 +8459,56 @@ def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titol
             else:
                 riga1_testo = r["scadenza_str"]
 
-            def _render_corpo_impegno(r=r, rf=rf, riga1_testo=riga1_testo):
-                st.markdown(f'<div class="{prefisso}-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
-                if r["oggetto"]:
-                    st.markdown(f'<div class="{prefisso}-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
+            fatto_card = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
+            scaduto_card = (not fatto_card and r["scadenza_date"] is not None
+                            and r["scadenza_date"] < date.today())
+            if fatto_card:
+                stato_card = "fatto"
+            elif scaduto_card:
+                stato_card = "scaduto"
+            else:
+                stato_card = "dafare"
+
+            with st.container(key=f"{prefisso}_card_{stato_card}_{rf}", border=True):
+                col_testo, col_edit = st.columns([5, 1])
+                with col_testo:
+                    st.markdown(f'<div class="{prefisso}-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
+                    if r["oggetto"]:
+                        st.markdown(f'<div class="{prefisso}-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
+                with col_edit:
+                    if st.button("✏️", key=f"{prefisso}_edit_{rf}", help="Modifica impegno", use_container_width=True):
+                        st.session_state[f"{prefisso}_editor"] = {
+                            "modo": "modifica",
+                            "riga": r["riga_dict"],
+                            "numero_riga_foglio": rf,
+                        }
+                        st.rerun()
 
                 col_link, col_stato = st.columns([1, 2])
                 with col_link:
                     ha_link = bool(r["link"])
                     key_link = f"{prefisso}_link_present_{rf}" if ha_link else f"{prefisso}_link_absent_{rf}"
-                    st.link_button("Link", r["link"] or "#", disabled=not ha_link, key=key_link)
+                    st.link_button("🔗 Link", r["link"] or "#", disabled=not ha_link, key=key_link)
+
                 with col_stato:
                     fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
                     valore_corrente = "Fatti" if fatto_corrente else "Da fare"
-                    scelta_stato = st.radio(" ", ["Da fare", "Fatti"],
-                                            index=(1 if fatto_corrente else 0),
-                                            key=f"{prefisso}_stato_{rf}", horizontal=True,
-                                            label_visibility="collapsed", disabled=sola_lettura())
+                    scelta_stato = st.radio(
+                        " ",
+                        ["Da fare", "Fatti"],
+                        index=(1 if fatto_corrente else 0),
+                        key=f"{prefisso}_stato_{rf}",
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        disabled=sola_lettura(),
+                    )
                     if scelta_stato != valore_corrente:
                         valori_fatto = dict(r["riga_dict"])
                         valori_fatto["Fatto"] = "X" if scelta_stato == "Fatti" else ""
-                        ok_f, err_f = salva_riga_foglio(workbook_pagina, nome_foglio, riga_intestazione,
-                                                        valori_fatto, riga_da_aggiornare=rf)
+                        ok_f, err_f = salva_riga_foglio(
+                            workbook_pagina, nome_foglio, riga_intestazione,
+                            valori_fatto, riga_da_aggiornare=rf
+                        )
                         if ok_f:
                             pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
                             _filtra_impegni_cached.clear()
@@ -8885,41 +8911,6 @@ def mostra_calendario_impegni_grid():
                             }
                             st.rerun()
 
-# ─────────────────────────────────────────────────────────────────
-# WRAPPER PAGINE LISTA IMPEGNI
-# ─────────────────────────────────────────────────────────────────
-
-def mostra_impegni_scadenze():
-    _mostra_lista_impegni(
-        workbook,
-        NOME_FOGLIO_IMPEGNI,
-        RIGA_INTESTAZIONE_IMPEGNI,
-        "📋 Impegni e scadenze",
-        "impegni",
-        vai_a_home_reset_impegni,
-    )
-
-
-def mostra_calendario_impegni_lista():
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button(
-            "🏠 Torna alla Home",
-            key="home_da_calimp_lista_negato",
-            on_click=vai_a,
-            args=("home",),
-        )
-        return
-
-    _mostra_lista_impegni(
-        workbook_calendario,
-        NOME_FOGLIO_CALENDARIO_IMPEGNI,
-        RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
-        "📅 Calendario Impegni — Elenco",
-        "calimp",
-        vai_a_home_reset_calendario_impegni,
-        mese_filtro_fisso=st.session_state.get("calimp_mese_filtro"),
-    )
 
 # ─────────────────────────────────────────────────────────────────
 # WRAPPER PAGINE LISTA IMPEGNI
@@ -8955,7 +8946,8 @@ def mostra_calendario_impegni_lista():
         "calimp",
         vai_a_home_reset_calendario_impegni,
         mese_filtro_fisso=st.session_state.get("calimp_mese_filtro"),
-    )
+    )─────────────────────────────────────────────────────────────────
+
 
 
 # ─────────────────────────────────────────────────────────────────
