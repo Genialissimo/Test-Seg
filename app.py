@@ -7959,7 +7959,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
     else:
         st.markdown("#### ➕ Nuovo impegno")
 
-    opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
+    opzioni_categoria = list(categorie_disponibili)
     categoria_corrente = e.get("Categoria", "")
     if categoria_corrente and categoria_corrente not in opzioni_categoria:
         opzioni_categoria = [categoria_corrente] + opzioni_categoria
@@ -7969,11 +7969,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
         descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
 
-        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato, key=f"sel_cat_{prefisso}_{chiave}")
-        
-        nuova_categoria_testo = ""
-        if scelta_categoria == "➕ Nuova categoria…":
-            nuova_categoria_testo = st.text_input("Nome della nuova categoria *", key=f"txt_nuova_cat_{prefisso}_{chiave}", disabled=bloccato)
+        categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato, key=f"sel_cat_{prefisso}_{chiave}")
 
         col_d1, col_d2 = st.columns(2)
         with col_d1:
@@ -8011,24 +8007,16 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
 
     if invia:
         oggetto_pulito = oggetto.strip()
-        categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
-                            else scelta_categoria)
-        
         if not oggetto_pulito:
             st.error("Il campo «Oggetto» è obbligatorio.")
         elif scadenza is None:
             st.error("Il campo «Scadenza» è obbligatorio.")
-        elif scelta_categoria == "➕ Nuova categoria…" and not categoria_finale:
-            st.error("Inserisci il nome della nuova categoria nel campo di testo dedicato.")
         else:
-            if scelta_categoria == "➕ Nuova categoria…" and categoria_finale:
-                aggiungi_categoria_impegno(workbook_pagina, categoria_finale)
-
             valori = {
                 "Data Iniziale": data_iniziale.strftime("%d/%m/%Y") if data_iniziale else "",
                 "Scadenza": scadenza.strftime("%d/%m/%Y"),
                 "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x) if str(x).isdigit() else 0)),
-                "Categoria": categoria_finale,
+                "Categoria": categoria,
                 "Assegnato": assegnato.strip(),
                 "Oggetto": oggetto_pulito,
                 "Descrizione": descrizione.strip(),
