@@ -7954,6 +7954,13 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
     chiave = editor.get("numero_riga_foglio", "nuovo")
     bloccato = sola_lettura()
 
+    # Lettura robusta di tutte le categorie presenti nel foglio
+    if workbook_pagina and nome_foglio and riga_intestazione:
+        df_cat, _ = leggi_foglio_come_df(workbook_pagina, nome_foglio, riga_intestazione)
+        if df_cat is not None and not df_cat.empty and "Categoria" in df_cat.columns:
+            cat_trovate = [str(c).strip() for c in df_cat["Categoria"].dropna().unique() if str(c).strip()]
+            categorie_disponibili = sorted(list(set(list(categorie_disponibili) + cat_trovate)))
+
     if modo == "modifica":
         st.markdown(f"#### ✏️ Modifica impegno — {e.get('Oggetto', '')}")
     else:
