@@ -8946,7 +8946,7 @@ def mostra_calendario_impegni_lista():
         "calimp",
         vai_a_home_reset_calendario_impegni,
         mese_filtro_fisso=st.session_state.get("calimp_mese_filtro"),
-    )─────────────────────────────────────────────────────────────────
+    )
 
 
 
