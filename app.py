@@ -7971,7 +7971,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         except Exception:
             return None
 
-   with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
+    with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
         oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
         descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
 
