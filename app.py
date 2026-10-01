@@ -8015,7 +8015,7 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            margin-top: -10px !important; /* <--- Aumentato a -10px per farlo salire ancora */
+            margin-top: -15px !important; /* <--- Portato a -15px per farlo salire di più */
             margin-bottom: 0 !important;
             margin-left: 0 !important;
             margin-right: 0 !important;
