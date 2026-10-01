@@ -8058,64 +8058,103 @@ st.markdown(
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* RIEPILOGO - Forzato rigorosamente a sinistra */
-        div[class*="_riepilogo_section"] {
+        /* 6. RIEPILOGO IMPEGNI E SCADENZE & CALENDARIO IMPEGNI (Allineato a sinistra) */
+        div[class*="st-key-impgrid_riepilogo_section"],
+        div[class*="st-key-calgrid_riepilogo_section"] {
             display: flex !important;
             flex-direction: column !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            margin-left: 0 !important;
-            margin-right: auto !important;
-            margin-top: 20px !important;
-            text-align: left !important;
             align-items: flex-start !important;
-        }
-        div[class*="_riepilogo_row_"] {
+            justify-content: flex-start !important;
+            text-align: left !important;
             width: 100% !important;
             max-width: 100% !important;
-            margin-left: 0 !important;
-            margin-right: auto !important;
-            text-align: left !important;
+            margin-top: 16px !important;
         }
-        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
+
+        div[class*="st-key-impgrid_riepilogo_row_"],
+        div[class*="st-key-calgrid_riepilogo_row_"] {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"],
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            align-items: center !important;
             justify-content: flex-start !important;
+            align-items: center !important;
             width: 100% !important;
             max-width: 100% !important;
-            margin-left: 0 !important;
-            gap: 6px !important;
+            gap: 4px !important;
         }
-        div[class*="_riepilogo_row_"] div[data-testid="stColumn"] {
-            justify-content: flex-start !important;
-            margin-left: 0 !important;
+
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 0 0 36px !important;
+            width: 36px !important;
+            min-width: 36px !important;
+            max-width: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
-        div[class*="_riepilogo_row_"] div[data-testid="stColumn"] > div {
+
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        div[class*="st-key-impgrid_riepilogo_"],
+        div[class*="st-key-calgrid_riepilogo_"] {
             display: flex !important;
             justify-content: flex-start !important;
+            align-items: center !important;
+            width: 100% !important;
         }
-        div[class*="_riepilogo_"] button {
+
+        div[class*="st-key-impgrid_riepilogo_"] div[data-testid="stButton"],
+        div[class*="st-key-calgrid_riepilogo_"] div[data-testid="stButton"] {
+            display: flex !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+        }
+
+        div[class*="st-key-impgrid_riepilogo_"] button,
+        div[class*="st-key-calgrid_riepilogo_"] button {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 6px !important;
-            text-align: left !important;
             justify-content: flex-start !important;
+            text-align: left !important;
             color: #1e293b !important;
             width: 100% !important;
-            padding: 6px 4px !important;
+            padding: 6px 0px !important;
+            margin-bottom: 2px !important;
             font-size: 0.92rem !important;
             display: flex !important;
             align-items: center !important;
-            margin-left: 0 !important;
         }
-        div[class*="_riepilogo_"] button div[data-testid="stMarkdownContainer"] {
+
+        div[class*="st-key-impgrid_riepilogo_"] button p,
+        div[class*="st-key-impgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"],
+        div[class*="st-key-impgrid_riepilogo_"] button span,
+        div[class*="st-key-calgrid_riepilogo_"] button p,
+        div[class*="st-key-calgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"],
+        div[class*="st-key-calgrid_riepilogo_"] button span {
             text-align: left !important;
+            justify-content: flex-start !important;
             width: 100% !important;
+            margin: 0 !important;
         }
-        div[class*="_riepilogo_"] button:hover {
+
+        div[class*="st-key-impgrid_riepilogo_"] button:hover,
+        div[class*="st-key-calgrid_riepilogo_"] button:hover {
             background: #f1f5f9 !important;
         }
     </style>
