@@ -8703,7 +8703,6 @@ def mostra_calendario_impegni_grid():
                     if st.session_state.calgrid_mese < 1:
                         st.session_state.calgrid_mese = 12
                         st.session_state.calgrid_anno -= 1
-                    st.session_state["calgrid_anno_select"] = st.session_state.calgrid_anno  # <--- Aggiorna la selectbox
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
@@ -8719,7 +8718,6 @@ def mostra_calendario_impegni_grid():
                     if st.session_state.calgrid_mese > 12:
                         st.session_state.calgrid_mese = 1
                         st.session_state.calgrid_anno += 1
-                    st.session_state["calgrid_anno_select"] = st.session_state.calgrid_anno  # <--- Aggiorna la selectbox
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
                     st.rerun()
