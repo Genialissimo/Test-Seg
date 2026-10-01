@@ -8058,14 +8058,24 @@ st.markdown(
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* RIEPILOGO (Giustificato a sinistra) */
+        /* RIEPILOGO - Forzato rigorosamente a sinistra */
         div[class*="_riepilogo_section"] {
             display: flex !important;
             flex-direction: column !important;
             width: 100% !important;
-            margin-top: 16px !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: auto !important;
+            margin-top: 20px !important;
             text-align: left !important;
             align-items: flex-start !important;
+        }
+        div[class*="_riepilogo_row_"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: auto !important;
+            text-align: left !important;
         }
         div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
@@ -8074,10 +8084,13 @@ st.markdown(
             align-items: center !important;
             justify-content: flex-start !important;
             width: 100% !important;
-            gap: 4px !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            gap: 6px !important;
         }
         div[class*="_riepilogo_row_"] div[data-testid="stColumn"] {
             justify-content: flex-start !important;
+            margin-left: 0 !important;
         }
         div[class*="_riepilogo_row_"] div[data-testid="stColumn"] > div {
             display: flex !important;
@@ -8096,6 +8109,7 @@ st.markdown(
             font-size: 0.92rem !important;
             display: flex !important;
             align-items: center !important;
+            margin-left: 0 !important;
         }
         div[class*="_riepilogo_"] button div[data-testid="stMarkdownContainer"] {
             text-align: left !important;
