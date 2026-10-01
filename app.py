@@ -8901,11 +8901,19 @@ def mostra_calendario_impegni_grid():
             "calimp",
         )
 
-    # Lista Riepilogo Impegni (Icona link affiancata tramite colonne con CSS dedicato)
+    # Lista Riepilogo Impegni (con Checkbox stato e Link)
     with st.container(key="calgrid_riepilogo_section"):
+        mostra_tutto = st.session_state.get("calgrid_mostra_tutto", False)
         giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
         
-        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+        if mostra_tutto:
+            st.markdown(
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🗓️ Riepilogo completo di tutte le scadenze (ordinate per data)</div>",
+                unsafe_allow_html=True,
+            )
+            lista_impegni_da_mostrare = _calgrid_carica_tutti_impegni()
+        elif giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
             data_sel = date(anno, mese, giorno_sel)
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
@@ -8955,7 +8963,6 @@ def mostra_calendario_impegni_grid():
                     "eseguito",
                     "ok",
                 ]
-                pallino = "🟢" if is_fatto else "🔴"
 
                 url_link = str(
                     riga_dict.get("Collega Link", "")
@@ -8964,12 +8971,40 @@ def mostra_calendario_impegni_grid():
                 ).strip()
 
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
-                etichetta_bottone = f"{pallino} **{scadenza_str}** — {oggetto}"
+                etichetta_bottone = f"**{scadenza_str}** — {oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
-                    col_icon, col_item = st.columns([1, 11])
+                    col_chk, col_link, col_item = st.columns([1, 1, 10])
                     
-                    with col_icon:
+                    with col_chk:
+                        nuovo_fatto = st.checkbox(
+                            " ",
+                            value=is_fatto,
+                            key=f"calgrid_chk_{rf}",
+                            label_visibility="collapsed",
+                            disabled=sola_lettura(),
+                        )
+                        if nuovo_fatto != is_fatto:
+                            valori_fatto = dict(riga_dict)
+                            valori_fatto["Fatto"] = "X" if nuovo_fatto else ""
+                            ok_f, err_f = salva_riga_foglio(
+                                workbook_calendario,
+                                NOME_FOGLIO_CALENDARIO_IMPEGNI,
+                                RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
+                                valori_fatto,
+                                riga_da_aggiornare=rf,
+                            )
+                            if ok_f:
+                                pulisci_cache_foglio(
+                                    workbook_calendario,
+                                    NOME_FOGLIO_CALENDARIO_IMPEGNI,
+                                    RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
+                                )
+                                st.rerun()
+                            else:
+                                st.error(err_f)
+
+                    with col_link:
                         if ha_link:
                             st.markdown(
                                 f"<a href='{url_link}' target='_blank' title='Apri Link' style='font-size: 1.1rem; text-decoration: none; display: block; text-align: center;'>🔗</a>",
