@@ -7897,20 +7897,538 @@ def mostra_domande_pioniere_ausiliario():
             _form_domanda_pioniere(editor, nomi_anagrafica)
 
 
+import calendar
+from datetime import date
+import streamlit as st
+import streamlit.components.v1 as components
+
+# ==============================================================================
+# CSS GLOBALE CONDIVISO
+# ==============================================================================
+st.markdown(
+    """
+    <style>
+        .stApp [data-stale="true"] {
+            opacity: 1 !important;
+            filter: none !important;
+            transition: none !important;
+        }
+        * {
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+        }
+
+        /* TOOLBAR */
+        div[class*="st-key-impgrid_toolbar"], div[class*="st-key-calgrid_toolbar"] {
+            margin-bottom: 10px !important;
+        }
+        div[class*="st-key-impgrid_toolbar"] div[data-testid="stHorizontalBlock"], 
+        div[class*="st-key-calgrid_toolbar"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+            width: 100% !important;
+        }
+        div[class*="st-key-impgrid_toolbar"] div[data-testid="stColumn"], 
+        div[class*="st-key-calgrid_toolbar"] div[data-testid="stColumn"] {
+            width: 33.33% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+        }
+
+        /* CARD DEL CALENDARIO */
+        div[class*="st-key-impgrid_card_wrapper"], div[class*="st-key-calgrid_card_wrapper"] {
+            background: #ffffff !important;
+            border-radius: 20px !important;
+            padding: 16px 12px !important;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
+            border: 1px solid #f1f5f9 !important;
+            margin: 0 auto !important;
+            max-width: 400px !important;
+            width: 100% !important;
+        }
+
+        /* NAVIGAZIONE MESE */
+        div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+        }
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"],
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            width: 100% !important;
+        }
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stColumn"],
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stColumn"] {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
+            width: 42px !important;
+            flex: 0 0 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
+        }
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+        div[class*="_prev"] button, div[class*="_next"] button {
+            width: 42px !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            padding: 0 !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .cal-header-box {
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
+            color: #ffffff !important;
+            border-radius: 12px !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            padding: 0 8px !important;
+            font-weight: 700 !important;
+            font-size: 0.95rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        /* GRIGLIA GIORNI */
+        div[class*="_grid_container"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 2px !important;
+            width: 100% !important;
+        }
+        div[class*="_grid_container"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            width: 14.28% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+        }
+        div[class*="_giorno_"] button {
+            border-radius: 100px !important;
+            padding: 6px 0 !important;
+            min-height: 36px !important;
+            font-weight: 500 !important;
+            background: #f8fafc !important;
+            color: #334155 !important;
+            font-size: 0.85rem !important;
+        }
+        div[class*="_giorno_con_"] button {
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
+        }
+
+        /* RIEPILOGO */
+        div[class*="_riepilogo_section"] {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            margin-top: 16px !important;
+            text-align: left !important;
+        }
+        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            width: 100% !important;
+            gap: 4px !important;
+        }
+        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 0 0 36px !important;
+            width: 36px !important;
+            min-width: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+        div[class*="_riepilogo_"] button {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+            text-align: left !important;
+            color: #1e293b !important;
+            width: 100% !important;
+            padding: 6px 0px !important;
+            font-size: 0.92rem !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        div[class*="_riepilogo_"] button:hover {
+            background: #f1f5f9 !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: IMPEGNI E SCADENZE
 # ─────────────────────────────────────────────────────────────────
 
-def vai_a_impegni_nuovo():
-    st.session_state.impegni_editor = {"modo": "nuovo"}
-    vai_a("impegni_scadenze")
-
-
-def vai_a_home_reset_impegni():
-    for chiave in ("impegni_editor", "impegni_conferma_elimina"):
+def vai_a_home_reset_impegni_scadenze():
+    for chiave in ("impgrid_attivo", "impgrid_giorno_selezionato", "impgrid_anno", 
+                  "impgrid_mese", "impgrid_anno_select", "impgrid_mostra_tutto", 
+                  "impegni_editor", "impegni_conferma_elimina"):
         st.session_state.pop(chiave, None)
     vai_a("home")
 
+
+def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
+    risultato = {}
+    if workbook is None:
+        return risultato
+    df, err = leggi_foglio_come_df(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI)
+    if err or df.empty:
+        return risultato
+    df = df.reset_index(drop=True)
+    for idx, riga in df.iterrows():
+        try:
+            scadenza_date = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
+        except Exception:
+            continue
+        if scadenza_date.year == anno and scadenza_date.month == mese:
+            riga_dict = riga.to_dict()
+            riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_IMPEGNI + 1 + idx
+            risultato.setdefault(scadenza_date.day, []).append(riga_dict)
+    return risultato
+
+
+def _impgrid_carica_tutti_impegni() -> list:
+    risultato = []
+    if workbook is None:
+        return risultato
+    df, err = leggi_foglio_come_df(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI)
+    if err or df.empty:
+        return risultato
+    df = df.reset_index(drop=True)
+    righe_con_data = []
+    righe_senza_data = []
+    for idx, riga in df.iterrows():
+        riga_dict = riga.to_dict()
+        riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_IMPEGNI + 1 + idx
+        try:
+            scadenza_date = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
+            righe_con_data.append((scadenza_date, riga_dict))
+        except Exception:
+            righe_senza_data.append(riga_dict)
+    
+    righe_con_data.sort(key=lambda x: x[0])
+    risultato = [r[1] for r in righe_con_data] + righe_senza_data
+    return risultato
+
+
+def mostra_impegni_scadenze():
+    st.title("📋 Impegni e scadenze")
+
+    with st.container(key="impgrid_toolbar"):
+        col_home, col_nuovo, col_tutto = st.columns(3)
+        with col_home:
+            st.button(
+                "🏠 Home",
+                key="home_da_impgrid",
+                use_container_width=True,
+                on_click=vai_a_home_reset_impegni_scadenze,
+            )
+        with col_nuovo:
+            if st.button(
+                "➕ Nuovo",
+                key="impgrid_nuovo_top",
+                use_container_width=True,
+                disabled=sola_lettura(),
+            ):
+                st.session_state.impegni_editor = {"modo": "nuovo"}
+        with col_tutto:
+            if st.button(
+                "📋 Mostra tutto",
+                key="impgrid_mostra_tutto_btn",
+                use_container_width=True,
+                disabled=(workbook is None),
+            ):
+                st.session_state.impgrid_mostra_tutto = True
+                st.session_state.pop("impgrid_giorno_selezionato", None)
+                st.session_state.pop("impegni_editor", None)
+                st.rerun()
+
+    if not st.session_state.get("impgrid_attivo"):
+        oggi = date.today()
+        st.session_state.impgrid_anno = oggi.year
+        st.session_state.impgrid_mese = oggi.month
+        st.session_state.impgrid_attivo = True
+        st.session_state.pop("impgrid_giorno_selezionato", None)
+        st.session_state.pop("impegni_editor", None)
+        st.session_state.pop("impgrid_mostra_tutto", None)
+
+    st.session_state["impgrid_anno_select"] = st.session_state.impgrid_anno
+
+    anno = st.session_state.impgrid_anno
+    mese = st.session_state.impgrid_mese
+    impegni_del_mese = _impgrid_carica_impegni_mese(anno, mese)
+    primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
+
+    with st.container(key="impgrid_card_wrapper"):
+        anno_corrente_reale = date.today().year
+        anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
+        if st.session_state.impgrid_anno not in anni_disponibili:
+            anni_disponibili.append(st.session_state.impgrid_anno)
+            anni_disponibili.sort()
+
+        indice_anno_corrente = anni_disponibili.index(st.session_state.impgrid_anno)
+
+        def _aggiorna_anno_impgrid():
+            st.session_state.impgrid_anno = st.session_state["impgrid_anno_select"]
+            st.session_state.pop("impgrid_giorno_selezionato", None)
+            st.session_state.pop("impegni_editor", None)
+            st.session_state.pop("impgrid_mostra_tutto", None)
+
+        st.selectbox(
+            "Anno",
+            anni_disponibili,
+            index=indice_anno_corrente,
+            key="impgrid_anno_select",
+            on_change=_aggiorna_anno_impgrid,
+        )
+
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+
+        with st.container(key="impgrid_nav_row"):
+            col_prev, col_label, col_next = st.columns([1, 6, 1])
+            with col_prev:
+                if st.button("◀", key="impgrid_prev", use_container_width=True):
+                    st.session_state.impgrid_mese -= 1
+                    if st.session_state.impgrid_mese < 1:
+                        st.session_state.impgrid_mese = 12
+                        st.session_state.impgrid_anno -= 1
+                    st.session_state.pop("impgrid_giorno_selezionato", None)
+                    st.session_state.pop("impegni_editor", None)
+                    st.session_state.pop("impgrid_mostra_tutto", None)
+                    st.rerun()
+            with col_label:
+                st.markdown(
+                    f"<div class='cal-header-box'>"
+                    f"{MESI_ITALIANI[st.session_state.impgrid_mese]} {st.session_state.impgrid_anno}</div>",
+                    unsafe_allow_html=True,
+                )
+            with col_next:
+                if st.button("▶", key="impgrid_next", use_container_width=True):
+                    st.session_state.impgrid_mese += 1
+                    if st.session_state.impgrid_mese > 12:
+                        st.session_state.impgrid_mese = 1
+                        st.session_state.impgrid_anno += 1
+                    st.session_state.pop("impgrid_giorno_selezionato", None)
+                    st.session_state.pop("impegni_editor", None)
+                    st.session_state.pop("impgrid_mostra_tutto", None)
+                    st.rerun()
+
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+
+        with st.container(key="impgrid_grid_container"):
+            etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
+            cols_head = st.columns(7)
+            for c, etichetta in zip(cols_head, etichette_giorni):
+                c.markdown(
+                    f"<div style='text-align:center; font-weight:700; color:#94a3b8; font-size:0.8rem;'>{etichetta}</div>",
+                    unsafe_allow_html=True,
+                )
+
+            giorno_corrente = 1
+            settimane = []
+            settimana = [None] * primo_giorno_settimana
+            while giorno_corrente <= giorni_nel_mese:
+                settimana.append(giorno_corrente)
+                if len(settimana) == 7:
+                    settimane.append(settimana)
+                    settimana = []
+                giorno_corrente += 1
+            if settimana:
+                settimana += [None] * (7 - len(settimana))
+                settimane.append(settimana)
+
+            for sem in settimane:
+                cols = st.columns(7)
+                for col, giorno in zip(cols, sem):
+                    with col:
+                        if giorno is None:
+                            st.write("")
+                        else:
+                            ha_impegni = giorno in impegni_del_mese
+                            pf_chiave = "impgrid_giorno_con" if ha_impegni else "impgrid_giorno"
+                            if st.button(
+                                str(giorno),
+                                key=f"{pf_chiave}_{anno}_{mese}_{giorno}",
+                                use_container_width=True,
+                            ):
+                                st.session_state.impgrid_giorno_selezionato = giorno
+                                st.session_state.pop("impgrid_mostra_tutto", None)
+                                if ha_impegni:
+                                    st.session_state.pop("impegni_editor", None)
+                                else:
+                                    data_sel = date(anno, mese, giorno)
+                                    data_str = data_sel.strftime("%d/%m/%Y")
+                                    st.session_state.impegni_editor = {
+                                        "modo": "nuovo",
+                                        "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
+                                    }
+                                st.rerun()
+
+    editor_impegni = st.session_state.get("impegni_editor")
+    if editor_impegni:
+        cat_disp = leggi_categorie_impegni(workbook, NOME_FOGLIO_IMPEGNI)
+        _form_impegno_dialog(
+            editor_impegni,
+            cat_disp,
+            workbook,
+            NOME_FOGLIO_IMPEGNI,
+            RIGA_INTESTAZIONE_IMPEGNI,
+            "impegni",
+        )
+
+    with st.container(key="impgrid_riepilogo_section"):
+        mostra_tutto = st.session_state.get("impgrid_mostra_tutto", False)
+        giorno_sel = st.session_state.get("impgrid_giorno_selezionato")
+        
+        if mostra_tutto:
+            st.markdown(
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🗓️ Riepilogo completo di tutte le scadenze (ordinate per data)</div>",
+                unsafe_allow_html=True,
+            )
+            lista_impegni_da_mostrare = _impgrid_carica_tutti_impegni()
+        elif giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+            data_sel = date(anno, mese, giorno_sel)
+            st.markdown(
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🗓️ Impegni del {data_sel.strftime('%d/%m/%Y')}</div>",
+                unsafe_allow_html=True,
+            )
+            lista_impegni_da_mostrare = impegni_del_mese.get(giorno_sel, [])
+        else:
+            st.markdown(
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🗓️ Riepilogo impegni di {MESI_ITALIANI[mese]} {anno}</div>",
+                unsafe_allow_html=True,
+            )
+            lista_impegni_da_mostrare = []
+            for g in sorted(impegni_del_mese.keys()):
+                lista_impegni_da_mostrare.extend(impegni_del_mese[g])
+
+        if not lista_impegni_da_mostrare:
+            st.caption("Nessun impegno trovato per questo periodo.")
+        else:
+            for riga_dict in lista_impegni_da_mostrare:
+                rf = riga_dict["_riga_foglio"]
+                oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
+                scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
+
+                stato_val = str(
+                    riga_dict.get("Stato", "")
+                    or riga_dict.get("Fatto", "")
+                    or riga_dict.get("Eseguito", "")
+                    or riga_dict.get("Completato", "")
+                ).strip().lower()
+
+                is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
+                url_link = str(riga_dict.get("Collega Link", "") or "").strip()
+                ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
+                etichetta_bottone = f"**{scadenza_str}** — {oggetto}"
+
+                with st.container(key=f"impgrid_riepilogo_row_{rf}"):
+                    col_chk, col_link, col_item = st.columns([1, 1, 10])
+                    
+                    with col_chk:
+                        nuovo_fatto = st.checkbox(
+                            " ",
+                            value=is_fatto,
+                            key=f"impgrid_chk_{rf}",
+                            label_visibility="collapsed",
+                            disabled=sola_lettura(),
+                        )
+                        if nuovo_fatto != is_fatto:
+                            valori_fatto = dict(riga_dict)
+                            valori_fatto["Fatto"] = "X" if nuovo_fatto else ""
+                            ok_f, err_f = salva_riga_foglio(
+                                workbook,
+                                NOME_FOGLIO_IMPEGNI,
+                                RIGA_INTESTAZIONE_IMPEGNI,
+                                valori_fatto,
+                                riga_da_aggiornare=rf,
+                            )
+                            if ok_f:
+                                pulisci_cache_foglio(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI)
+                                st.rerun()
+                            else:
+                                st.error(err_f)
+
+                    with col_link:
+                        if ha_link:
+                            st.markdown(
+                                f"<a href='{url_link}' target='_blank' title='Apri Link' style='font-size: 1.1rem; text-decoration: none; display: block; text-align: center;'>🔗</a>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(
+                                "<span title='Nessun link disponibile' style='font-size: 1.1rem; opacity: 0.2; filter: grayscale(100%); display: block; text-align: center; cursor: not-allowed;'>🔗</span>",
+                                unsafe_allow_html=True,
+                            )
+                            
+                    with col_item:
+                        if st.button(
+                            etichetta_bottone,
+                            key=f"impgrid_riepilogo_{rf}",
+                            use_container_width=True,
+                        ):
+                            st.session_state.impegni_editor = {
+                                "modo": "modifica",
+                                "riga": riga_dict,
+                                "numero_riga_foglio": rf,
+                            }
+                            st.rerun()
+
+
+# ─────────────────────────────────────────────────────────────────
+# PAGINA: Calendario Impegni
+# ─────────────────────────────────────────────────────────────────
 
 def vai_a_home_reset_calendario_impegni():
     for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro",
@@ -7920,414 +8438,7 @@ def vai_a_home_reset_calendario_impegni():
     vai_a("home")
 
 
-def vai_a_calendario_lista_completa():
-    st.session_state.pop("calimp_mese_filtro", None)
-    vai_a("calendario_impegni_lista")
-
-
-def _impegni_apri_modifica_generico(riga_dict: dict, rf: int, prefisso: str):
-    st.session_state[f"{prefisso}_editor"] = {
-        "modo": "modifica", "riga": riga_dict, "numero_riga_foglio": rf,
-    }
-
-
-@st.dialog("Gestione Impegno")
-def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
-                         riga_intestazione: int, prefisso: str):
-    # CSS per forzare le colonne affiancate su smartphone (evita l'impilamento verticale)
-    st.markdown("""
-    <style>
-        div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 8px !important;
-        }
-        div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-            width: 50% !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    modo = editor.get("modo")
-    e = editor.get("riga", {})
-    chiave = editor.get("numero_riga_foglio", "nuovo")
-    bloccato = sola_lettura()
-
-    # Lettura robusta di tutte le categorie presenti nel foglio
-    if workbook_pagina and nome_foglio and riga_intestazione:
-        df_cat, _ = leggi_foglio_come_df(workbook_pagina, nome_foglio, riga_intestazione)
-        if df_cat is not None and not df_cat.empty and "Categoria" in df_cat.columns:
-            cat_trovate = [str(c).strip() for c in df_cat["Categoria"].dropna().unique() if str(c).strip()]
-            categorie_disponibili = sorted(list(set(list(categorie_disponibili) + cat_trovate)))
-
-    if modo == "modifica":
-        st.markdown(f"#### ✏️ Modifica impegno — {e.get('Oggetto', '')}")
-    else:
-        st.markdown("#### ➕ Nuovo impegno")
-
-    def parse_data(s):
-        try:
-            return datetime.strptime(s, "%d/%m/%Y").date()
-        except Exception:
-            return None
-
-    with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
-        oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
-        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
-
-        opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
-        categoria_corrente = e.get("Categoria", "")
-        if categoria_corrente and categoria_corrente not in opzioni_categoria:
-            opzioni_categoria = [categoria_corrente] + opzioni_categoria
-        indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
-        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato)
-        nuova_categoria_testo = ""
-        if scelta_categoria == "➕ Nuova categoria…":
-            nuova_categoria_testo = st.text_input("Nome della nuova categoria", disabled=bloccato)
-
-        col_d1, col_d2 = st.columns(2)
-        with col_d1:
-            data_iniziale = st.date_input("Data Iniziale",
-                                          value=parse_data(e.get("Data Iniziale", "")) or date.today(),
-                                          format="DD/MM/YYYY", disabled=bloccato)
-        with col_d2:
-            scadenza = st.date_input("Scadenza *",
-                                     value=parse_data(e.get("Scadenza", "")) or date.today(),
-                                     format="DD/MM/YYYY", disabled=bloccato)
-
-        valori_preavviso_correnti = [v.strip() for v in str(e.get("Preavviso", "")).split(",") if v.strip()]
-        opzioni_preavviso = list(OPZIONI_PREAVVISO_IMPEGNI)
-        for v in valori_preavviso_correnti:
-            if v not in opzioni_preavviso:
-                opzioni_preavviso.append(v)
-        preavviso_scelto = st.multiselect("Avvisami (giorni prima della scadenza)", opzioni_preavviso,
-                                          default=valori_preavviso_correnti, disabled=bloccato)
-
-        assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), disabled=bloccato)
-        fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")), disabled=bloccato)
-        link = st.text_input("Collega Link", value=e.get("Collega Link", ""), disabled=bloccato)
-
-        col_salva, col_elimina = st.columns(2)
-        with col_salva:
-            invia = st.form_submit_button("✔ Salva", type="primary", use_container_width=True,
-                                          disabled=bloccato)
-        with col_elimina:
-            elimina = st.form_submit_button("🗑️ Elimina", use_container_width=True,
-                                            disabled=(bloccato or modo != "modifica"))
-
-    if elimina and modo == "modifica":
-        st.session_state[f"{prefisso}_conferma_elimina"] = editor
-        st.rerun()
-
-    if invia:
-        oggetto_pulito = oggetto.strip()
-        if not oggetto_pulito:
-            st.error("Il campo «Oggetto» è obbligatorio.")
-        elif scadenza is None:
-            st.error("Il campo «Scadenza» è obbligatorio.")
-        else:
-            categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
-                                else scelta_categoria)
-            if scelta_categoria == "➕ Nuova categoria…" and categoria_finale:
-                aggiungi_categoria_impegno(workbook_pagina, categoria_finale)
-
-            valori = {
-                "Data Iniziale": data_iniziale.strftime("%d/%m/%Y") if data_iniziale else "",
-                "Scadenza": scadenza.strftime("%d/%m/%Y"),
-                "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x) if str(x).isdigit() else 0)),
-                "Categoria": categoria_finale,
-                "Assegnato": assegnato.strip(),
-                "Oggetto": oggetto_pulito,
-                "Descrizione": descrizione.strip(),
-                "Fatto": "X" if fatto else "",
-                "Collega Link": link.strip(),
-            }
-            numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
-            ok, err_salva = salva_riga_foglio(workbook_pagina, nome_foglio, riga_intestazione,
-                                              valori, riga_da_aggiornare=numero_riga)
-            if ok:
-                pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
-                leggi_categorie_impegni.clear()
-                st.session_state[f"{prefisso}_editor"] = None
-                st.success(f"✔ «{oggetto_pulito}» salvato correttamente.")
-                st.rerun()
-            else:
-                st.error(err_salva)
-
-    conferma = st.session_state.get(f"{prefisso}_conferma_elimina")
-    if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
-        st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? "
-                   "L'operazione non è reversibile.")
-        col_si, col_no = st.columns(2)
-        with col_si:
-            if st.button("✔ Sì, elimina", key=f"{prefisso}_conf_si", type="primary", use_container_width=True):
-                ok, err_elim = elimina_riga_foglio(workbook_pagina, nome_foglio, editor["numero_riga_foglio"])
-                if ok:
-                    pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
-                    st.session_state[f"{prefisso}_editor"] = None
-                    st.session_state[f"{prefisso}_conferma_elimina"] = None
-                    st.success("✔ Impegno eliminato.")
-                    st.rerun()
-                else:
-                    st.error(err_elim)
-        with col_no:
-            if st.button("No, annulla", key=f"{prefisso}_conf_no", use_container_width=True):
-                st.session_state[f"{prefisso}_conferma_elimina"] = None
-                st.rerun()
-
-def _mostra_lista_impegni(workbook_pagina, nome_foglio, riga_intestazione, titolo_pagina,
-                          prefisso, funzione_reset_home, mese_filtro_fisso=None):
-    st.title(titolo_pagina)
-
-    st.markdown(f"""
-    <style>
-        div[class*="st-key-{prefisso}_card_"] {{
-            position: relative !important;
-            padding: 10px 14px !important;
-            text-align: left !important;
-        }}
-        div[class*="st-key-{prefisso}_card_"] div[data-testid="stElementContainer"] {{
-            margin-bottom: 2px !important;
-        }}
-        div[class*="st-key-{prefisso}_apri_"] {{
-            position: absolute !important;
-            inset: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            z-index: 1 !important;
-        }}
-        div[class*="st-key-{prefisso}_apri_"] button {{
-            width: 100% !important;
-            height: 100% !important;
-            opacity: 0 !important;
-            background: transparent !important;
-            border: none !important;
-            cursor: pointer !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }}
-        div[class*="st-key-{prefisso}_link_"],
-        div[class*="st-key-{prefisso}_stato_"] {{
-            position: relative !important;
-            z-index: 10 !important;
-        }}
-        div[class*="st-key-{prefisso}_card_"] div[data-testid="stHorizontalBlock"] {{
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 10px !important;
-            align-items: center !important;
-        }}
-        div[class*="st-key-{prefisso}_card_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {{
-            width: 100% !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-        }}
-        div[class*="st-key-{prefisso}_card_fatto_"] {{
-            background: #f0fdf4 !important;
-            border-color: #bbf7d0 !important;
-        }}
-        div[class*="st-key-{prefisso}_card_scaduto_"] {{
-            background: #fef2f2 !important;
-            border-color: #fecaca !important;
-        }}
-        div[class*="st-key-{prefisso}_card_dafare_"] {{
-            background: #f9fafb !important;
-            border-color: #e5e7eb !important;
-        }}
-        .{prefisso}-riga1 {{
-            font-weight: 700 !important;
-            font-size: 0.95rem;
-            color: #0c4a6e;
-            text-align: left;
-            margin: 0 0 2px 0;
-        }}
-        .{prefisso}-riga1 * {{
-            font-weight: 700 !important;
-        }}
-        .{prefisso}-oggetto-riga {{
-            font-size: 0.9rem;
-            color: #374151;
-            text-align: left;
-            margin: 0 0 8px 0;
-        }}
-        .{prefisso}-gruppo-titolo {{
-            font-weight: 700;
-            font-size: 1.05rem;
-            color: #0369a1;
-            margin: 14px 0 6px 0;
-            text-align: left;
-        }}
-    </style>
-    """, unsafe_allow_html=True)
-
-    collegato_pagina = workbook_pagina is not None
-
-    col_home, col_nuovo = st.columns(2)
-    with col_home:
-        st.button("🏠 Home", key=f"home_da_{prefisso}", use_container_width=True,
-                  on_click=funzione_reset_home)
-    with col_nuovo:
-        if st.button("➕ Nuovo", key=f"{prefisso}_nuovo_btn", use_container_width=True,
-                      disabled=not collegato_pagina or sola_lettura()):
-            st.session_state[f"{prefisso}_editor"] = {"modo": "nuovo"}
-
-    if not collegato_pagina:
-        st.warning("⚠️ Nessun foglio dati collegato.")
-        return
-
-    df_impegni, err = leggi_foglio_come_df(workbook_pagina, nome_foglio, riga_intestazione)
-    if err:
-        st.error(err)
-        return
-
-    categorie_disponibili = leggi_categorie_impegni(workbook_pagina, nome_foglio)
-
-    df_impegni = df_impegni.reset_index(drop=True)
-    if not df_impegni.empty:
-        df_impegni["_riga_foglio"] = riga_intestazione + 1 + df_impegni.index
-
-    editor = st.session_state.get(f"{prefisso}_editor")
-    if editor:
-        _form_impegno_dialog(editor, categorie_disponibili, workbook_pagina, nome_foglio, riga_intestazione, prefisso)
-
-    if mese_filtro_fisso:
-        anno_f, mese_f = mese_filtro_fisso
-        col_msg, col_azzera = st.columns([3, 2])
-        with col_msg:
-            st.info(f"📅 {MESI_ITALIANI[mese_f]} {anno_f}")
-        with col_azzera:
-            if st.button("Mostra tutti i mesi", key=f"{prefisso}_azzera_mese", use_container_width=True):
-                st.session_state.pop("calimp_mese_filtro", None)
-                st.rerun()
-
-    filtro_stato = st.radio("Stato", ["Tutti", "Da fare", "Fatti"], index=1, horizontal=True,
-                            key=f"{prefisso}_filtro_stato")
-    opzioni_categoria_filtro = ["Tutte le categorie"] + categorie_disponibili
-    filtro_categoria = st.selectbox("Categoria", opzioni_categoria_filtro, key=f"{prefisso}_filtro_categoria")
-
-    righe_valide = []
-    for _, riga in df_impegni.iterrows():
-        fatto = _impegni_e_fatto(riga.get("Fatto", ""))
-        if filtro_stato == "Da fare" and fatto:
-            continue
-        if filtro_stato == "Fatti" and not fatto:
-            continue
-        if filtro_categoria != "Tutte le categorie" and str(riga.get("Categoria", "")).strip() != filtro_categoria:
-            continue
-        try:
-            scadenza_date = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
-        except Exception:
-            scadenza_date = None
-        if mese_filtro_fisso and (scadenza_date is None
-                                  or (scadenza_date.year, scadenza_date.month) != mese_filtro_fisso):
-            continue
-        righe_valide.append({
-            "riga_foglio": int(riga["_riga_foglio"]),
-            "riga_dict": riga.to_dict(),
-            "scadenza_date": scadenza_date,
-            "scadenza_str": str(riga.get("Scadenza", "")).strip(),
-            "categoria": str(riga.get("Categoria", "")).strip(),
-            "oggetto": str(riga.get("Oggetto", "")).strip() or "(senza oggetto)",
-            "link": str(riga.get("Collega Link", "")).strip(),
-        })
-
-    if not righe_valide:
-        st.info("Nessun impegno trovato con questi filtri.")
-        return
-
-    def _raggruppa_per_mese(righe: list) -> list:
-        gruppi = {}
-        for r in righe:
-            chiave = (r["scadenza_date"].year, r["scadenza_date"].month)
-            gruppi.setdefault(chiave, []).append(r)
-        risultato = []
-        for chiave in sorted(gruppi.keys()):
-            anno, mese = chiave
-            etichetta = f"{MESI_ITALIANI[mese]} {anno}"
-            righe_ordinate = sorted(gruppi[chiave], key=lambda r: r["scadenza_date"])
-            risultato.append((etichetta, righe_ordinate))
-        return risultato
-
-    raggruppa_per_mese = (filtro_categoria == "Tutte le categorie") and not mese_filtro_fisso
-
-    if raggruppa_per_mese:
-        righe_con_data = [r for r in righe_valide if r["scadenza_date"] is not None]
-        righe_senza_data = [r for r in righe_valide if r["scadenza_date"] is None]
-        gruppi = _raggruppa_per_mese(righe_con_data)
-        if righe_senza_data:
-            gruppi.append(("Senza data valida", righe_senza_data))
-    else:
-        righe_ordinate = sorted(righe_valide,
-                                key=lambda r: (r["scadenza_date"] is None, r["scadenza_date"] or date.max))
-        if mese_filtro_fisso:
-            anno_f, mese_f = mese_filtro_fisso
-            etichetta_unica = f"{MESI_ITALIANI[mese_f]} {anno_f}"
-        else:
-            etichetta_unica = filtro_categoria
-        gruppi = [(etichetta_unica, righe_ordinate)]
-
-    for etichetta_gruppo, righe_gruppo in gruppi:
-        st.markdown(f'<div class="{prefisso}-gruppo-titolo">📅 {etichetta_gruppo}</div>', unsafe_allow_html=True)
-
-        for r in righe_gruppo:
-            rf = r["riga_foglio"]
-            if raggruppa_per_mese and r["categoria"]:
-                riga1_testo = f'{r["scadenza_str"]} — {r["categoria"]}'
-            else:
-                riga1_testo = r["scadenza_str"]
-
-            def _render_corpo_impegno(r=r, rf=rf, riga1_testo=riga1_testo):
-                st.markdown(f'<div class="{prefisso}-riga1">{riga1_testo}</div>', unsafe_allow_html=True)
-                if r["oggetto"]:
-                    st.markdown(f'<div class="{prefisso}-oggetto-riga">{r["oggetto"]}</div>', unsafe_allow_html=True)
-
-                col_link, col_stato = st.columns([1, 2])
-                with col_link:
-                    ha_link = bool(r["link"])
-                    if ha_link:
-                        st.markdown(f'<a href="{r["link"]}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 500;">Link</a>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<span style="color: #cbd5e1; font-weight: 500;">Link</span>', unsafe_allow_html=True)
-                with col_stato:
-                    fatto_corrente = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
-                    valore_corrente = "Fatti" if fatto_corrente else "Da fare"
-                    scelta_stato = st.radio(" ", ["Da fare", "Fatti"],
-                                            index=(1 if fatto_corrente else 0),
-                                            key=f"{prefisso}_stato_{rf}", horizontal=True,
-                                            label_visibility="collapsed", disabled=sola_lettura())
-                    if scelta_stato != valore_corrente:
-                        valori_fatto = dict(r["riga_dict"])
-                        valori_fatto["Fatto"] = "X" if scelta_stato == "Fatti" else ""
-                        ok_f, err_f = salva_riga_foglio(workbook_pagina, nome_foglio, riga_intestazione,
-                                                        valori_fatto, riga_da_aggiornare=rf)
-                        if ok_f:
-                            pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
-                            st.rerun()
-                        else:
-                            st.error(err_f)
-
-            fatto_card = _impegni_e_fatto(r["riga_dict"].get("Fatto", ""))
-            scaduto_card = (not fatto_card and r["scadenza_date"] is not None
-                            and r["scadenza_date"] < date.today())
-            if fatto_card:
-                stato_card = "fatto"
-            elif scaduto_card:
-                stato_card = "scaduto"
-            else:
-                stato_card = "dafare"
-
-            with st.container(key=f"{prefisso}_card_{stato_card}_{rf}", border=True):
-                _render_corpo_impegno()
-                st.button(" ", key=f"{prefisso}_apri_{rf}",
-                          on_click=_impegni_apri_modifica_generico, args=(r["riga_dict"], rf, prefisso))
-
-
 def _calgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
-    """Legge il foglio Calendario Impegni e ritorna {giorno: [righe]} per il mese indicato."""
     risultato = {}
     if workbook_calendario is None:
         return risultato
@@ -8346,9 +8457,9 @@ def _calgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
             riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI + 1 + idx
             risultato.setdefault(scadenza_date.day, []).append(riga_dict)
     return risultato
-    
+
+
 def _calgrid_carica_tutti_impegni() -> list:
-    """Legge il foglio Calendario Impegni e ritorna tutte le righe ordinate per data di scadenza."""
     risultato = []
     if workbook_calendario is None:
         return risultato
@@ -8372,267 +8483,6 @@ def _calgrid_carica_tutti_impegni() -> list:
     risultato = [r[1] for r in righe_con_data] + righe_senza_data
     return risultato
 
-import calendar
-from datetime import date
-import streamlit as st
-import streamlit.components.v1 as components
-
-# ==============================================================================
-# CSS GLOBALE
-# ==============================================================================
-st.markdown(
-    """
-    <style>
-        /* 1. DISABILITA LO SBIADIMENTO E L'OPACITÀ RIDOTTA NATIVA DI STREAMLIT DURANTE IL RERUN */
-        .stApp [data-stale="true"] {
-            opacity: 1 !important;
-            filter: none !important;
-            transition: none !important;
-        }
-
-        /* Disabilita evidenziazione/sbiadimento da tap su mobile */
-        * {
-            -webkit-tap-highlight-color: transparent !important;
-            -webkit-touch-callout: none !important;
-        }
-
-        /* 2. BARRA SUPERIORE (Home, Nuovo, Mostra tutto) */
-        div[class*="st-key-calgrid_toolbar"] div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 6px !important;
-            width: 100% !important;
-        }
-        div[class*="st-key-calgrid_toolbar"] div[data-testid="stColumn"] {
-            width: 33.33% !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-        }
-        div[class*="st-key-calgrid_toolbar"] button {
-            padding: 6px 4px !important;
-            font-size: 0.82rem !important;
-            white-space: nowrap !important;
-        }
-
-        /* 3. CARD CENTRATA PER IL CALENDARIO */
-        div[class*="st-key-calgrid_card_wrapper"] {
-            background: #ffffff !important;
-            border-radius: 20px !important;
-            padding: 16px 12px !important;
-            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
-            border: 1px solid #f1f5f9 !important;
-            margin: 0 auto !important;
-            max-width: 400px !important;
-            width: 100% !important;
-            animation: none !important;
-            transition: none !important;
-            user-select: none !important;
-            -webkit-user-select: none !important;
-        }
-
-        /* 4. NAVIGAZIONE MESE (< Settembre 2026 >) */
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 6px !important;
-            width: 100% !important;
-        }
-
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stColumn"] {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
-            width: 42px !important;
-            flex: 0 0 42px !important;
-            min-width: 42px !important;
-            max-width: 42px !important;
-        }
-
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
-            flex: 1 1 auto !important;
-            width: 100% !important;
-            min-width: 0 !important;
-        }
-
-        /* Frecce Navigazione */
-        div[class*="st-key-calgrid_prev"] button, 
-        div[class*="st-key-calgrid_next"] button {
-            width: 42px !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            max-height: 42px !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border-radius: 12px !important;
-            font-weight: 700 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            line-height: 1 !important;
-        }
-
-        /* Banner Mese/Anno Centrato */
-        .cal-header-box {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
-            color: #ffffff !important;
-            border-radius: 12px !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            max-height: 42px !important;
-            padding: 0 8px !important;
-            margin: 0 !important;
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
-            line-height: 1 !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-        }
-
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stMarkdownContainer"],
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stMarkdownContainer"] > p {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        /* 5. GRIGLIA GIORNI */
-        div[class*="st-key-calgrid_grid_container"] div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 2px !important;
-            width: 100% !important;
-        }
-        div[class*="st-key-calgrid_grid_container"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-            width: 14.28% !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-            padding: 0 !important;
-        }
-
-        div[class*="st-key-calgrid_giorno_"] button {
-            border-radius: 100px !important;
-            padding: 6px 0 !important;
-            min-height: 36px !important;
-            font-weight: 500 !important;
-            border: 1px solid transparent !important;
-            background: #f8fafc !important;
-            color: #334155 !important;
-            font-size: 0.85rem !important;
-        }
-
-        /* Giorni con impegni */
-        div[class*="st-key-calgrid_giorno_con_"] button {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
-        }
-
-        /* 6. RIEPILOGO IMPEGNI CON CHECKBOX E LINK */
-        div[class*="st-key-calgrid_riepilogo_section"] {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            justify-content: flex-start !important;
-            text-align: left !important;
-            width: 100% !important;
-            margin-top: 16px !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            justify-content: flex-start !important;
-            align-items: center !important;
-            width: 100% !important;
-            gap: 4px !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
-        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
-            flex: 0 0 36px !important;
-            width: 36px !important;
-            min-width: 36px !important;
-            max-width: 36px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
-            flex: 1 1 auto !important;
-            width: 100% !important;
-            min-width: 0 !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_"] {
-            display: flex !important;
-            justify-content: flex-start !important;
-            align-items: center !important;
-            width: 100% !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_"] div[data-testid="stButton"] {
-            display: flex !important;
-            justify-content: flex-start !important;
-            width: 100% !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_"] button {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            border-radius: 6px !important;
-            justify-content: flex-start !important;
-            text-align: left !important;
-            color: #1e293b !important;
-            width: 100% !important;
-            padding: 6px 0px !important;
-            margin-bottom: 2px !important;
-            font-size: 0.92rem !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_"] button p,
-        div[class*="st-key-calgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"],
-        div[class*="st-key-calgrid_riepilogo_"] button span {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            width: 100% !important;
-            margin: 0 !important;
-        }
-
-        div[class*="st-key-calgrid_riepilogo_"] button:hover {
-            background: #f1f5f9 !important;
-        }
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
 
 def mostra_calendario_impegni_grid():
     if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
@@ -8647,7 +8497,6 @@ def mostra_calendario_impegni_grid():
 
     st.title("📅 Calendario Impegni")
 
-    # Toolbar Top (Home, Nuovo, Mostra tutto)
     with st.container(key="calgrid_toolbar"):
         col_home, col_nuovo, col_tutto = st.columns(3)
         with col_home:
@@ -8666,16 +8515,16 @@ def mostra_calendario_impegni_grid():
             ):
                 st.session_state.calimp_editor = {"modo": "nuovo"}
         with col_tutto:
-          if st.button(
-              "📋 Mostra tutto",
-              key="calgrid_mostra_tutto_btn",
-              use_container_width=True,
-              disabled=(workbook_calendario is None),
-          ):
-              st.session_state.calgrid_mostra_tutto = True
-              st.session_state.pop("calgrid_giorno_selezionato", None)
-              st.session_state.pop("calimp_editor", None)
-              st.rerun()
+            if st.button(
+                "📋 Mostra tutto",
+                key="calgrid_mostra_tutto_btn",
+                use_container_width=True,
+                disabled=(workbook_calendario is None),
+            ):
+                st.session_state.calgrid_mostra_tutto = True
+                st.session_state.pop("calgrid_giorno_selezionato", None)
+                st.session_state.pop("calimp_editor", None)
+                st.rerun()
 
     if not st.session_state.get("calgrid_attivo"):
         oggi = date.today()
@@ -8684,8 +8533,8 @@ def mostra_calendario_impegni_grid():
         st.session_state.calgrid_attivo = True
         st.session_state.pop("calgrid_giorno_selezionato", None)
         st.session_state.pop("calimp_editor", None)
+        st.session_state.pop("calgrid_mostra_tutto", None)
 
-    # ➔ Sincronizziamo la selectbox PRIMA che venga creata nella pagina
     st.session_state["calgrid_anno_select"] = st.session_state.calgrid_anno
 
     anno = st.session_state.calgrid_anno
@@ -8693,41 +8542,31 @@ def mostra_calendario_impegni_grid():
     impegni_del_mese = _calgrid_carica_impegni_mese(anno, mese)
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
-    # CARD PRINCIPALE
     with st.container(key="calgrid_card_wrapper"):
-        # Selettore Anno dinamico ed esteso
         anno_corrente_reale = date.today().year
-        anni_disponibili = list(
-            range(anno_corrente_reale - 10, anno_corrente_reale + 15)
-        )
+        anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
         if st.session_state.calgrid_anno not in anni_disponibili:
             anni_disponibili.append(st.session_state.calgrid_anno)
             anni_disponibili.sort()
 
-        indice_anno_corrente = anni_disponibili.index(
-            st.session_state.calgrid_anno
-        )
+        indice_anno_corrente = anni_disponibili.index(st.session_state.calgrid_anno)
 
-        def _aggiorna_anno_da_selectbox():
-            st.session_state.calgrid_anno = st.session_state[
-                "calgrid_anno_select"
-            ]
+        def _aggiorna_anno_calgrid():
+            st.session_state.calgrid_anno = st.session_state["calgrid_anno_select"]
             st.session_state.pop("calgrid_giorno_selezionato", None)
             st.session_state.pop("calimp_editor", None)
+            st.session_state.pop("calgrid_mostra_tutto", None)
 
         st.selectbox(
             "Anno",
             anni_disponibili,
             index=indice_anno_corrente,
             key="calgrid_anno_select",
-            on_change=_aggiorna_anno_da_selectbox,
+            on_change=_aggiorna_anno_calgrid,
         )
 
-        st.markdown(
-            "<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True
-        )
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-        # Navigazione Mese con cambio automatico anno
         with st.container(key="calgrid_nav_row"):
             col_prev, col_label, col_next = st.columns([1, 6, 1])
             with col_prev:
@@ -8738,6 +8577,7 @@ def mostra_calendario_impegni_grid():
                         st.session_state.calgrid_anno -= 1
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
+                    st.session_state.pop("calgrid_mostra_tutto", None)
                     st.rerun()
             with col_label:
                 st.markdown(
@@ -8753,13 +8593,11 @@ def mostra_calendario_impegni_grid():
                         st.session_state.calgrid_anno += 1
                     st.session_state.pop("calgrid_giorno_selezionato", None)
                     st.session_state.pop("calimp_editor", None)
+                    st.session_state.pop("calgrid_mostra_tutto", None)
                     st.rerun()
 
-        st.markdown(
-            "<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True
-        )
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        # Griglia Giorni
         with st.container(key="calgrid_grid_container"):
             etichette_giorni = ["L", "M", "M", "G", "V", "S", "D"]
             cols_head = st.columns(7)
@@ -8790,22 +8628,17 @@ def mostra_calendario_impegni_grid():
                             st.write("")
                         else:
                             ha_impegni = giorno in impegni_del_mese
-                            prefisso_chiave = (
-                                "calgrid_giorno_con"
-                                if ha_impegni
-                                else "calgrid_giorno"
-                            )
+                            pf_chiave = "calgrid_giorno_con" if ha_impegni else "calgrid_giorno"
                             if st.button(
                                 str(giorno),
-                                key=f"{prefisso_chiave}_{anno}_{mese}_{giorno}",
+                                key=f"{pf_chiave}_{anno}_{mese}_{giorno}",
                                 use_container_width=True,
                             ):
                                 st.session_state.calgrid_giorno_selezionato = giorno
+                                st.session_state.pop("calgrid_mostra_tutto", None)
                                 if ha_impegni:
-                                    # Giorno con impegni: pulisce l'editor e mostra il riepilogo sotto
                                     st.session_state.pop("calimp_editor", None)
                                 else:
-                                    # Giorno vuoto: apre subito il form per inserire un nuovo impegno in quella data
                                     data_sel = date(anno, mese, giorno)
                                     data_str = data_sel.strftime("%d/%m/%Y")
                                     st.session_state.calimp_editor = {
@@ -8814,94 +8647,18 @@ def mostra_calendario_impegni_grid():
                                     }
                                 st.rerun()
 
-    # JS Touch Swipe
-    components.html(
-        """
-    <script>
-    const doc = window.parent.document;
-    let startX = 0;
-    let startY = 0;
-
-    function applicaTouchCard() {
-        const cardContainer = doc.querySelector('div[class*="st-key-calgrid_card_wrapper"]');
-        if (!cardContainer || cardContainer.dataset.swipeAttivo) return;
-
-        cardContainer.dataset.swipeAttivo = "true";
-
-        cardContainer.addEventListener('touchstart', function(e) {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-        }, {passive: true});
-
-        cardContainer.addEventListener('touchmove', function(e) {
-            if (!startX || !startY) return;
-            let currentX = e.touches[0].clientX;
-            let currentY = e.touches[0].clientY;
-            let diffX = currentX - startX;
-            let diffY = currentY - startY;
-
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) {
-                if (e.cancelable) e.preventDefault();
-            }
-        }, {passive: false});
-
-        cardContainer.addEventListener('touchend', function(e) {
-            if (!startX || !startY) return;
-
-            let diffX = e.changedTouches[0].clientX - startX;
-            let diffY = e.changedTouches[0].clientY - startY;
-
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-                if (diffX < 0) {
-                    const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
-                    if (btnNext) btnNext.click();
-                } else {
-                    const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
-                    if (btnPrev) btnPrev.click();
-                }
-            }
-            startX = 0;
-            startY = 0;
-        }, {passive: true});
-    }
-
-    setTimeout(applicaTouchCard, 200);
-    </script>
-    """,
-        height=0,
-        width=0,
-    )
-
-    # Pulsante per aggiungere un nuovo impegno
-    giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
-    if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
-        data_sel = date(anno, mese, giorno_sel)
-        if st.button(
-            "➕ Nuovo per questo giorno",
-            key="calgrid_nuovo_giorno",
-            use_container_width=True,
-            disabled=sola_lettura(),
-        ):
-            data_str = data_sel.strftime("%d/%m/%Y")
-            st.session_state.calimp_editor = {
-                "modo": "nuovo",
-                "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
-            }
-
-    # Form Modifica/Nuovo
     editor_calimp = st.session_state.get("calimp_editor")
     if editor_calimp:
-        categorie_disponibili = leggi_categorie_impegni(workbook_calendario, NOME_FOGLIO_CALENDARIO_IMPEGNI)
+        cat_disp = leggi_categorie_impegni(workbook_calendario, NOME_FOGLIO_CALENDARIO_IMPEGNI)
         _form_impegno_dialog(
             editor_calimp,
-            categorie_disponibili,
+            cat_disp,
             workbook_calendario,
             NOME_FOGLIO_CALENDARIO_IMPEGNI,
             RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
             "calimp",
         )
 
-    # Lista Riepilogo Impegni (con Checkbox stato e Link)
     with st.container(key="calgrid_riepilogo_section"):
         mostra_tutto = st.session_state.get("calgrid_mostra_tutto", False)
         giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
@@ -8936,40 +8693,18 @@ def mostra_calendario_impegni_grid():
         else:
             for riga_dict in lista_impegni_da_mostrare:
                 rf = riga_dict["_riga_foglio"]
-                oggetto = (
-                    str(riga_dict.get("Oggetto", "")).strip()
-                    or "(senza oggetto)"
-                )
+                oggetto = str(riga_dict.get("Oggetto", "")).strip() or "(senza oggetto)"
                 scadenza_str = str(riga_dict.get("Scadenza", "")).strip()
 
-                stato_val = (
-                    str(
-                        riga_dict.get("Stato", "")
-                        or riga_dict.get("Fatto", "")
-                        or riga_dict.get("Eseguito", "")
-                        or riga_dict.get("Completato", "")
-                    )
-                    .strip()
-                    .lower()
-                )
+                stato_val = str(
+                    riga_dict.get("Stato", "")
+                    or riga_dict.get("Fatto", "")
+                    or riga_dict.get("Eseguito", "")
+                    or riga_dict.get("Completato", "")
+                ).strip().lower()
 
-                is_fatto = stato_val in [
-                    "x",
-                    "fatto",
-                    "completato",
-                    "si",
-                    "sì",
-                    "true",
-                    "eseguito",
-                    "ok",
-                ]
-
-                url_link = str(
-                    riga_dict.get("Collega Link", "")
-                    or riga_dict.get("collega link", "")
-                    or ""
-                ).strip()
-
+                is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
+                url_link = str(riga_dict.get("Collega Link", "") or "").strip()
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
                 etichetta_bottone = f"**{scadenza_str}** — {oggetto}"
 
@@ -9028,42 +8763,6 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
-
-# ─────────────────────────────────────────────────────────────────
-# WRAPPER PAGINE LISTA IMPEGNI
-# ─────────────────────────────────────────────────────────────────
-
-def mostra_impegni_scadenze():
-    _mostra_lista_impegni(
-        workbook,
-        NOME_FOGLIO_IMPEGNI,
-        RIGA_INTESTAZIONE_IMPEGNI,
-        "📋 Impegni e scadenze",
-        "impegni",
-        vai_a_home_reset_impegni,
-    )
-
-
-def mostra_calendario_impegni_lista():
-    if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️ Questa sezione è riservata.")
-        st.button(
-            "🏠 Torna alla Home",
-            key="home_da_calimp_lista_negato",
-            on_click=vai_a,
-            args=("home",),
-        )
-        return
-
-    _mostra_lista_impegni(
-        workbook_calendario,
-        NOME_FOGLIO_CALENDARIO_IMPEGNI,
-        RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI,
-        "📅 Calendario Impegni — Elenco",
-        "calimp",
-        vai_a_home_reset_calendario_impegni,
-        mese_filtro_fisso=st.session_state.get("calimp_mese_filtro"),
-    )
 
 
 # ─────────────────────────────────────────────────────────────────
