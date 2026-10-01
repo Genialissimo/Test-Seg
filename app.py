@@ -8358,7 +8358,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
                 st.session_state[f"{prefisso}_conferma_elimina"] = None
                 st.rerun()
 
-    # --- SCRIPT UNITO: SCROLL TASTIERA + SWIPE CALENDARIO + EVIDENZIAZIONE GIORNO ODIERNO ---
+    # --- SCRIPT UNITO: SCROLL TASTIERA + SWIPE + EVIDENZIAZIONE SOLO DEL MESE CORRENTE ---
 components.html("""
 <script>
 const doc = window.parent.document;
@@ -8412,26 +8412,49 @@ doc.addEventListener('touchend', e => {
     handleSwipe();
 }, false);
 
-// 3. Evidenzia automaticamente il giorno odierno nel calendario
+// 3. Evidenzia il giorno odierno SOLO se siamo nel mese e anno corretti
 function evidenziaGiornoOdierno() {
     const now = new Date();
-    const giornoOggi = now.getDate().toString();
+    const giornoOggi = now.getDate().toString(); // "1"
     
+    const mesiIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    const meseCorrente = mesiIta[now.getMonth()]; // "Ottobre"
+    const annoCorrente = now.getFullYear().toString(); // "2026"
+
+    // Verifica se il titolo/intestazione della pagina mostra il mese e l'anno correnti
+    const elementiTesto = doc.querySelectorAll('h1, h2, h3, h4, h5, p, span, div');
+    let siamoNelMeseCorrente = false;
+    
+    for (let el of elementiTesto) {
+        const t = el.innerText;
+        if (t && t.includes(meseCorrente) && t.includes(annoCorrente)) {
+            siamoNelMeseCorrente = true;
+            break;
+        }
+    }
+
+    // Applica o rimuove l'evidenziazione
     const buttons = doc.querySelectorAll('button');
     buttons.forEach(btn => {
         const testo = btn.innerText.trim();
-        // Se il testo del bottone corrisponde al numero del giorno di oggi
-        if (testo === giornoOggi && !btn.dataset.highlightedToday) {
-            btn.dataset.highlightedToday = "true";
-            // Stile verde chiaro (puoi cambiarlo con colori grigi se preferisci)
-            btn.style.backgroundColor = '#d4edda';
-            btn.style.border = '2px solid #28a745';
-            btn.style.color = '#155724';
-            btn.style.fontWeight = 'bold';
+        if (testo === giornoOggi) {
+            if (siamoNelMeseCorrente) {
+                // Evidenzia solo se siamo nel mese giusto
+                btn.style.backgroundColor = '#d4edda';
+                btn.style.border = '2px solid #28a745';
+                btn.style.color = '#155724';
+                btn.style.fontWeight = 'bold';
+            } else {
+                // Rimuove l'evidenziazione se ci troviamo in un altro mese (es. Novembre)
+                btn.style.backgroundColor = '';
+                btn.style.border = '';
+                btn.style.color = '';
+                btn.style.fontWeight = '';
+            }
         }
     });
 }
-// Controlla periodicamente nel caso in cui il calendario venga ridisegnato
+
 setInterval(evidenziaGiornoOdierno, 1000);
 </script>
 """, height=0, width=0)
