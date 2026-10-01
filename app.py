@@ -8034,7 +8034,7 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            margin-top: -3px !important; /* Solleva solo il riquadro mese/anno */
+            margin-top: -5px !important; /* Solleva solo il riquadro mese/anno */
             margin-bottom: 0 !important;
             margin-left: 0 !important;
             margin-right: 0 !important;
