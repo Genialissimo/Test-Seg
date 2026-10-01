@@ -8058,28 +8058,23 @@ st.markdown(
             width: 100% !important;
             margin-top: 16px !important;
             text-align: left !important;
+            align-items: flex-start !important;
         }
         div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             align-items: center !important;
+            justify-content: flex-start !important;
             width: 100% !important;
             gap: 4px !important;
         }
-        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
-        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
-            flex: 0 0 36px !important;
-            width: 36px !important;
-            min-width: 36px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+        div[class*="_riepilogo_row_"] div[data-testid="stColumn"] {
+            justify-content: flex-start !important;
         }
-        div[class*="_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
-            flex: 1 1 auto !important;
-            width: 100% !important;
-            min-width: 0 !important;
+        div[class*="_riepilogo_row_"] div[data-testid="stColumn"] > div {
+            display: flex !important;
+            justify-content: flex-start !important;
         }
         div[class*="_riepilogo_"] button {
             background: transparent !important;
@@ -8087,12 +8082,17 @@ st.markdown(
             box-shadow: none !important;
             border-radius: 6px !important;
             text-align: left !important;
+            justify-content: flex-start !important;
             color: #1e293b !important;
             width: 100% !important;
-            padding: 6px 0px !important;
+            padding: 6px 4px !important;
             font-size: 0.92rem !important;
             display: flex !important;
             align-items: center !important;
+        }
+        div[class*="_riepilogo_"] button div[data-testid="stMarkdownContainer"] {
+            text-align: left !important;
+            width: 100% !important;
         }
         div[class*="_riepilogo_"] button:hover {
             background: #f1f5f9 !important;
