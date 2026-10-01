@@ -8358,7 +8358,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
                 st.session_state[f"{prefisso}_conferma_elimina"] = None
                 st.rerun()
 
-    # --- SCRIPT UNITO: SCROLL TASTIERA MOBILE + SWIPE CALENDARIO ---
+    # --- SCRIPT UNITO: SCROLL TASTIERA + SWIPE CALENDARIO + EVIDENZIAZIONE GIORNO ODIERNO ---
 components.html("""
 <script>
 const doc = window.parent.document;
@@ -8384,14 +8384,10 @@ let touchStartX = 0;
 let touchEndX = 0;
 
 function handleSwipe() {
-    const sogliaMinima = 50; // Distanza minima in pixel per attivare lo swipe
-    
-    // Swipe verso destra -> Mese/Settimana Precedente
+    const sogliaMinima = 50;
     if (touchEndX - touchStartX > sogliaMinima) {
         cliccaPulsanteNavigazione(['◀', '<', 'Indietro', 'Precedente']);
-    }
-    // Swipe verso sinistra -> Mese/Settimana Successiva
-    else if (touchStartX - touchEndX > sogliaMinima) {
+    } else if (touchStartX - touchEndX > sogliaMinima) {
         cliccaPulsanteNavigazione(['▶', '>', 'Avanti', 'Successivo']);
     }
 }
@@ -8415,6 +8411,28 @@ doc.addEventListener('touchend', e => {
     touchEndX = e.changedTouches[0].screenX;
     handleSwipe();
 }, false);
+
+// 3. Evidenzia automaticamente il giorno odierno nel calendario
+function evidenziaGiornoOdierno() {
+    const now = new Date();
+    const giornoOggi = now.getDate().toString();
+    
+    const buttons = doc.querySelectorAll('button');
+    buttons.forEach(btn => {
+        const testo = btn.innerText.trim();
+        // Se il testo del bottone corrisponde al numero del giorno di oggi
+        if (testo === giornoOggi && !btn.dataset.highlightedToday) {
+            btn.dataset.highlightedToday = "true";
+            // Stile verde chiaro (puoi cambiarlo con colori grigi se preferisci)
+            btn.style.backgroundColor = '#d4edda';
+            btn.style.border = '2px solid #28a745';
+            btn.style.color = '#155724';
+            btn.style.fontWeight = 'bold';
+        }
+    });
+}
+// Controlla periodicamente nel caso in cui il calendario venga ridisegnato
+setInterval(evidenziaGiornoOdierno, 1000);
 </script>
 """, height=0, width=0)
 
