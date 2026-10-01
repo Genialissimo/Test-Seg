@@ -8213,7 +8213,7 @@ def vai_a_impegni_nuovo():
 @st.dialog("Gestione Impegno")
 def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
                          riga_intestazione: int, prefisso: str):
-    # CSS per forzare le colonne affiancate su smartphone (evita l'impilamento verticale)
+    # CSS per forzare le colonne affiancate su smartphone + Script per lo scroll automatico con la tastiera
     st.markdown("""
     <style>
         div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] {
@@ -8227,13 +8227,32 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             min-width: 0 !important;
         }
     </style>
+    
+    <script>
+    const doc = window.parent.document;
+    function attivaScrollTastieraMobile() {
+        const dialog = doc.querySelector('div[data-testid="stDialog"]');
+        if (dialog && !dialog.dataset.scrollFix) {
+            dialog.dataset.scrollFix = "true";
+            dialog.addEventListener('focusin', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    setTimeout(() => {
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300); // Ritardo di 300ms per dare il tempo alla tastiera di aprirsi
+                }
+            });
+        }
+    }
+    setInterval(attivaScrollTastieraMobile, 500);
+    </script>
     """, unsafe_allow_html=True)
 
     modo = editor.get("modo")
     e = editor.get("riga", {})
     chiave = editor.get("numero_riga_foglio", "nuovo")
     bloccato = sola_lettura()
-
+    
+    # ... (il resto della funzione rimane esattamente identico a prima)
     # Lettura robusta di tutte le categorie presenti nel foglio
     if workbook_pagina and nome_foglio and riga_intestazione:
         df_cat, _ = leggi_foglio_come_df(workbook_pagina, nome_foglio, riga_intestazione)
