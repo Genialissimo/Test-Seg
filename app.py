@@ -8764,10 +8764,18 @@ def mostra_calendario_impegni_grid():
                                 key=f"{prefisso_chiave}_{anno}_{mese}_{giorno}",
                                 use_container_width=True,
                             ):
-                                st.session_state.calgrid_giorno_selezionato = (
-                                    giorno
-                                )
-                                st.session_state.pop("calimp_editor", None)
+                                st.session_state.calgrid_giorno_selezionato = giorno
+                                if ha_impegni:
+                                    # Giorno con impegni: pulisce l'editor e mostra il riepilogo sotto
+                                    st.session_state.pop("calimp_editor", None)
+                                else:
+                                    # Giorno vuoto: apre subito il form per inserire un nuovo impegno in quella data
+                                    data_sel = date(anno, mese, giorno)
+                                    data_str = data_sel.strftime("%d/%m/%Y")
+                                    st.session_state.calimp_editor = {
+                                        "modo": "nuovo",
+                                        "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
+                                    }
                                 st.rerun()
 
     # JS Touch Swipe
