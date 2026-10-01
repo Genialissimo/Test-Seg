@@ -8015,69 +8015,12 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            margin: 0 !important;
-        }
-        .cal-header-box {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
-            color: #ffffff !important;
-            border-radius: 12px !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            max-height: 42px !important;
-            padding: 0 8px !important;
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            white-space: nowrap !important;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-            margin-top: -5px !important; /* Solleva solo il riquadro mese/anno */
+            margin-top: -5px !important; /* Solleva il riquadro mese/anno per allinearlo alle frecce */
             margin-bottom: 0 !important;
             margin-left: 0 !important;
             margin-right: 0 !important;
         }
-        .cal-header-box {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
-            color: #ffffff !important;
-            border-radius: 12px !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            max-height: 42px !important;
-            padding: 0 8px !important;
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            white-space: nowrap !important;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
-        }
 
-        .cal-header-box {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
-            color: #ffffff !important;
-            border-radius: 12px !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            max-height: 42px !important;
-            padding: 0 8px !important;
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            white-space: nowrap !important;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
-        }
         /* GRIGLIA GIORNI */
         div[class*="_grid_container"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
