@@ -7949,7 +7949,7 @@ st.markdown(
             width: 100% !important;
         }
 
-        /* NAVIGAZIONE MESE (Allineamento perfetto verticale) */
+        /* NAVIGAZIONE MESE (Allineamento verticale perfetto) */
         div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
             display: flex !important;
             align-items: center !important;
@@ -7965,6 +7965,8 @@ st.markdown(
             justify-content: center !important;
             gap: 6px !important;
             width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stColumn"],
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stColumn"] {
@@ -7976,23 +7978,13 @@ st.markdown(
         }
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stVerticalBlock"],
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stVerticalBlock"] {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             gap: 0 !important;
             width: 100% !important;
-        }
-        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
-        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
-            width: 42px !important;
-            flex: 0 0 42px !important;
-            min-width: 42px !important;
-            max-width: 42px !important;
-        }
-        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
-            flex: 1 1 auto !important;
-            width: 100% !important;
-            min-width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         div[class*="_prev"] button, div[class*="_next"] button {
             width: 42px !important;
@@ -8027,7 +8019,6 @@ st.markdown(
             box-sizing: border-box !important;
             margin: 0 !important;
         }
-
         /* GRIGLIA GIORNI */
         div[class*="_grid_container"] div[data-testid="stHorizontalBlock"] {
             display: flex !important;
