@@ -8566,13 +8566,22 @@ def _aggiorna_anno_impgrid():
     st.session_state.pop("impegni_editor", None)
     st.session_state.pop("impgrid_mostra_tutto", None)
 
-# Colonne affiancate per risparmiare spazio
 col_lbl_anno, col_sel_anno = st.columns([1, 3])
 
 with col_lbl_anno:
     st.markdown(
         "<div style='padding-top: 10px; font-weight: 600;'>Anno</div>",
         unsafe_allow_html=True,
+    )
+
+with col_sel_anno:
+    st.selectbox(
+        "Anno",
+        anni_disponibili,
+        index=indice_anno_corrente,
+        key="impgrid_anno_select",
+        on_change=_aggiorna_anno_impgrid,
+        label_visibility="collapsed",
     )
 
 with col_sel_anno:
