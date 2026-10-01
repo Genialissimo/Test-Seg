@@ -7949,7 +7949,7 @@ st.markdown(
             width: 100% !important;
         }
 
-        /* NAVIGAZIONE MESE */
+        /* NAVIGAZIONE MESE (Allineamento perfetto verticale) */
         div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
             display: flex !important;
             align-items: center !important;
@@ -7973,6 +7973,11 @@ st.markdown(
             justify-content: center !important;
             margin: 0 !important;
             padding: 0 !important;
+        }
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stVerticalBlock"],
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+            width: 100% !important;
         }
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
@@ -8000,6 +8005,7 @@ st.markdown(
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            margin: 0 !important;
         }
 
         .cal-header-box {
@@ -8019,6 +8025,7 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
             width: 100% !important;
             box-sizing: border-box !important;
+            margin: 0 !important;
         }
 
         /* GRIGLIA GIORNI */
@@ -8051,7 +8058,7 @@ st.markdown(
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* RIEPILOGO */
+        /* RIEPILOGO (Giustificato a sinistra) */
         div[class*="_riepilogo_section"] {
             display: flex !important;
             flex-direction: column !important;
