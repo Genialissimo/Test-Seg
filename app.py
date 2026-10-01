@@ -7914,7 +7914,8 @@ def vai_a_home_reset_impegni():
 
 def vai_a_home_reset_calendario_impegni():
     for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro",
-                  "calgrid_attivo", "calgrid_giorno_selezionato", "calgrid_anno", "calgrid_mese", "calgrid_anno_select"):
+                  "calgrid_attivo", "calgrid_giorno_selezionato", "calgrid_anno", 
+                  "calgrid_mese", "calgrid_anno_select", "calgrid_mostra_tutto"):
         st.session_state.pop(chiave, None)
     vai_a("home")
 
@@ -8345,7 +8346,31 @@ def _calgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
             riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI + 1 + idx
             risultato.setdefault(scadenza_date.day, []).append(riga_dict)
     return risultato
-
+    
+def _calgrid_carica_tutti_impegni() -> list:
+    """Legge il foglio Calendario Impegni e ritorna tutte le righe ordinate per data di scadenza."""
+    risultato = []
+    if workbook_calendario is None:
+        return risultato
+    df, err = leggi_foglio_come_df(workbook_calendario, NOME_FOGLIO_CALENDARIO_IMPEGNI,
+                                   RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI)
+    if err or df.empty:
+        return risultato
+    df = df.reset_index(drop=True)
+    righe_con_data = []
+    righe_senza_data = []
+    for idx, riga in df.iterrows():
+        riga_dict = riga.to_dict()
+        riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI + 1 + idx
+        try:
+            scadenza_date = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
+            righe_con_data.append((scadenza_date, riga_dict))
+        except Exception:
+            righe_senza_data.append(riga_dict)
+    
+    righe_con_data.sort(key=lambda x: x[0])
+    risultato = [r[1] for r in righe_con_data] + righe_senza_data
+    return risultato
 
 import calendar
 from datetime import date
@@ -8524,7 +8549,7 @@ st.markdown(
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* 6. RIEPILOGO IMPEGNI GIUSTIFICATO A SINISTRA (SX) CON FORZATURA ORIZZONTALE MOBILE */
+        /* 6. RIEPILOGO IMPEGNI CON CHECKBOX E LINK */
         div[class*="st-key-calgrid_riepilogo_section"] {
             display: flex !important;
             flex-direction: column !important;
@@ -8545,13 +8570,18 @@ st.markdown(
             gap: 4px !important;
         }
 
-        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) {
-            flex: 0 0 32px !important;
-            width: 32px !important;
-            min-width: 32px !important;
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 0 0 36px !important;
+            width: 36px !important;
+            min-width: 36px !important;
+            max-width: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
 
-        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
             flex: 1 1 auto !important;
             width: 100% !important;
             min-width: 0 !important;
@@ -8636,13 +8666,16 @@ def mostra_calendario_impegni_grid():
             ):
                 st.session_state.calimp_editor = {"modo": "nuovo"}
         with col_tutto:
-            st.button(
-                "📋 Mostra tutto",
-                key="calgrid_mostra_tutto",
-                use_container_width=True,
-                disabled=(workbook_calendario is None),
-                on_click=vai_a_calendario_lista_completa,
-            )
+          if st.button(
+              "📋 Mostra tutto",
+              key="calgrid_mostra_tutto_btn",
+              use_container_width=True,
+              disabled=(workbook_calendario is None),
+          ):
+              st.session_state.calgrid_mostra_tutto = True
+              st.session_state.pop("calgrid_giorno_selezionato", None)
+              st.session_state.pop("calimp_editor", None)
+              st.rerun()
 
     if not st.session_state.get("calgrid_attivo"):
         oggi = date.today()
