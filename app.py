@@ -7914,7 +7914,7 @@ def vai_a_home_reset_impegni():
 
 def vai_a_home_reset_calendario_impegni():
     for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro",
-                  "calgrid_attivo", "calgrid_giorno_selezionato"):
+                  "calgrid_attivo", "calgrid_giorno_selezionato", "calgrid_anno", "calgrid_mese", "calgrid_anno_select"):
         st.session_state.pop(chiave, None)
     vai_a("home")
 
@@ -8648,6 +8648,7 @@ def mostra_calendario_impegni_grid():
         oggi = date.today()
         st.session_state.calgrid_anno = oggi.year
         st.session_state.calgrid_mese = oggi.month
+        st.session_state["calgrid_anno_select"] = oggi.year  # <--- Sincronizza il widget anno
         st.session_state.calgrid_attivo = True
         st.session_state.pop("calgrid_giorno_selezionato", None)
         st.session_state.pop("calimp_editor", None)
