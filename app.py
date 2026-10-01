@@ -7949,9 +7949,6 @@ st.markdown(
             width: 100% !important;
         }
 
-        st.markdown(
-    """
-    <style>
         /* NAVIGAZIONE MESE (Box mese/anno spostato leggermente in alto) */
         div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
             display: flex !important;
