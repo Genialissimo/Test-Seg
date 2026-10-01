@@ -8211,62 +8211,152 @@ def vai_a_impegni_nuovo():
     vai_a("impegni")
 
 @st.dialog("Gestione Impegno")
-def _form_impegno_dialog(editor_dict, cat_disp, wb, nome_foglio, riga_intestazione, prefisso):
-    modo = editor_dict.get("modo", "nuovo")
-    riga = editor_dict.get("riga", {})
-    rf = editor_dict.get("numero_riga_foglio")
+def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
+                         riga_intestazione: int, prefisso: str):
+    # CSS per forzare le colonne affiancate su smartphone (evita l'impilamento verticale)
+    st.markdown("""
+    <style>
+        div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 8px !important;
+        }
+        div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            width: 50% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-    st.subheader("Modifica Impegno" if modo == "modifica" else "Nuovo Impegno")
+    modo = editor.get("modo")
+    e = editor.get("riga", {})
+    chiave = editor.get("numero_riga_foglio", "nuovo")
+    bloccato = sola_lettura()
 
-    oggetto = st.text_input("Oggetto", value=str(riga.get("Oggetto", "")))
-    scadenza = st.text_input("Scadenza (GG/MM/AAAA)", value=str(riga.get("Scadenza", "")))
-    data_iniziale = st.text_input("Data Iniziale (GG/MM/AAAA)", value=str(riga.get("Data Iniziale", "")))
-    
-    cat_list = cat_disp if cat_disp else ["Generale"]
-    cat_attuale = str(riga.get("Categoria", ""))
-    idx_cat = cat_list.index(cat_attuale) if cat_attuale in cat_list else 0
-    categoria = st.selectbox("Categoria", cat_list, index=idx_cat)
-    
-    collega_link = st.text_input("Collega Link", value=str(riga.get("Collega Link", "")))
-    note = st.text_area("Note", value=str(riga.get("Note", "")))
-    
-    stato_val = str(riga.get("Stato", "") or riga.get("Fatto", "")).strip().lower()
-    is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
-    fatto = st.checkbox("Fatto / Completato", value=is_fatto)
+    # Lettura robusta di tutte le categorie presenti nel foglio
+    if workbook_pagina and nome_foglio and riga_intestazione:
+        df_cat, _ = leggi_foglio_come_df(workbook_pagina, nome_foglio, riga_intestazione)
+        if df_cat is not None and not df_cat.empty and "Categoria" in df_cat.columns:
+            cat_trovate = [str(c).strip() for c in df_cat["Categoria"].dropna().unique() if str(c).strip()]
+            categorie_disponibili = sorted(list(set(list(categorie_disponibili) + cat_trovate)))
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("💾 Salva", use_container_width=True, disabled=sola_lettura()):
-            valori = dict(riga) if isinstance(riga, dict) else {}
-            valori.update({
-                "Oggetto": oggetto,
-                "Scadenza": scadenza,
-                "Data Iniziale": data_iniziale,
-                "Categoria": categoria,
-                "Collega Link": collega_link,
-                "Note": note,
-                "Fatto": "X" if fatto else ""
-            })
-            ok, err = salva_riga_foglio(wb, nome_foglio, riga_intestazione, valori, riga_da_aggiornare=rf if modo == "modifica" else None)
+    if modo == "modifica":
+        st.markdown(f"#### ✏️ Modifica impegno — {e.get('Oggetto', '')}")
+    else:
+        st.markdown("#### ➕ Nuovo impegno")
+
+    def parse_data(s):
+        try:
+            return datetime.strptime(s, "%d/%m/%Y").date()
+        except Exception:
+            return None
+
+    with st.form(f"form_{prefisso}_{chiave}", clear_on_submit=False):
+        oggetto = st.text_input("Oggetto *", value=e.get("Oggetto", ""), disabled=bloccato)
+        descrizione = st.text_area("Descrizione", value=e.get("Descrizione", ""), height=150, disabled=bloccato)
+
+        opzioni_categoria = list(categorie_disponibili) + ["➕ Nuova categoria…"]
+        categoria_corrente = e.get("Categoria", "")
+        if categoria_corrente and categoria_corrente not in opzioni_categoria:
+            opzioni_categoria = [categoria_corrente] + opzioni_categoria
+        indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
+        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato)
+        nuova_categoria_testo = ""
+        if scelta_categoria == "➕ Nuova categoria…":
+            nuova_categoria_testo = st.text_input("Nome della nuova categoria", disabled=bloccato)
+
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            data_iniziale = st.date_input("Data Iniziale",
+                                         value=parse_data(e.get("Data Iniziale", "")) or date.today(),
+                                         format="DD/MM/YYYY", disabled=bloccato)
+        with col_d2:
+            scadenza = st.date_input("Scadenza *",
+                                       value=parse_data(e.get("Scadenza", "")) or date.today(),
+                                       format="DD/MM/YYYY", disabled=bloccato)
+
+        valori_preavviso_correnti = [v.strip() for v in str(e.get("Preavviso", "")).split(",") if v.strip()]
+        opzioni_preavviso = list(OPZIONI_PREAVVISO_IMPEGNI) if 'OPZIONI_PREAVVISO_IMPEGNI' in globals() else ["0", "1", "2", "3", "5", "7"]
+        for v in valori_preavviso_correnti:
+            if v not in opzioni_preavviso:
+                opzioni_preavviso.append(v)
+        preavviso_scelto = st.multiselect("Avvisami (giorni prima della scadenza)", opzioni_preavviso,
+                                         default=valori_preavviso_correnti, disabled=bloccato)
+
+        assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), disabled=bloccato)
+        fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")) if '_impegni_e_fatto' in globals() else False, disabled=bloccato)
+        link = st.text_input("Collega Link", value=e.get("Collega Link", ""), disabled=bloccato)
+
+        col_salva, col_elimina = st.columns(2)
+        with col_salva:
+            invia = st.form_submit_button("✔ Salva", type="primary", use_container_width=True,
+                                          disabled=bloccato)
+        with col_elimina:
+            elimina = st.form_submit_button("🗑️ Elimina", use_container_width=True,
+                                            disabled=(bloccato or modo != "modifica"))
+
+    if elimina and modo == "modifica":
+        st.session_state[f"{prefisso}_conferma_elimina"] = editor
+        st.rerun()
+
+    if invia:
+        oggetto_pulito = oggetto.strip()
+        if not oggetto_pulito:
+            st.error("Il campo «Oggetto» è obbligatorio.")
+        elif scadenza is None:
+            st.error("Il campo «Scadenza» è obbligatorio.")
+        else:
+            categoria_finale = (nuova_categoria_testo.strip() if scelta_categoria == "➕ Nuova categoria…"
+                                else scelta_categoria)
+            if scelta_categoria == "➕ Nuova categoria…" and categoria_finale:
+                if 'aggiungi_categoria_impegno' in globals():
+                    aggiungi_categoria_impegno(workbook_pagina, categoria_finale)
+
+            valori = {
+                "Data Iniziale": data_iniziale.strftime("%d/%m/%Y") if data_iniziale else "",
+                "Scadenza": scadenza.strftime("%d/%m/%Y"),
+                "Preavviso": ",".join(sorted(preavviso_scelto, key=lambda x: int(x) if str(x).isdigit() else 0)),
+                "Categoria": categoria_finale,
+                "Assegnato": assegnato.strip(),
+                "Oggetto": oggetto_pulito,
+                "Descrizione": descrizione.strip(),
+                "Fatto": "X" if fatto else "",
+                "Collega Link": link.strip(),
+            }
+            numero_riga = editor.get("numero_riga_foglio") if modo == "modifica" else None
+            ok, err_salva = salva_riga_foglio(workbook_pagina, nome_foglio, riga_intestazione,
+                                                valori, riga_da_aggiornare=numero_riga)
             if ok:
-                pulisci_cache_foglio(wb, nome_foglio, riga_intestazione)
-                st.session_state.pop(f"{prefisso}_editor", None)
+                pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
+                if hasattr(leggi_categorie_impegni, 'clear'):
+                    leggi_categorie_impegni.clear()
+                st.session_state[f"{prefisso}_editor"] = None
+                st.success(f"✔ «{oggetto_pulito}» salvato correttamente.")
                 st.rerun()
             else:
-                st.error(f"Errore durante il salvataggio: {err}")
-    with col2:
-        if modo == "modifica":
-            if st.button("🗑️ Elimina", use_container_width=True, disabled=sola_lettura()):
-                try:
-                    ok_del, err_del = elimina_riga_foglio(wb, nome_foglio, riga_intestazione, rf)
-                except NameError:
-                    ok_del, err_del = False, "Funzione di eliminazione non disponibile."
-                if ok_del:
-                    pulisci_cache_foglio(wb, nome_foglio, riga_intestazione)
-                    st.session_state.pop(f"{prefisso}_editor", None)
+                st.error(err_salva)
+
+    conferma = st.session_state.get(f"{prefisso}_conferma_elimina")
+    if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
+        st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? "
+                   "L'operazione non è reversibile.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✔ Sì, elimina", key=f"{prefisso}_conf_si", type="primary", use_container_width=True):
+                ok, err_elim = elimina_riga_foglio(workbook_pagina, nome_foglio, editor["numero_riga_foglio"])
+                if ok:
+                    pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
+                    st.session_state[f"{prefisso}_editor"] = None
+                    st.session_state[f"{prefisso}_conferma_elimina"] = None
+                    st.success("✔ Impegno eliminato.")
                     st.rerun()
                 else:
-                    st.error(err_del)
+                    st.error(err_elim)
+        with col_no:
+            if st.button("No, annulla", key=f"{prefisso}_conf_no", use_container_width=True):
+                st.session_state[f"{prefisso}_conferma_elimina"] = None
+                st.rerun()
 
 def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
     risultato = {}
