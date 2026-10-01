@@ -7949,7 +7949,7 @@ st.markdown(
             width: 100% !important;
         }
 
-        /* NAVIGAZIONE MESE (Box mese/anno spostato leggermente in alto) */
+        /* NAVIGAZIONE MESE (Ottimizzata per tocchi mobile) */
         div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
             display: flex !important;
             align-items: center !important;
@@ -7957,6 +7957,7 @@ st.markdown(
             width: 100% !important;
             margin-bottom: 8px !important;
             box-sizing: border-box !important;
+            pointer-events: auto !important;
         }
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"],
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] {
@@ -7970,7 +7971,7 @@ st.markdown(
             box-sizing: border-box !important;
         }
         
-        /* Colonna 1 (Freccia Indietro) e Colonna 3 (Freccia Avanti) a larghezza fissa per non sparire su mobile */
+        /* Frecce laterali a larghezza fissa e interattive */
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
@@ -7985,9 +7986,10 @@ st.markdown(
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            pointer-events: auto !important;
         }
 
-        /* Colonna 2 (Riquadro Mese centrale) flessibile */
+        /* Riquadro Mese centrale flessibile */
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
             flex: 1 1 auto !important;
@@ -7999,6 +8001,7 @@ st.markdown(
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            pointer-events: auto !important;
         }
 
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stColumn"] > div,
@@ -8008,8 +8011,10 @@ st.markdown(
             justify-content: center !important;
             width: 100% !important;
             height: 100% !important;
+            pointer-events: auto !important;
         }
         
+        /* Pulsanti di navigazione con supporto touch mobile immediato */
         div[class*="_prev"] button, div[class*="_next"] button {
             width: 42px !important;
             height: 42px !important;
@@ -8025,6 +8030,9 @@ st.markdown(
             justify-content: center !important;
             margin: 0 !important;
             box-sizing: border-box !important;
+            touch-action: manipulation !important;
+            pointer-events: auto !important;
+            cursor: pointer !important;
         }
 
         .cal-header-box {
@@ -8044,7 +8052,7 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            margin-top: -15px !important; /* <--- Portato a -15px per farlo salire di più */
+            margin-top: -15px !important;
             margin-bottom: 0 !important;
             margin-left: 0 !important;
             margin-right: 0 !important;
@@ -8072,6 +8080,7 @@ st.markdown(
             background: #f8fafc !important;
             color: #334155 !important;
             font-size: 0.85rem !important;
+            touch-action: manipulation !important;
         }
         div[class*="_giorno_con_"] button {
             background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
@@ -8080,7 +8089,7 @@ st.markdown(
             box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35) !important;
         }
 
-        /* 6. RIEPILOGO IMPEGNI E SCADENZE & CALENDARIO IMPEGNI (Allineato a sinistra) */
+        /* RIEPILOGO IMPEGNI E SCADENZE */
         div[class*="st-key-impgrid_riepilogo_section"],
         div[class*="st-key-calgrid_riepilogo_section"] {
             display: flex !important;
@@ -8161,6 +8170,7 @@ st.markdown(
             font-size: 0.92rem !important;
             display: flex !important;
             align-items: center !important;
+            touch-action: manipulation !important;
         }
 
         div[class*="st-key-impgrid_riepilogo_"] button p,
