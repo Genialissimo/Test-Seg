@@ -8358,26 +8358,106 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
                 st.session_state[f"{prefisso}_conferma_elimina"] = None
                 st.rerun()
 
-    # --- SCRIPT PER LO SCROLL AUTOMATICO TASTIERA MOBILE ---
-    components.html("""
-    <script>
-    const doc = window.parent.document;
-    function attivaScrollTastieraMobile() {
-        const dialog = doc.querySelector('div[data-testid="stDialog"]');
-        if (dialog && !dialog.dataset.keyboardFix) {
-            dialog.dataset.keyboardFix = "true";
-            doc.addEventListener('focusin', (e) => {
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                    setTimeout(() => {
-                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 400);
-                }
-            });
+    # --- SCRIPT UNITO: SCROLL TASTIERA + SWIPE + EVIDENZIAZIONE SOLO DEL MESE CORRENTE ---
+components.html("""
+<script>
+const doc = window.parent.document;
+
+// 1. Gestione dello scroll automatico per la tastiera nei dialog (Form)
+function attivaScrollTastieraMobile() {
+    const dialog = doc.querySelector('div[data-testid="stDialog"]');
+    if (dialog && !dialog.dataset.keyboardFix) {
+        dialog.dataset.keyboardFix = "true";
+        doc.addEventListener('focusin', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 400);
+            }
+        });
+    }
+}
+setInterval(attivaScrollTastieraMobile, 500);
+
+// 2. Gestione dello Swipe per cambiare mese/settimana nel Calendario
+let touchStartX = 0;
+let touchEndX = 0;
+
+function handleSwipe() {
+    const sogliaMinima = 50;
+    if (touchEndX - touchStartX > sogliaMinima) {
+        cliccaPulsanteNavigazione(['◀', '<', 'Indietro', 'Precedente']);
+    } else if (touchStartX - touchEndX > sogliaMinima) {
+        cliccaPulsanteNavigazione(['▶', '>', 'Avanti', 'Successivo']);
+    }
+}
+
+function cliccaPulsanteNavigazione(paroleChiave) {
+    const buttons = doc.querySelectorAll('button');
+    for (let btn of buttons) {
+        const testo = btn.innerText.trim();
+        if (paroleChiave.some(p => testo === p || testo.includes(p))) {
+            btn.click();
+            break;
         }
     }
-    setInterval(attivaScrollTastieraMobile, 500);
-    </script>
-    """, height=0, width=0)
+}
+
+doc.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+doc.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+}, false);
+
+// 3. Evidenzia il giorno odierno SOLO se siamo nel mese e anno corretti
+function evidenziaGiornoOdierno() {
+    const now = new Date();
+    const giornoOggi = now.getDate().toString(); // "1"
+    
+    const mesiIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    const meseCorrente = mesiIta[now.getMonth()]; // "Ottobre"
+    const annoCorrente = now.getFullYear().toString(); // "2026"
+
+    // Verifica se il titolo/intestazione della pagina mostra il mese e l'anno correnti
+    const elementiTesto = doc.querySelectorAll('h1, h2, h3, h4, h5, p, span, div');
+    let siamoNelMeseCorrente = false;
+    
+    for (let el of elementiTesto) {
+        const t = el.innerText;
+        if (t && t.includes(meseCorrente) && t.includes(annoCorrente)) {
+            siamoNelMeseCorrente = true;
+            break;
+        }
+    }
+
+    // Applica o rimuove l'evidenziazione
+    const buttons = doc.querySelectorAll('button');
+    buttons.forEach(btn => {
+        const testo = btn.innerText.trim();
+        if (testo === giornoOggi) {
+            if (siamoNelMeseCorrente) {
+                // Evidenzia solo se siamo nel mese giusto
+                btn.style.backgroundColor = '#d4edda';
+                btn.style.border = '2px solid #28a745';
+                btn.style.color = '#155724';
+                btn.style.fontWeight = 'bold';
+            } else {
+                // Rimuove l'evidenziazione se ci troviamo in un altro mese (es. Novembre)
+                btn.style.backgroundColor = '';
+                btn.style.border = '';
+                btn.style.color = '';
+                btn.style.fontWeight = '';
+            }
+        }
+    });
+}
+
+setInterval(evidenziaGiornoOdierno, 1000);
+</script>
+""", height=0, width=0)
 
 def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
     risultato = {}
