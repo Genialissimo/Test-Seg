@@ -8648,10 +8648,12 @@ def mostra_calendario_impegni_grid():
         oggi = date.today()
         st.session_state.calgrid_anno = oggi.year
         st.session_state.calgrid_mese = oggi.month
-        st.session_state["calgrid_anno_select"] = oggi.year  # <--- Sincronizza il widget anno
         st.session_state.calgrid_attivo = True
         st.session_state.pop("calgrid_giorno_selezionato", None)
         st.session_state.pop("calimp_editor", None)
+
+    # ➔ Sincronizziamo la selectbox PRIMA che venga creata nella pagina
+    st.session_state["calgrid_anno_select"] = st.session_state.calgrid_anno
 
     anno = st.session_state.calgrid_anno
     mese = st.session_state.calgrid_mese
