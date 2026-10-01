@@ -8560,19 +8560,30 @@ def mostra_impegni_scadenze():
 
         indice_anno_corrente = anni_disponibili.index(st.session_state.impgrid_anno)
 
-        def _aggiorna_anno_impgrid():
-            st.session_state.impgrid_anno = st.session_state["impgrid_anno_select"]
-            st.session_state.pop("impgrid_giorno_selezionato", None)
-            st.session_state.pop("impegni_editor", None)
-            st.session_state.pop("impgrid_mostra_tutto", None)
+def _aggiorna_anno_impgrid():
+    st.session_state.impgrid_anno = st.session_state["impgrid_anno_select"]
+    st.session_state.pop("impgrid_giorno_selezionato", None)
+    st.session_state.pop("impegni_editor", None)
+    st.session_state.pop("impgrid_mostra_tutto", None)
 
-        st.selectbox(
-            "Anno",
-            anni_disponibili,
-            index=indice_anno_corrente,
-            key="impgrid_anno_select",
-            on_change=_aggiorna_anno_impgrid,
-        )
+# Colonne affiancate per risparmiare spazio
+col_lbl_anno, col_sel_anno = st.columns([1, 3])
+
+with col_lbl_anno:
+    st.markdown(
+        "<div style='padding-top: 10px; font-weight: 600;'>Anno</div>",
+        unsafe_allow_html=True,
+    )
+
+with col_sel_anno:
+    st.selectbox(
+        "Anno",
+        anni_disponibili,
+        index=indice_anno_corrente,
+        key="impgrid_anno_select",
+        on_change=_aggiorna_anno_impgrid,
+        label_visibility="collapsed",  # Nasconde la label sopra
+    )
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
@@ -8935,18 +8946,29 @@ def mostra_calendario_impegni_grid():
 
         indice_anno_corrente = anni_disponibili.index(st.session_state.calgrid_anno)
 
-        def _aggiorna_anno_calgrid():
-            st.session_state.calgrid_anno = st.session_state["calgrid_anno_select"]
-            st.session_state.pop("calgrid_giorno_selezionato", None)
-            st.session_state.pop("calimp_editor", None)
-            st.session_state.pop("calgrid_mostra_tutto", None)
+    def _aggiorna_anno_calgrid():
+        st.session_state.calgrid_anno = st.session_state["calgrid_anno_select"]
+        st.session_state.pop("calgrid_giorno_selezionato", None)
+        st.session_state.pop("calimp_editor", None)
+        st.session_state.pop("calgrid_mostra_tutto", None)
 
+    # Dividiamo lo spazio in due colonne: etichetta a sinistra, selectbox a destra
+    col_lbl_anno, col_sel_anno = st.columns([1, 3])
+
+    with col_lbl_anno:
+        st.markdown(
+            "<div style='padding-top: 10px; font-weight: 600;'>Anno</div>",
+            unsafe_allow_html=True,
+        )
+
+    with col_sel_anno:
         st.selectbox(
             "Anno",
             anni_disponibili,
             index=indice_anno_corrente,
             key="calgrid_anno_select",
             on_change=_aggiorna_anno_calgrid,
+            label_visibility="collapsed",  # Nasconde la vecchia etichetta sopra
         )
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
