@@ -8178,6 +8178,64 @@ def vai_a_impegni_nuovo():
     st.session_state.impegni_editor = {"modo": "nuovo"}
     vai_a("impegni")
 
+@st.dialog("Gestione Impegno")
+def _form_impegno_dialog(editor_dict, cat_disp, wb, nome_foglio, riga_intestazione, prefisso):
+    modo = editor_dict.get("modo", "nuovo")
+    riga = editor_dict.get("riga", {})
+    rf = editor_dict.get("numero_riga_foglio")
+
+    st.subheader("Modifica Impegno" if modo == "modifica" else "Nuovo Impegno")
+
+    oggetto = st.text_input("Oggetto", value=str(riga.get("Oggetto", "")))
+    scadenza = st.text_input("Scadenza (GG/MM/AAAA)", value=str(riga.get("Scadenza", "")))
+    data_iniziale = st.text_input("Data Iniziale (GG/MM/AAAA)", value=str(riga.get("Data Iniziale", "")))
+    
+    cat_list = cat_disp if cat_disp else ["Generale"]
+    cat_attuale = str(riga.get("Categoria", ""))
+    idx_cat = cat_list.index(cat_attuale) if cat_attuale in cat_list else 0
+    categoria = st.selectbox("Categoria", cat_list, index=idx_cat)
+    
+    collega_link = st.text_input("Collega Link", value=str(riga.get("Collega Link", "")))
+    note = st.text_area("Note", value=str(riga.get("Note", "")))
+    
+    stato_val = str(riga.get("Stato", "") or riga.get("Fatto", "")).strip().lower()
+    is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
+    fatto = st.checkbox("Fatto / Completato", value=is_fatto)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 Salva", use_container_width=True, disabled=sola_lettura()):
+            valori = dict(riga) if isinstance(riga, dict) else {}
+            valori.update({
+                "Oggetto": oggetto,
+                "Scadenza": scadenza,
+                "Data Iniziale": data_iniziale,
+                "Categoria": categoria,
+                "Collega Link": collega_link,
+                "Note": note,
+                "Fatto": "X" if fatto else ""
+            })
+            ok, err = salva_riga_foglio(wb, nome_foglio, riga_intestazione, valori, riga_da_aggiornare=rf if modo == "modifica" else None)
+            if ok:
+                pulisci_cache_foglio(wb, nome_foglio, riga_intestazione)
+                st.session_state.pop(f"{prefisso}_editor", None)
+                st.rerun()
+            else:
+                st.error(f"Errore durante il salvataggio: {err}")
+    with col2:
+        if modo == "modifica":
+            if st.button("🗑️ Elimina", use_container_width=True, disabled=sola_lettura()):
+                try:
+                    ok_del, err_del = elimina_riga_foglio(wb, nome_foglio, riga_intestazione, rf)
+                except NameError:
+                    ok_del, err_del = False, "Funzione di eliminazione non disponibile."
+                if ok_del:
+                    pulisci_cache_foglio(wb, nome_foglio, riga_intestazione)
+                    st.session_state.pop(f"{prefisso}_editor", None)
+                    st.rerun()
+                else:
+                    st.error(err_del)
+
 def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
     risultato = {}
     if workbook is None:
