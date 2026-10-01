@@ -8577,7 +8577,47 @@ def mostra_impegni_scadenze():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
-
+                            
+# --- SCRIPT TOUCH SWIPE PER IMPGRID ---
+    components.html(
+        """
+    <script>
+    const doc = window.parent.document;
+    function attivaImpGridSwipe() {
+        const card = doc.querySelector('div[class*="st-key-impgrid_card_wrapper"]');
+        if (card && !card.dataset.swipeAttivo) {
+            card.dataset.swipeAttivo = "true";
+            let startX = 0, startY = 0;
+            card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
+            card.addEventListener('touchmove', e => {
+                if (!startX || !startY) return;
+                let diffX = e.touches[0].clientX - startX;
+                let diffY = e.touches[0].clientY - startY;
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) { if (e.cancelable) e.preventDefault(); }
+            }, {passive: false});
+            card.addEventListener('touchend', e => {
+                if (!startX || !startY) return;
+                let diffX = e.changedTouches[0].clientX - startX;
+                let diffY = e.changedTouches[0].clientY - startY;
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                    if (diffX < 0) {
+                        const btnNext = doc.querySelector('div[class*="st-key-impgrid_next"] button');
+                        if (btnNext) btnNext.click();
+                    } else {
+                        const btnPrev = doc.querySelector('div[class*="st-key-impgrid_prev"] button');
+                        if (btnPrev) btnPrev.click();
+                    }
+                }
+                startX = 0; startY = 0;
+            }, {passive: true});
+        }
+    }
+    setInterval(attivaImpGridSwipe, 300);
+    </script>
+    """,
+        height=0,
+        width=0,
+    )
 
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: Calendario Impegni
@@ -8916,7 +8956,46 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
-
+# --- SCRIPT TOUCH SWIPE PER CALGRID ---
+    components.html(
+        """
+    <script>
+    const doc = window.parent.document;
+    function attivaCalGridSwipe() {
+        const card = doc.querySelector('div[class*="st-key-calgrid_card_wrapper"]');
+        if (card && !card.dataset.swipeAttivo) {
+            card.dataset.swipeAttivo = "true";
+            let startX = 0, startY = 0;
+            card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
+            card.addEventListener('touchmove', e => {
+                if (!startX || !startY) return;
+                let diffX = e.touches[0].clientX - startX;
+                let diffY = e.touches[0].clientY - startY;
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) { if (e.cancelable) e.preventDefault(); }
+            }, {passive: false});
+            card.addEventListener('touchend', e => {
+                if (!startX || !startY) return;
+                let diffX = e.changedTouches[0].clientX - startX;
+                let diffY = e.changedTouches[0].clientY - startY;
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                    if (diffX < 0) {
+                        const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
+                        if (btnNext) btnNext.click();
+                    } else {
+                        const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
+                        if (btnPrev) btnPrev.click();
+                    }
+                }
+                startX = 0; startY = 0;
+            }, {passive: true});
+        }
+    }
+    setInterval(attivaCalGridSwipe, 300);
+    </script>
+    """,
+        height=0,
+        width=0,
+    )
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
