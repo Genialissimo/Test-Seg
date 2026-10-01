@@ -7949,6 +7949,9 @@ st.markdown(
             width: 100% !important;
         }
 
+        st.markdown(
+    """
+    <style>
         /* NAVIGAZIONE MESE (Box mese/anno spostato leggermente in alto) */
         div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
             display: flex !important;
@@ -7956,6 +7959,7 @@ st.markdown(
             justify-content: center !important;
             width: 100% !important;
             margin-bottom: 8px !important;
+            box-sizing: border-box !important;
         }
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"],
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] {
@@ -7966,16 +7970,40 @@ st.markdown(
             justify-content: center !important;
             gap: 6px !important;
             width: 100% !important;
+            box-sizing: border-box !important;
         }
-        div[class*="st-key-impgrid_nav_row"] div[data-testid="stColumn"],
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stColumn"] {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+        
+        /* Colonna 1 (Freccia Indietro) e Colonna 3 (Freccia Avanti) a larghezza fissa per non sparire su mobile */
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
+            width: 42px !important;
+            flex: 0 0 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
             height: 42px !important;
             margin: 0 !important;
             padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
+
+        /* Colonna 2 (Riquadro Mese centrale) flessibile */
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 42px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stColumn"] > div,
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stColumn"] > div {
             display: flex !important;
@@ -7984,11 +8012,14 @@ st.markdown(
             width: 100% !important;
             height: 100% !important;
         }
+        
         div[class*="_prev"] button, div[class*="_next"] button {
             width: 42px !important;
             height: 42px !important;
             min-height: 42px !important;
             max-height: 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
             padding: 0 !important;
             border-radius: 12px !important;
             font-weight: 700 !important;
@@ -7996,6 +8027,7 @@ st.markdown(
             align-items: center !important;
             justify-content: center !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
         }
 
         .cal-header-box {
