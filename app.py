@@ -8114,6 +8114,9 @@ def vai_a_home_reset_impegni_scadenze():
         st.session_state.pop(chiave, None)
     vai_a("home")
 
+def vai_a_impegni_nuovo():
+    st.session_state.impegni_editor = {"modo": "nuovo"}
+    vai_a("impegni")
 
 def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
     risultato = {}
