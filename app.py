@@ -7955,7 +7955,6 @@ st.markdown(
             align-items: center !important;
             justify-content: center !important;
             width: 100% !important;
-            margin-top: 0 !important;
             margin-bottom: 8px !important;
         }
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"],
@@ -7967,26 +7966,23 @@ st.markdown(
             justify-content: center !important;
             gap: 6px !important;
             width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
         }
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stColumn"],
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stColumn"] {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            height: 42px !important;
             margin: 0 !important;
             padding: 0 !important;
         }
-        div[class*="st-key-impgrid_nav_row"] div[data-testid="stVerticalBlock"],
-        div[class*="st-key-calgrid_nav_row"] div[data-testid="stVerticalBlock"] {
+        div[class*="st-key-impgrid_nav_row"] div[data-testid="stColumn"] > div,
+        div[class*="st-key-calgrid_nav_row"] div[data-testid="stColumn"] > div {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 0 !important;
             width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            height: 100% !important;
         }
         div[class*="_prev"] button, div[class*="_next"] button {
             width: 42px !important;
@@ -8002,6 +7998,25 @@ st.markdown(
             margin: 0 !important;
         }
 
+        .cal-header-box {
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
+            color: #ffffff !important;
+            border-radius: 12px !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            padding: 0 8px !important;
+            font-weight: 700 !important;
+            font-size: 0.95rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+        }
         .cal-header-box {
             background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
             color: #ffffff !important;
