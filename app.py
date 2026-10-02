@@ -7918,9 +7918,22 @@ st.markdown(
             -webkit-touch-callout: none !important;
         }
 
+        /* HEADER FISSO IN ALTO (TOOLBAR + RICERCA) */
+        div[class*="st-key-impgrid_sticky_header"], 
+        div[class*="st-key-calgrid_sticky_header"] {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 999 !important;
+            background-color: #ffffff !important;
+            padding: 8px 0 12px 0 !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+            margin-bottom: 12px !important;
+        }
+
         /* TOOLBAR */
         div[class*="st-key-impgrid_toolbar"], div[class*="st-key-calgrid_toolbar"] {
-            margin-bottom: 10px !important;
+            margin-bottom: 8px !important;
         }
         div[class*="st-key-impgrid_toolbar"] div[data-testid="stHorizontalBlock"], 
         div[class*="st-key-calgrid_toolbar"] div[data-testid="stHorizontalBlock"] {
@@ -7949,7 +7962,7 @@ st.markdown(
             width: 100% !important;
         }
 
-        /* NAVIGAZIONE MESE (Ottimizzata per tocchi mobile) */
+        /* NAVIGAZIONE MESE */
         div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
             display: flex !important;
             align-items: center !important;
@@ -7971,7 +7984,6 @@ st.markdown(
             box-sizing: border-box !important;
         }
         
-        /* Frecce laterali a larghezza fissa e interattive */
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
@@ -7989,7 +8001,6 @@ st.markdown(
             pointer-events: auto !important;
         }
 
-        /* Riquadro Mese centrale flessibile */
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
             flex: 1 1 auto !important;
@@ -8014,7 +8025,6 @@ st.markdown(
             pointer-events: auto !important;
         }
         
-        /* Pulsanti di navigazione con supporto touch mobile immediato */
         div[class*="_prev"] button, div[class*="_next"] button {
             width: 42px !important;
             height: 42px !important;
@@ -8394,35 +8404,45 @@ def mostra_impegni_scadenze():
     </style>
     """, unsafe_allow_html=True)
 
-    with st.container(key="impgrid_toolbar"):
-        col_home, col_nuovo, col_tutto = st.columns(3)
-        with col_home:
-            st.button(
-                "🏠 Home",
-                key="home_da_impgrid",
-                use_container_width=True,
-                on_click=vai_a_home_reset_impegni_scadenze,
-            )
-        with col_nuovo:
-            if st.button(
-                "➕ Nuovo",
-                key="impgrid_nuovo_top",
-                use_container_width=True,
-                disabled=sola_lettura(),
-            ):
-                st.session_state.impegni_editor = {"modo": "nuovo"}
-        with col_tutto:
-            if st.button(
-                "📋 Mostra tutto",
-                key="impgrid_mostra_tutto_btn",
-                use_container_width=True,
-                disabled=(workbook is None),
-            ):
-                st.session_state.impgrid_mostra_tutto = True
-                st.session_state.pop("impgrid_giorno_selezionato", None)
-                st.session_state.pop("impegni_editor", None)
-                st.session_state.pop("impgrid_cerca", None)
-                st.rerun()
+    # --- CONTENITORE FISSO IN ALTO (TOOLBAR + BARRA DI RICERCA) ---
+    with st.container(key="impgrid_sticky_header"):
+        with st.container(key="impgrid_toolbar"):
+            col_home, col_nuovo, col_tutto = st.columns(3)
+            with col_home:
+                st.button(
+                    "🏠 Home",
+                    key="home_da_impgrid",
+                    use_container_width=True,
+                    on_click=vai_a_home_reset_impegni_scadenze,
+                )
+            with col_nuovo:
+                if st.button(
+                    "➕ Nuovo",
+                    key="impgrid_nuovo_top",
+                    use_container_width=True,
+                    disabled=sola_lettura(),
+                ):
+                    st.session_state.impegni_editor = {"modo": "nuovo"}
+            with col_tutto:
+                if st.button(
+                    "📋 Mostra tutto",
+                    key="impgrid_mostra_tutto_btn",
+                    use_container_width=True,
+                    disabled=(workbook is None),
+                ):
+                    st.session_state.impgrid_mostra_tutto = True
+                    st.session_state.pop("impgrid_giorno_selezionato", None)
+                    st.session_state.pop("impegni_editor", None)
+                    st.session_state.pop("impgrid_cerca", None)
+                    st.rerun()
+
+        # CAMPO DI RICERCA FISSO
+        st.text_input(
+            "Cerca",
+            key="impgrid_cerca",
+            placeholder="🔍 Cerca...",
+            label_visibility="collapsed",
+        )
 
     if not st.session_state.get("impgrid_attivo"):
         oggi = date.today()
@@ -8442,15 +8462,6 @@ def mostra_impegni_scadenze():
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
     with st.container(key="impgrid_card_wrapper"):
-        # --- CAMPO DI RICERCA PRIMA DEL SELETTORE ANNO ---
-        st.text_input(
-            "Cerca",
-            key="impgrid_cerca",
-            placeholder="🔍 Cerca...",
-            label_visibility="collapsed",
-        )
-        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
-
         anno_corrente_reale = date.today().year
         anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
         if st.session_state.impgrid_anno not in anni_disponibili:
@@ -8553,16 +8564,27 @@ def mostra_impegni_scadenze():
                                 st.session_state.impgrid_giorno_selezionato = giorno
                                 st.session_state.pop("impgrid_mostra_tutto", None)
                                 st.session_state.pop("impgrid_cerca", None)
-                                if ha_impegni:
-                                    st.session_state.pop("impegni_editor", None)
-                                else:
-                                    data_sel = date(anno, mese, giorno)
-                                    data_str = data_sel.strftime("%d/%m/%Y")
-                                    st.session_state.impegni_editor = {
-                                        "modo": "nuovo",
-                                        "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
-                                    }
+                                st.session_state.pop("impegni_editor", None)
                                 st.rerun()
+
+        # --- TASTO DINAMICO SOTTO IL CALENDARIO PER INSERIRE NUOVO IMPEGNO SULLA DATA SELEZIONATA ---
+        giorno_sel = st.session_state.get("impgrid_giorno_selezionato")
+        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+            data_sel_obj = date(anno, mese, giorno_sel)
+            data_sel_str = data_sel_obj.strftime("%d/%m/%Y")
+            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+            if st.button(
+                f"➕ Nuovo impegno per il {data_sel_str}",
+                key="impgrid_nuovo_per_data_sel",
+                use_container_width=True,
+                type="primary",
+                disabled=sola_lettura(),
+            ):
+                st.session_state.impegni_editor = {
+                    "modo": "nuovo",
+                    "riga": {"Data Iniziale": data_sel_str, "Scadenza": data_sel_str},
+                }
+                st.rerun()
 
     editor_impegni = st.session_state.get("impegni_editor")
     if editor_impegni:
@@ -8858,35 +8880,45 @@ def mostra_calendario_impegni_grid():
     </style>
     """, unsafe_allow_html=True)
     
-    with st.container(key="calgrid_toolbar"):
-        col_home, col_nuovo, col_tutto = st.columns(3)
-        with col_home:
-            st.button(
-                "🏠 Home",
-                key="home_da_calendario_grid",
-                use_container_width=True,
-                on_click=vai_a_home_reset_calendario_impegni,
-            )
-        with col_nuovo:
-            if st.button(
-                "➕ Nuovo",
-                key="calgrid_nuovo_top",
-                use_container_width=True,
-                disabled=sola_lettura(),
-            ):
-                st.session_state.calimp_editor = {"modo": "nuovo"}
-        with col_tutto:
-            if st.button(
-                "📋 Mostra tutto",
-                key="calgrid_mostra_tutto_btn",
-                use_container_width=True,
-                disabled=(workbook_calendario is None),
-            ):
-                st.session_state.calgrid_mostra_tutto = True
-                st.session_state.pop("calgrid_giorno_selezionato", None)
-                st.session_state.pop("calimp_editor", None)
-                st.session_state.pop("calgrid_cerca", None)
-                st.rerun()
+    # --- CONTENITORE FISSO IN ALTO (TOOLBAR + BARRA DI RICERCA) ---
+    with st.container(key="calgrid_sticky_header"):
+        with st.container(key="calgrid_toolbar"):
+            col_home, col_nuovo, col_tutto = st.columns(3)
+            with col_home:
+                st.button(
+                    "🏠 Home",
+                    key="home_da_calendario_grid",
+                    use_container_width=True,
+                    on_click=vai_a_home_reset_calendario_impegni,
+                )
+            with col_nuovo:
+                if st.button(
+                    "➕ Nuovo",
+                    key="calgrid_nuovo_top",
+                    use_container_width=True,
+                    disabled=sola_lettura(),
+                ):
+                    st.session_state.calimp_editor = {"modo": "nuovo"}
+            with col_tutto:
+                if st.button(
+                    "📋 Mostra tutto",
+                    key="calgrid_mostra_tutto_btn",
+                    use_container_width=True,
+                    disabled=(workbook_calendario is None),
+                ):
+                    st.session_state.calgrid_mostra_tutto = True
+                    st.session_state.pop("calgrid_giorno_selezionato", None)
+                    st.session_state.pop("calimp_editor", None)
+                    st.session_state.pop("calgrid_cerca", None)
+                    st.rerun()
+
+        # CAMPO DI RICERCA FISSO
+        st.text_input(
+            "",
+            key="calgrid_cerca",
+            placeholder="🔍 Cerca...",
+            label_visibility="collapsed",
+        )
 
     if not st.session_state.get("calgrid_attivo"):
         oggi = date.today()
@@ -8906,15 +8938,6 @@ def mostra_calendario_impegni_grid():
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
     with st.container(key="calgrid_card_wrapper"):
-        # --- CAMPO DI RICERCA COMPATTO ---
-        st.text_input(
-            "",
-            key="calgrid_cerca",
-            placeholder="🔍 Cerca...",
-            label_visibility="collapsed",
-        )
-        st.markdown("<div style='margin-bottom: 2px;'></div>", unsafe_allow_html=True)
-
         anno_corrente_reale = date.today().year
         anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
         if st.session_state.calgrid_anno not in anni_disponibili:
@@ -9017,16 +9040,27 @@ def mostra_calendario_impegni_grid():
                                 st.session_state.calgrid_giorno_selezionato = giorno
                                 st.session_state.pop("calgrid_mostra_tutto", None)
                                 st.session_state.pop("calgrid_cerca", None)
-                                if ha_impegni:
-                                    st.session_state.pop("calimp_editor", None)
-                                else:
-                                    data_sel = date(anno, mese, giorno)
-                                    data_str = data_sel.strftime("%d/%m/%Y")
-                                    st.session_state.calimp_editor = {
-                                        "modo": "nuovo",
-                                        "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
-                                    }
+                                st.session_state.pop("calimp_editor", None)
                                 st.rerun()
+
+        # --- TASTO DINAMICO SOTTO IL CALENDARIO PER INSERIRE NUOVO IMPEGNO SULLA DATA SELEZIONATA ---
+        giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
+        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
+            data_sel_obj = date(anno, mese, giorno_sel)
+            data_sel_str = data_sel_obj.strftime("%d/%m/%Y")
+            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+            if st.button(
+                f"➕ Nuovo impegno per il {data_sel_str}",
+                key="calgrid_nuovo_per_data_sel",
+                use_container_width=True,
+                type="primary",
+                disabled=sola_lettura(),
+            ):
+                st.session_state.calimp_editor = {
+                    "modo": "nuovo",
+                    "riga": {"Data Iniziale": data_sel_str, "Scadenza": data_sel_str},
+                }
+                st.rerun()
 
     editor_calimp = st.session_state.get("calimp_editor")
     if editor_calimp:
