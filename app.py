@@ -8202,7 +8202,7 @@ st.markdown(
 def vai_a_home_reset_impegni_scadenze():
     for chiave in ("impgrid_attivo", "impgrid_giorno_selezionato", "impgrid_anno", 
                   "impgrid_mese", "impgrid_anno_select", "impgrid_mostra_tutto", 
-                  "impegni_editor", "impegni_conferma_elimina"):
+                  "impegni_editor", "impegni_conferma_elimina", "impgrid_cerca"):
         st.session_state.pop(chiave, None)
     vai_a("home")
 
@@ -8213,7 +8213,6 @@ def vai_a_impegni_nuovo():
 @st.dialog("Gestione Impegno")
 def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
                          riga_intestazione: int, prefisso: str):
-    # CSS per forzare le colonne affiancate su smartphone
     st.markdown("""
     <style>
         div[data-testid="stDialog"] div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] {
@@ -8234,7 +8233,6 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
     chiave = editor.get("numero_riga_foglio", "nuovo")
     bloccato = sola_lettura()
 
-    # Lettura robusta di tutte le categorie presenti nel foglio
     if workbook_pagina and nome_foglio and riga_intestazione:
         df_cat, _ = leggi_foglio_come_df(workbook_pagina, nome_foglio, riga_intestazione)
         if df_cat is not None and not df_cat.empty and "Categoria" in df_cat.columns:
@@ -8337,127 +8335,6 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             else:
                 st.error(err_salva)
 
-    conferma = st.session_state.get(f"{prefisso}_conferma_elimina")
-    if conferma and modo == "modifica" and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio"):
-        st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? "
-                   "L'operazione non è reversibile.")
-        col_si, col_no = st.columns(2)
-        with col_si:
-            if st.button("✔ Sì, elimina", key=f"{prefisso}_conf_si", type="primary", use_container_width=True):
-                ok, err_elim = elimina_riga_foglio(workbook_pagina, nome_foglio, editor["numero_riga_foglio"])
-                if ok:
-                    pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
-                    st.session_state[f"{prefisso}_editor"] = None
-                    st.session_state[f"{prefisso}_conferma_elimina"] = None
-                    st.success("✔ Impegno eliminato.")
-                    st.rerun()
-                else:
-                    st.error(err_elim)
-        with col_no:
-            if st.button("No, annulla", key=f"{prefisso}_conf_no", use_container_width=True):
-                st.session_state[f"{prefisso}_conferma_elimina"] = None
-                st.rerun()
-
-    # --- SCRIPT UNITO: SCROLL TASTIERA + SWIPE + EVIDENZIAZIONE SOLO DEL MESE CORRENTE ---
-components.html("""
-<script>
-const doc = window.parent.document;
-
-// 1. Gestione dello scroll automatico per la tastiera nei dialog (Form)
-function attivaScrollTastieraMobile() {
-    const dialog = doc.querySelector('div[data-testid="stDialog"]');
-    if (dialog && !dialog.dataset.keyboardFix) {
-        dialog.dataset.keyboardFix = "true";
-        doc.addEventListener('focusin', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                setTimeout(() => {
-                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 400);
-            }
-        });
-    }
-}
-setInterval(attivaScrollTastieraMobile, 500);
-
-// 2. Gestione dello Swipe per cambiare mese/settimana nel Calendario
-let touchStartX = 0;
-let touchEndX = 0;
-
-function handleSwipe() {
-    const sogliaMinima = 50;
-    if (touchEndX - touchStartX > sogliaMinima) {
-        cliccaPulsanteNavigazione(['◀', '<', 'Indietro', 'Precedente']);
-    } else if (touchStartX - touchEndX > sogliaMinima) {
-        cliccaPulsanteNavigazione(['▶', '>', 'Avanti', 'Successivo']);
-    }
-}
-
-function cliccaPulsanteNavigazione(paroleChiave) {
-    const buttons = doc.querySelectorAll('button');
-    for (let btn of buttons) {
-        const testo = btn.innerText.trim();
-        if (paroleChiave.some(p => testo === p || testo.includes(p))) {
-            btn.click();
-            break;
-        }
-    }
-}
-
-doc.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-}, false);
-
-doc.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, false);
-
-// 3. Evidenzia il giorno odierno SOLO se siamo nel mese e anno corretti
-function evidenziaGiornoOdierno() {
-    const now = new Date();
-    const giornoOggi = now.getDate().toString(); // "1"
-    
-    const mesiIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-    const meseCorrente = mesiIta[now.getMonth()]; // "Ottobre"
-    const annoCorrente = now.getFullYear().toString(); // "2026"
-
-    // Verifica se il titolo/intestazione della pagina mostra il mese e l'anno correnti
-    const elementiTesto = doc.querySelectorAll('h1, h2, h3, h4, h5, p, span, div');
-    let siamoNelMeseCorrente = false;
-    
-    for (let el of elementiTesto) {
-        const t = el.innerText;
-        if (t && t.includes(meseCorrente) && t.includes(annoCorrente)) {
-            siamoNelMeseCorrente = true;
-            break;
-        }
-    }
-
-    // Applica o rimuove l'evidenziazione
-    const buttons = doc.querySelectorAll('button');
-    buttons.forEach(btn => {
-        const testo = btn.innerText.trim();
-        if (testo === giornoOggi) {
-            if (siamoNelMeseCorrente) {
-                // Evidenzia solo se siamo nel mese giusto
-                btn.style.backgroundColor = '#d4edda';
-                btn.style.border = '2px solid #28a745';
-                btn.style.color = '#155724';
-                btn.style.fontWeight = 'bold';
-            } else {
-                // Rimuove l'evidenziazione se ci troviamo in un altro mese (es. Novembre)
-                btn.style.backgroundColor = '';
-                btn.style.border = '';
-                btn.style.color = '';
-                btn.style.fontWeight = '';
-            }
-        }
-    });
-}
-
-setInterval(evidenziaGiornoOdierno, 1000);
-</script>
-""", height=0, width=0)
 
 def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
     risultato = {}
@@ -8533,6 +8410,7 @@ def mostra_impegni_scadenze():
                 st.session_state.impgrid_mostra_tutto = True
                 st.session_state.pop("impgrid_giorno_selezionato", None)
                 st.session_state.pop("impegni_editor", None)
+                st.session_state.pop("impgrid_cerca", None)
                 st.rerun()
 
     if not st.session_state.get("impgrid_attivo"):
@@ -8543,6 +8421,7 @@ def mostra_impegni_scadenze():
         st.session_state.pop("impgrid_giorno_selezionato", None)
         st.session_state.pop("impegni_editor", None)
         st.session_state.pop("impgrid_mostra_tutto", None)
+        st.session_state.pop("impgrid_cerca", None)
 
     st.session_state["impgrid_anno_select"] = st.session_state.impgrid_anno
 
@@ -8552,6 +8431,15 @@ def mostra_impegni_scadenze():
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
     with st.container(key="impgrid_card_wrapper"):
+        # --- CAMPO DI RICERCA PRIMA DEL SELETTORE ANNO ---
+        st.text_input(
+            "Cerca",
+            key="impgrid_cerca",
+            placeholder="🔍 Cerca...",
+            label_visibility="collapsed",
+        )
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+
         anno_corrente_reale = date.today().year
         anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
         if st.session_state.impgrid_anno not in anni_disponibili:
@@ -8566,13 +8454,21 @@ def mostra_impegni_scadenze():
             st.session_state.pop("impegni_editor", None)
             st.session_state.pop("impgrid_mostra_tutto", None)
 
-        st.selectbox(
-            "Anno",
-            anni_disponibili,
-            index=indice_anno_corrente,
-            key="impgrid_anno_select",
-            on_change=_aggiorna_anno_impgrid,
-        )
+        col_lbl_anno, col_sel_anno = st.columns([1, 3])
+        with col_lbl_anno:
+            st.markdown(
+                "<div style='padding-top: 10px; font-weight: 600;'>Anno</div>",
+                unsafe_allow_html=True,
+            )
+        with col_sel_anno:
+            st.selectbox(
+                "Anno",
+                anni_disponibili,
+                index=indice_anno_corrente,
+                key="impgrid_anno_select",
+                on_change=_aggiorna_anno_impgrid,
+                label_visibility="collapsed",
+            )
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
@@ -8645,6 +8541,7 @@ def mostra_impegni_scadenze():
                             ):
                                 st.session_state.impgrid_giorno_selezionato = giorno
                                 st.session_state.pop("impgrid_mostra_tutto", None)
+                                st.session_state.pop("impgrid_cerca", None)
                                 if ha_impegni:
                                     st.session_state.pop("impegni_editor", None)
                                 else:
@@ -8671,8 +8568,20 @@ def mostra_impegni_scadenze():
     with st.container(key="impgrid_riepilogo_section"):
         mostra_tutto = st.session_state.get("impgrid_mostra_tutto", False)
         giorno_sel = st.session_state.get("impgrid_giorno_selezionato")
-        
-        if mostra_tutto:
+        query_cerca = st.session_state.get("impgrid_cerca", "").strip().lower()
+
+        if query_cerca:
+            st.markdown(
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🔍 Risultati ricerca per: «{st.session_state.get('impgrid_cerca')}»</div>",
+                unsafe_allow_html=True,
+            )
+            tutti_i_dati = _impgrid_carica_tutti_impegni()
+            lista_impegni_da_mostrare = [
+                r for r in tutti_i_dati
+                if query_cerca in str(r.get("Oggetto", "")).lower() or query_cerca in str(r.get("Descrizione", "")).lower()
+            ]
+        elif mostra_tutto:
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
                 f"🗓️ Riepilogo completo di tutte le scadenze (ordinate per data)</div>",
@@ -8769,46 +8678,92 @@ def mostra_impegni_scadenze():
                             }
                             st.rerun()
                             
-# --- SCRIPT TOUCH SWIPE PER IMPGRID ---
-    components.html(
-        """
-    <script>
-    const doc = window.parent.document;
-    function attivaImpGridSwipe() {
-        const card = doc.querySelector('div[class*="st-key-impgrid_card_wrapper"]');
-        if (card && !card.dataset.swipeAttivo) {
-            card.dataset.swipeAttivo = "true";
-            let startX = 0, startY = 0;
-            card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
-            card.addEventListener('touchmove', e => {
-                if (!startX || !startY) return;
-                let diffX = e.touches[0].clientX - startX;
-                let diffY = e.touches[0].clientY - startY;
-                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) { if (e.cancelable) e.preventDefault(); }
-            }, {passive: false});
-            card.addEventListener('touchend', e => {
-                if (!startX || !startY) return;
-                let diffX = e.changedTouches[0].clientX - startX;
-                let diffY = e.changedTouches[0].clientY - startY;
-                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-                    if (diffX < 0) {
-                        const btnNext = doc.querySelector('div[class*="st-key-impgrid_next"] button');
-                        if (btnNext) btnNext.click();
-                    } else {
-                        const btnPrev = doc.querySelector('div[class*="st-key-impgrid_prev"] button');
-                        if (btnPrev) btnPrev.click();
-                    }
+# --- SCRIPT TOUCH SWIPE PER IMPGRID + SCROLL TASTIERA + DATA ODIERNA ---
+components.html(
+    """
+<script>
+const doc = window.parent.document;
+function attivaScrollTastieraMobile() {
+    const dialog = doc.querySelector('div[data-testid="stDialog"]');
+    if (dialog && !dialog.dataset.keyboardFix) {
+        dialog.dataset.keyboardFix = "true";
+        doc.addEventListener('focusin', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 400);
+            }
+        });
+    }
+}
+setInterval(attivaScrollTastieraMobile, 500);
+
+function attivaImpGridSwipe() {
+    const card = doc.querySelector('div[class*="st-key-impgrid_card_wrapper"]');
+    if (card && !card.dataset.swipeAttivo) {
+        card.dataset.swipeAttivo = "true";
+        let startX = 0, startY = 0;
+        card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
+        card.addEventListener('touchend', e => {
+            if (!startX || !startY) return;
+            let diffX = e.changedTouches[0].clientX - startX;
+            let diffY = e.changedTouches[0].clientY - startY;
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                if (diffX < 0) {
+                    const btnNext = doc.querySelector('div[class*="st-key-impgrid_next"] button');
+                    if (btnNext) btnNext.click();
+                } else {
+                    const btnPrev = doc.querySelector('div[class*="st-key-impgrid_prev"] button');
+                    if (btnPrev) btnPrev.click();
                 }
-                startX = 0; startY = 0;
-            }, {passive: true});
+            }
+            startX = 0; startY = 0;
+        }, {passive: true});
+    }
+}
+setInterval(attivaImpGridSwipe, 300);
+
+function evidenziaGiornoOdierno() {
+    const now = new Date();
+    const giornoOggi = now.getDate().toString();
+    const mesiIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    const meseCorrente = mesiIta[now.getMonth()];
+    const annoCorrente = now.getFullYear().toString();
+
+    const elementiTesto = doc.querySelectorAll('h1, h2, h3, h4, h5, p, span, div');
+    let siamoNelMeseCorrente = false;
+    for (let el of elementiTesto) {
+        const t = el.innerText;
+        if (t && t.includes(meseCorrente) && t.includes(annoCorrente)) {
+            siamoNelMeseCorrente = true;
+            break;
         }
     }
-    setInterval(attivaImpGridSwipe, 300);
-    </script>
-    """,
-        height=0,
-        width=0,
-    )
+
+    const buttons = doc.querySelectorAll('button');
+    buttons.forEach(btn => {
+        const testo = btn.innerText.trim();
+        if (testo === giornoOggi) {
+            if (siamoNelMeseCorrente) {
+                btn.style.backgroundColor = '#d4edda';
+                btn.style.border = '2px solid #28a745';
+                btn.style.color = '#155724';
+                btn.style.fontWeight = 'bold';
+            } else {
+                btn.style.backgroundColor = '';
+                btn.style.border = '';
+                btn.style.color = '';
+                btn.style.fontWeight = '';
+            }
+        }
+    });
+}
+setInterval(evidenziaGiornoOdierno, 1000);
+</script>
+""",
+    height=0,
+    width=0,
+)
 
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: Calendario Impegni
