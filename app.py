@@ -8842,7 +8842,14 @@ def mostra_calendario_impegni_grid():
         return
 
     st.title("📅 Calendario Impegni")
-
+    st.markdown("""
+    <style>
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
+            align-items: center !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     with st.container(key="calgrid_toolbar"):
         col_home, col_nuovo, col_tutto = st.columns(3)
         with col_home:
