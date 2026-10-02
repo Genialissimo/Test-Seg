@@ -20,6 +20,7 @@ import streamlit.components.v1 as components
 
 # Fragment: un widget dentro la funzione ri-esegue solo quella funzione, non tutta l'app.
 # Se la versione di Streamlit non lo supporta diventa un decoratore neutro.
+import inspect as _inspect
 _fragment = getattr(st, "fragment", None) or getattr(st, "experimental_fragment", None) or (lambda f: f)
 
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
@@ -3735,8 +3736,25 @@ def _form_modifica_rapporto_consegnato(dati_selezione: dict):
 
 
 def _inverti_flag(chiave: str):
-    """Callback per i pulsanti Mostra/Nascondi: inverte un flag in session_state."""
+    """Callback del pulsante-nome (versioni vecchie di Streamlit): inverte un flag."""
     st.session_state[chiave] = not st.session_state.get(chiave, False)
+
+
+# st.expander con evento di apertura (Streamlit recente): permette il caricamento "lazy"
+_EXPANDER_LAZY = "on_change" in _inspect.signature(st.expander).parameters
+
+
+def _expander_lazy(etichetta: str, chiave: str):
+    """Si apre toccando il NOME e il contenuto viene disegnato solo da aperto.
+    Ritorna (contenitore, aperto).
+    - Streamlit recente: st.expander nativo con on_change="rerun" e .open
+    - Versioni piu' vecchie: il nome e' un pulsante che mostra/nasconde il contenuto"""
+    if _EXPANDER_LAZY:
+        exp = st.expander(etichetta, key=chiave, on_change="rerun")
+        return exp, bool(exp.open)
+    st.button(etichetta, key=f"btn_{chiave}", use_container_width=True,
+              on_click=_inverti_flag, args=(chiave,))
+    return st.container(), bool(st.session_state.get(chiave, False))
 
 
 @_fragment
@@ -3813,23 +3831,16 @@ def _registrazioni_lista(df, df_anagrafica):
         conteggio = conteggi.get(nome, 0)
         pallino = "🟢" if conteggio == 1 else "🟡" if conteggio >= 2 else "🔴"
 
-        with st.expander(f"{pallino}  {nome}"):
+        box, aperto = _expander_lazy(f"{pallino}  {nome}", f"exp_rapp_{nome}")
+        with box:
+            if not aperto:
+                return
             righe_persona = righe_per_nome.get(nome.lower())
             if righe_persona is None:
                 righe_persona = df.iloc[0:0]
 
             if righe_persona.empty:
                 st.caption("Nessun rapporto consegnato per questo mese.")
-                return
-
-            # La tabella pesa: viene disegnata solo se l'utente tocca "Mostra rapporti"
-            chiave_vis = f"rapp_tab_visibile_{nome}"
-            st.button(
-                "🔼 Nascondi rapporti" if st.session_state.get(chiave_vis) else "📋 Mostra rapporti",
-                key=f"btn_vis_rapp_{nome}", use_container_width=True,
-                on_click=_inverti_flag, args=(chiave_vis,),
-            )
-            if not st.session_state.get(chiave_vis):
                 return
 
             colonne_tabella = [c for c in df.columns if c.strip().lower() != "cognome e nome"]
@@ -7052,7 +7063,10 @@ def _storico_lista(df_anagrafica, df_tutti, anni_presenti):
         indicatore = "🔺 " if st_proc == "inattivo" else "⚠️ " if st_proc == "irregolare" else "🟢 "
         etichetta = f"{indicatore}{nome}"
 
-        with st.expander(etichetta):
+        box, aperto = _expander_lazy(etichetta, f"exp_storico_{nome}")
+        with box:
+            if not aperto:
+                return
             righe_persona = righe_per_nome.get(nome.strip().lower())
             if righe_persona is None:
                 righe_persona = df_tutti.iloc[0:0]
@@ -7061,16 +7075,6 @@ def _storico_lista(df_anagrafica, df_tutti, anni_presenti):
             if righe_persona.empty:
                 st.caption("Nessun rapporto trovato per l'anno teocratico selezionato.")
             else:
-                # La tabella pesa: viene disegnata solo se l'utente tocca "Mostra rapporti"
-                chiave_vis = f"storico_tab_visibile_{nome}"
-                st.button(
-                    "🔼 Nascondi rapporti" if st.session_state.get(chiave_vis) else "📋 Mostra rapporti",
-                    key=f"btn_vis_storico_{nome}", use_container_width=True,
-                    on_click=_inverti_flag, args=(chiave_vis,),
-                )
-                if not st.session_state.get(chiave_vis):
-                    return
-
                 righe_persona = righe_persona.sort_values("Mese/Anno")
                 totale_ore = sum(a_float_it(v) for v in righe_persona["Ore"])
                 totale_cred = sum(a_float_it(v) for v in righe_persona["Cred. Ore"])
