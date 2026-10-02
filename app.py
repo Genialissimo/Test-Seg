@@ -733,11 +733,21 @@ def _credenziali_google_drive():
 # ─────────────────────────────────────────────────────────────────
 # Le funzioni get_client() e apri_foglio_dati() sono state spostate in alto
 
+@st.cache_resource(ttl=3600, show_spinner=False)
+def _worksheet_in_cache(id_workbook: str, nome_foglio: str, _workbook=None):
+    """Ritorna l'oggetto worksheet gia' risolto.
+    _workbook.worksheet(nome) fa ogni volta una chiamata API ai metadati del
+    documento: tenendo l'oggetto in cache ogni lettura costa 1 richiesta invece di 2.
+    id_workbook fa parte della chiave (due documenti diversi possono avere
+    fogli con lo stesso nome)."""
+    return _workbook.worksheet(nome_foglio)
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def leggi_foglio_come_df(_workbook, nome_foglio: str, riga_intestazione: int = 1):
     """Legge un foglio (tab) del workbook e lo ritorna come DataFrame."""
     try:
-        ws = _workbook.worksheet(nome_foglio)
+        ws = _worksheet_in_cache(_workbook.id, nome_foglio, _workbook=_workbook)
     except gspread.WorksheetNotFound:
         nomi_disponibili = ", ".join(f"'{f.title}'" for f in _workbook.worksheets())
         return None, (
@@ -747,7 +757,11 @@ def leggi_foglio_come_df(_workbook, nome_foglio: str, riga_intestazione: int = 1
     except Exception as e:
         return None, f"Errore durante la lettura del foglio: {e}"
 
-    tutti_i_valori = ws.get_all_values()
+    try:
+        tutti_i_valori = ws.get_all_values()
+    except Exception:
+        # worksheet in cache non piu' valido (es. foglio ricreato): lettura diretta
+        tutti_i_valori = _workbook.worksheet(nome_foglio).get_all_values()
     if len(tutti_i_valori) < riga_intestazione:
         return pd.DataFrame(), None
 
@@ -850,7 +864,7 @@ def formatta_mese_esteso(mese_anno: str) -> str:
 def leggi_foglio_tutti(_workbook):
     """Legge il foglio 'Tutti' leggendo le colonne per posizione."""
     try:
-        ws = _workbook.worksheet(NOME_FOGLIO_TUTTI)
+        ws = _worksheet_in_cache(_workbook.id, NOME_FOGLIO_TUTTI, _workbook=_workbook)
     except gspread.WorksheetNotFound:
         nomi_disponibili = ", ".join(f"'{f.title}'" for f in _workbook.worksheets())
         return None, (
@@ -860,7 +874,11 @@ def leggi_foglio_tutti(_workbook):
     except Exception as e:
         return None, f"Errore durante la lettura del foglio: {e}"
 
-    tutti_i_valori = ws.get_all_values()
+    try:
+        tutti_i_valori = ws.get_all_values()
+    except Exception:
+        # worksheet in cache non piu' valido (es. foglio ricreato): lettura diretta
+        tutti_i_valori = _workbook.worksheet(NOME_FOGLIO_TUTTI).get_all_values()
     righe_dati = tutti_i_valori[RIGA_INTESTAZIONE_TUTTI:]
 
     record = []
@@ -8701,72 +8719,68 @@ def mostra_impegni_scadenze():
                             }
                             st.rerun()
                             
-# --- SCRIPT TOUCH SWIPE PER IMPGRID ---
-components.html(
-    """
+# --- SCRIPT BROWSER PER LE PAGINE CALENDARIO / IMPEGNI ---
+# Prima era codice globale con setInterval (300/500/1000 ms) eseguito in TUTTE le
+# pagine. Ora e' una funzione chiamata solo dalle pagine che la usano, e al posto
+# dei timer usa un MutationObserver "a riposo": lavora solo quando il DOM cambia.
+def _inietta_js_calendario(prefisso: str, evidenzia_oggi: bool = True):
+    codice_js = """
 <script>
-const doc = window.parent.document;
-function attivaScrollTastieraMobile() {
-    const dialog = doc.querySelector('div[data-testid="stDialog"]');
-    if (dialog && !dialog.dataset.keyboardFix) {
-        dialog.dataset.keyboardFix = "true";
-        doc.addEventListener('focusin', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                setTimeout(() => {
-                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 400);
-            }
-        });
-    }
-}
-setInterval(attivaScrollTastieraMobile, 500);
+(function () {
+    const win = window.parent;
+    const doc = win.document;
+    const PREFISSO = "__PREFISSO__";
+    const EVIDENZIA = __EVIDENZIA__;
+    const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
-function attivaImpGridSwipe() {
-    const card = doc.querySelector('div[class*="st-key-impgrid_card_wrapper"]');
-    if (card && !card.dataset.swipeAttivo) {
+    // Ferma l'istanza precedente (rerun) prima di crearne una nuova
+    if (win.__segCalendarioStop) { try { win.__segCalendarioStop(); } catch (e) {} }
+
+    // Tastiera mobile: porta al centro il campo in focus dentro un dialog
+    function onFocusIn(e) {
+        const t = e.target;
+        if (!t || (t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA')) return;
+        if (!doc.querySelector('div[data-testid="stDialog"]')) return;
+        setTimeout(function () {
+            t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 400);
+    }
+    doc.addEventListener('focusin', onFocusIn);
+
+    // Swipe sinistra/destra sulla card del calendario = mese successivo/precedente
+    function attivaSwipe() {
+        const card = doc.querySelector('div[class*="st-key-' + PREFISSO + '_card_wrapper"]');
+        if (!card || card.dataset.swipeAttivo) return;
         card.dataset.swipeAttivo = "true";
         let startX = 0, startY = 0;
-        card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
-        card.addEventListener('touchend', e => {
+        card.addEventListener('touchstart', function (e) {
+            startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+        }, {passive: true});
+        card.addEventListener('touchend', function (e) {
             if (!startX || !startY) return;
-            let diffX = e.changedTouches[0].clientX - startX;
-            let diffY = e.changedTouches[0].clientY - startY;
+            const diffX = e.changedTouches[0].clientX - startX;
+            const diffY = e.changedTouches[0].clientY - startY;
             if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-                if (diffX < 0) {
-                    const btnNext = doc.querySelector('div[class*="st-key-impgrid_next"] button');
-                    if (btnNext) btnNext.click();
-                } else {
-                    const btnPrev = doc.querySelector('div[class*="st-key-impgrid_prev"] button');
-                    if (btnPrev) btnPrev.click();
-                }
+                const dir = diffX < 0 ? '_next' : '_prev';
+                const btn = doc.querySelector('div[class*="st-key-' + PREFISSO + dir + '"] button');
+                if (btn) btn.click();
             }
             startX = 0; startY = 0;
         }, {passive: true});
     }
-}
-setInterval(attivaImpGridSwipe, 300);
 
-function evidenziaGiornoOdierno() {
-    const now = new Date();
-    const giornoOggi = now.getDate().toString();
-    const mesiIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-    const meseCorrente = mesiIta[now.getMonth()];
-    const annoCorrente = now.getFullYear().toString();
-
-    const elementiTesto = doc.querySelectorAll('h1, h2, h3, h4, h5, p, span, div');
-    let siamoNelMeseCorrente = false;
-    for (let el of elementiTesto) {
-        const t = el.innerText;
-        if (t && t.includes(meseCorrente) && t.includes(annoCorrente)) {
-            siamoNelMeseCorrente = true;
-            break;
-        }
-    }
-
-    const buttons = doc.querySelectorAll('button');
-    buttons.forEach(btn => {
-        const testo = btn.innerText.trim();
-        if (testo === giornoOggi) {
+    // Evidenzia il giorno di oggi solo se il mese mostrato e' quello corrente
+    function evidenziaOggi() {
+        if (!EVIDENZIA) return;
+        const now = new Date();
+        const giornoOggi = String(now.getDate());
+        const etichettaMese = MESI[now.getMonth()] + ' ' + now.getFullYear();
+        const card = doc.querySelector('div[class*="st-key-' + PREFISSO + '_card_wrapper"]');
+        const testo = ((card || doc.body).textContent || '').replace(/\\s+/g, ' ');
+        const siamoNelMeseCorrente = testo.indexOf(etichettaMese) !== -1;
+        doc.querySelectorAll('button').forEach(function (btn) {
+            if (btn.innerText.trim() !== giornoOggi) return;
             if (siamoNelMeseCorrente) {
                 btn.style.backgroundColor = '#d4edda';
                 btn.style.border = '2px solid #28a745';
@@ -8778,15 +8792,41 @@ function evidenziaGiornoOdierno() {
                 btn.style.color = '';
                 btn.style.fontWeight = '';
             }
-        }
-    });
-}
-setInterval(evidenziaGiornoOdierno, 1000);
+        });
+    }
+
+    let timer = null;
+    function pianifica() {
+        if (timer) return;
+        timer = setTimeout(function () {
+            timer = null;
+            // se l'iframe e' stato rimosso (cambio pagina) ci si spegne da soli
+            if (!window.frameElement || !window.frameElement.isConnected) { stop(); return; }
+            attivaSwipe();
+            evidenziaOggi();
+        }, 150);
+    }
+
+    const osservatore = new MutationObserver(pianifica);
+    osservatore.observe(doc.body, { childList: true, subtree: true, characterData: true });
+
+    function stop() {
+        try { osservatore.disconnect(); } catch (e) {}
+        try { doc.removeEventListener('focusin', onFocusIn); } catch (e) {}
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (win.__segCalendarioStop === stop) win.__segCalendarioStop = null;
+    }
+    win.__segCalendarioStop = stop;
+    window.addEventListener('pagehide', stop);
+
+    pianifica();
+    setTimeout(pianifica, 600);
+})();
 </script>
-""",
-    height=0,
-    width=0,
-)
+"""
+    codice_js = codice_js.replace("__PREFISSO__", prefisso).replace(
+        "__EVIDENZIA__", "true" if evidenzia_oggi else "false")
+    components.html(codice_js, height=0, width=0)
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -9174,40 +9214,6 @@ def mostra_calendario_impegni_grid():
                             }
                             st.rerun()
 
-# --- SCRIPT TOUCH SWIPE PER CALGRID ---
-components.html(
-    """
-<script>
-const doc = window.parent.document;
-function attivaCalGridSwipe() {
-    const card = doc.querySelector('div[class*="st-key-calgrid_card_wrapper"]');
-    if (card && !card.dataset.swipeAttivo) {
-        card.dataset.swipeAttivo = "true";
-        let startX = 0, startY = 0;
-        card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
-        card.addEventListener('touchend', e => {
-            if (!startX || !startY) return;
-            let diffX = e.changedTouches[0].clientX - startX;
-            let diffY = e.changedTouches[0].clientY - startY;
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-                if (diffX < 0) {
-                    const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
-                    if (btnNext) btnNext.click();
-                } else {
-                    const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
-                    if (btnPrev) btnPrev.click();
-                }
-            }
-            startX = 0; startY = 0;
-        }, {passive: true});
-    }
-}
-setInterval(attivaCalGridSwipe, 300);
-</script>
-""",
-    height=0,
-    width=0,
-)
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
@@ -9237,8 +9243,10 @@ elif st.session_state.pagina == "utenti":
 elif st.session_state.pagina == "domande_pionieri":
     mostra_domande_pioniere_ausiliario()
 elif st.session_state.pagina == "impegni_scadenze":
+    _inietta_js_calendario("impgrid")
     mostra_impegni_scadenze()
 elif st.session_state.pagina == "calendario_impegni":
+    _inietta_js_calendario("calgrid")
     mostra_calendario_impegni_grid()
 elif st.session_state.pagina == "calendario_impegni_lista":
     mostra_calendario_impegni_lista()
