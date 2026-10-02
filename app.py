@@ -8387,6 +8387,10 @@ def mostra_impegni_scadenze():
         div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
             align-items: center !important;
         }
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            margin-top: -4px !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
