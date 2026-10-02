@@ -7918,20 +7918,9 @@ st.markdown(
             -webkit-touch-callout: none !important;
         }
 
-        /* HEADER SUPERIORE STICKY */
-        div[class*="st-key-impgrid_sticky_header"], div[class*="st-key-calgrid_sticky_header"] {
-            position: sticky !important;
-            top: 0px !important;
-            z-index: 999 !important;
-            background-color: #ffffff !important;
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
-            border-bottom: 1px solid #f1f5f9 !important;
-        }
-
         /* TOOLBAR */
         div[class*="st-key-impgrid_toolbar"], div[class*="st-key-calgrid_toolbar"] {
-            margin-bottom: 8px !important;
+            margin-bottom: 10px !important;
         }
         div[class*="st-key-impgrid_toolbar"] div[data-testid="stHorizontalBlock"], 
         div[class*="st-key-calgrid_toolbar"] div[data-testid="stHorizontalBlock"] {
@@ -7960,7 +7949,7 @@ st.markdown(
             width: 100% !important;
         }
 
-        /* NAVIGAZIONE MESE */
+        /* NAVIGAZIONE MESE (Ottimizzata per tocchi mobile) */
         div[class*="st-key-impgrid_nav_row"], div[class*="st-key-calgrid_nav_row"] {
             display: flex !important;
             align-items: center !important;
@@ -7982,6 +7971,7 @@ st.markdown(
             box-sizing: border-box !important;
         }
         
+        /* Frecce laterali a larghezza fissa e interattive */
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
@@ -7999,6 +7989,7 @@ st.markdown(
             pointer-events: auto !important;
         }
 
+        /* Riquadro Mese centrale flessibile */
         div[class*="st-key-impgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
         div[class*="st-key-calgrid_nav_row"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
             flex: 1 1 auto !important;
@@ -8023,6 +8014,7 @@ st.markdown(
             pointer-events: auto !important;
         }
         
+        /* Pulsanti di navigazione con supporto touch mobile immediato */
         div[class*="_prev"] button, div[class*="_next"] button {
             width: 42px !important;
             height: 42px !important;
@@ -8139,7 +8131,6 @@ st.markdown(
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            margin-top: -12px !important;
         }
 
         div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
@@ -8147,6 +8138,21 @@ st.markdown(
             flex: 1 1 auto !important;
             width: 100% !important;
             min-width: 0 !important;
+        }
+
+        div[class*="st-key-impgrid_riepilogo_"],
+        div[class*="st-key-calgrid_riepilogo_"] {
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            width: 100% !important;
+        }
+
+        div[class*="st-key-impgrid_riepilogo_"] div[data-testid="stButton"],
+        div[class*="st-key-calgrid_riepilogo_"] div[data-testid="stButton"] {
+            display: flex !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
         }
 
         div[class*="st-key-impgrid_riepilogo_"] button,
@@ -8165,6 +8171,23 @@ st.markdown(
             display: flex !important;
             align-items: center !important;
             touch-action: manipulation !important;
+        }
+
+        div[class*="st-key-impgrid_riepilogo_"] button p,
+        div[class*="st-key-impgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"],
+        div[class*="st-key-impgrid_riepilogo_"] button span,
+        div[class*="st-key-calgrid_riepilogo_"] button p,
+        div[class*="st-key-calgrid_riepilogo_"] button div[data-testid="stMarkdownContainer"],
+        div[class*="st-key-calgrid_riepilogo_"] button span {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            margin: 0 !important;
+        }
+
+        div[class*="st-key-impgrid_riepilogo_"] button:hover,
+        div[class*="st-key-calgrid_riepilogo_"] button:hover {
+            background: #f1f5f9 !important;
         }
     </style>
     """,
@@ -8359,45 +8382,47 @@ def _impgrid_carica_tutti_impegni() -> list:
 
 def mostra_impegni_scadenze():
     st.title("📋 Impegni e scadenze")
+    st.markdown("""
+    <style>
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
+            align-items: center !important;
+        }
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-impgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            margin-top: -12px !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-    # --- HEADER SUPERIORE STICKY (TOOLBAR + RICERCA) ---
-    with st.container(key="impgrid_sticky_header"):
-        with st.container(key="impgrid_toolbar"):
-            col_home, col_nuovo, col_tutto = st.columns(3)
-            with col_home:
-                st.button(
-                    "🏠 Home",
-                    key="home_da_impgrid",
-                    use_container_width=True,
-                    on_click=vai_a_home_reset_impegni_scadenze,
-                )
-            with col_nuovo:
-                if st.button(
-                    "➕ Nuovo",
-                    key="impgrid_nuovo_top",
-                    use_container_width=True,
-                    disabled=sola_lettura(),
-                ):
-                    st.session_state.impegni_editor = {"modo": "nuovo"}
-            with col_tutto:
-                if st.button(
-                    "📋 Mostra tutto",
-                    key="impgrid_mostra_tutto_btn",
-                    use_container_width=True,
-                    disabled=(workbook is None),
-                ):
-                    st.session_state.impgrid_mostra_tutto = True
-                    st.session_state.pop("impgrid_giorno_selezionato", None)
-                    st.session_state.pop("impegni_editor", None)
-                    st.session_state.pop("impgrid_cerca", None)
-                    st.rerun()
-
-        st.text_input(
-            "",
-            key="impgrid_cerca",
-            placeholder="🔍 Cerca...",
-            label_visibility="collapsed",
-        )
+    with st.container(key="impgrid_toolbar"):
+        col_home, col_nuovo, col_tutto = st.columns(3)
+        with col_home:
+            st.button(
+                "🏠 Home",
+                key="home_da_impgrid",
+                use_container_width=True,
+                on_click=vai_a_home_reset_impegni_scadenze,
+            )
+        with col_nuovo:
+            if st.button(
+                "➕ Nuovo",
+                key="impgrid_nuovo_top",
+                use_container_width=True,
+                disabled=sola_lettura(),
+            ):
+                st.session_state.impegni_editor = {"modo": "nuovo"}
+        with col_tutto:
+            if st.button(
+                "📋 Mostra tutto",
+                key="impgrid_mostra_tutto_btn",
+                use_container_width=True,
+                disabled=(workbook is None),
+            ):
+                st.session_state.impgrid_mostra_tutto = True
+                st.session_state.pop("impgrid_giorno_selezionato", None)
+                st.session_state.pop("impegni_editor", None)
+                st.session_state.pop("impgrid_cerca", None)
+                st.rerun()
 
     if not st.session_state.get("impgrid_attivo"):
         oggi = date.today()
@@ -8417,6 +8442,15 @@ def mostra_impegni_scadenze():
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
     with st.container(key="impgrid_card_wrapper"):
+        # --- CAMPO DI RICERCA PRIMA DEL SELETTORE ANNO ---
+        st.text_input(
+            "Cerca",
+            key="impgrid_cerca",
+            placeholder="🔍 Cerca...",
+            label_visibility="collapsed",
+        )
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+
         anno_corrente_reale = date.today().year
         anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
         if st.session_state.impgrid_anno not in anni_disponibili:
@@ -8519,21 +8553,16 @@ def mostra_impegni_scadenze():
                                 st.session_state.impgrid_giorno_selezionato = giorno
                                 st.session_state.pop("impgrid_mostra_tutto", None)
                                 st.session_state.pop("impgrid_cerca", None)
-                                st.session_state.pop("impegni_editor", None)
+                                if ha_impegni:
+                                    st.session_state.pop("impegni_editor", None)
+                                else:
+                                    data_sel = date(anno, mese, giorno)
+                                    data_str = data_sel.strftime("%d/%m/%Y")
+                                    st.session_state.impegni_editor = {
+                                        "modo": "nuovo",
+                                        "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
+                                    }
                                 st.rerun()
-
-        # --- PULSANTE DINAMICO SOTTO IL CALENDARIO SE UN GIORNO È SELEZIONATO ---
-        giorno_sel = st.session_state.get("impgrid_giorno_selezionato")
-        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
-            data_sel = date(anno, mese, giorno_sel)
-            data_str = data_sel.strftime("%d/%m/%Y")
-            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
-            if st.button(f"➕ Nuovo impegno per il {data_str}", key="impgrid_btn_nuovo_giorno", use_container_width=True, type="primary"):
-                st.session_state.impegni_editor = {
-                    "modo": "nuovo",
-                    "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
-                }
-                st.rerun()
 
     editor_impegni = st.session_state.get("impegni_editor")
     if editor_impegni:
@@ -8660,7 +8689,7 @@ def mostra_impegni_scadenze():
                             }
                             st.rerun()
                             
-# --- SCRIPT TOUCH SWIPE PER IMPGRID ---
+# --- SCRIPT TOUCH SWIPE PER IMPGRID + SCROLL TASTIERA + DATA ODIERNA ---
 components.html(
     """
 <script>
@@ -8747,7 +8776,6 @@ setInterval(evidenziaGiornoOdierno, 1000);
     width=0,
 )
 
-
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: Calendario Impegni
 # ─────────────────────────────────────────────────────────────────
@@ -8808,7 +8836,7 @@ def _calgrid_carica_tutti_impegni() -> list:
 
 def mostra_calendario_impegni_grid():
     if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
-        st.warning("⚠️️ Questa sezione è riservata.")
+        st.warning("⚠️ Questa sezione è riservata.")
         st.button(
             "🏠 Torna alla Home",
             key="home_da_calgrid_negato",
@@ -8818,45 +8846,47 @@ def mostra_calendario_impegni_grid():
         return
 
     st.title("📅 Calendario Impegni")
-
-    # --- HEADER SUPERIORE STICKY (TOOLBAR + RICERCA) ---
-    with st.container(key="calgrid_sticky_header"):
-        with st.container(key="calgrid_toolbar"):
-            col_home, col_nuovo, col_tutto = st.columns(3)
-            with col_home:
-                st.button(
-                    "🏠 Home",
-                    key="home_da_calendario_grid",
-                    use_container_width=True,
-                    on_click=vai_a_home_reset_calendario_impegni,
-                )
-            with col_nuovo:
-                if st.button(
-                    "➕ Nuovo",
-                    key="calgrid_nuovo_top",
-                    use_container_width=True,
-                    disabled=sola_lettura(),
-                ):
-                    st.session_state.calimp_editor = {"modo": "nuovo"}
-            with col_tutto:
-                if st.button(
-                    "📋 Mostra tutto",
-                    key="calgrid_mostra_tutto_btn",
-                    use_container_width=True,
-                    disabled=(workbook_calendario is None),
-                ):
-                    st.session_state.calgrid_mostra_tutto = True
-                    st.session_state.pop("calgrid_giorno_selezionato", None)
-                    st.session_state.pop("calimp_editor", None)
-                    st.session_state.pop("calgrid_cerca", None)
-                    st.rerun()
-
-        st.text_input(
-            "",
-            key="calgrid_cerca",
-            placeholder="🔍 Cerca...",
-            label_visibility="collapsed",
-        )
+    st.markdown("""
+    <style>
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
+            align-items: center !important;
+        }
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            margin-top: -12px !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    with st.container(key="calgrid_toolbar"):
+        col_home, col_nuovo, col_tutto = st.columns(3)
+        with col_home:
+            st.button(
+                "🏠 Home",
+                key="home_da_calendario_grid",
+                use_container_width=True,
+                on_click=vai_a_home_reset_calendario_impegni,
+            )
+        with col_nuovo:
+            if st.button(
+                "➕ Nuovo",
+                key="calgrid_nuovo_top",
+                use_container_width=True,
+                disabled=sola_lettura(),
+            ):
+                st.session_state.calimp_editor = {"modo": "nuovo"}
+        with col_tutto:
+            if st.button(
+                "📋 Mostra tutto",
+                key="calgrid_mostra_tutto_btn",
+                use_container_width=True,
+                disabled=(workbook_calendario is None),
+            ):
+                st.session_state.calgrid_mostra_tutto = True
+                st.session_state.pop("calgrid_giorno_selezionato", None)
+                st.session_state.pop("calimp_editor", None)
+                st.session_state.pop("calgrid_cerca", None)
+                st.rerun()
 
     if not st.session_state.get("calgrid_attivo"):
         oggi = date.today()
@@ -8876,6 +8906,15 @@ def mostra_calendario_impegni_grid():
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
     with st.container(key="calgrid_card_wrapper"):
+        # --- CAMPO DI RICERCA COMPATTO ---
+        st.text_input(
+            "",
+            key="calgrid_cerca",
+            placeholder="🔍 Cerca...",
+            label_visibility="collapsed",
+        )
+        st.markdown("<div style='margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+
         anno_corrente_reale = date.today().year
         anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
         if st.session_state.calgrid_anno not in anni_disponibili:
@@ -8898,7 +8937,7 @@ def mostra_calendario_impegni_grid():
             )
         with col_sel_anno:
             st.selectbox(
-                "Anno",
+                "",
                 anni_disponibili,
                 index=indice_anno_corrente,
                 key="calgrid_anno_select",
@@ -8978,21 +9017,16 @@ def mostra_calendario_impegni_grid():
                                 st.session_state.calgrid_giorno_selezionato = giorno
                                 st.session_state.pop("calgrid_mostra_tutto", None)
                                 st.session_state.pop("calgrid_cerca", None)
-                                st.session_state.pop("calimp_editor", None)
+                                if ha_impegni:
+                                    st.session_state.pop("calimp_editor", None)
+                                else:
+                                    data_sel = date(anno, mese, giorno)
+                                    data_str = data_sel.strftime("%d/%m/%Y")
+                                    st.session_state.calimp_editor = {
+                                        "modo": "nuovo",
+                                        "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
+                                    }
                                 st.rerun()
-
-        # --- PULSANTE DINAMICO SOTTO IL CALENDARIO SE UN GIORNO È SELEZIONATO ---
-        giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
-        if giorno_sel and 1 <= giorno_sel <= giorni_nel_mese:
-            data_sel = date(anno, mese, giorno_sel)
-            data_str = data_sel.strftime("%d/%m/%Y")
-            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
-            if st.button(f"➕ Nuovo impegno per il {data_str}", key="calgrid_btn_nuovo_giorno", use_container_width=True, type="primary"):
-                st.session_state.calimp_editor = {
-                    "modo": "nuovo",
-                    "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
-                }
-                st.rerun()
 
     editor_calimp = st.session_state.get("calimp_editor")
     if editor_calimp:
@@ -9157,6 +9191,7 @@ setInterval(attivaCalGridSwipe, 300);
     height=0,
     width=0,
 )
+
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
 # ─────────────────────────────────────────────────────────────────
