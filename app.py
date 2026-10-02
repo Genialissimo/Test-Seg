@@ -8392,8 +8392,6 @@ def mostra_impegni_scadenze():
 
     with st.container(key="impgrid_toolbar"):
         col_home, col_nuovo, col_tutto = st.columns(3)
-    with st.container(key="impgrid_toolbar"):
-        col_home, col_nuovo, col_tutto = st.columns(3)
         with col_home:
             st.button(
                 "🏠 Home",
