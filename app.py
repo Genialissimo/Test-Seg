@@ -11,30 +11,12 @@ import re
 from urllib.parse import quote
 import zipfile
 
-import dropbox
-import fitz
 import gspread
 from google.oauth2.credentials import Credentials as GoogleUserCredentials
 from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-import httpx
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
 import pandas as pd
-import pdfplumber
-from pypdf import PdfReader, PdfWriter
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import cm
-from reportlab.pdfgen import canvas as rl_canvas
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 import streamlit as st
 import streamlit.components.v1 as components
-from streamlit_gsheets import GSheetsConnection
-from st_keyup import st_keyup
 
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
@@ -617,6 +599,7 @@ DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dh
 @st.cache_resource(show_spinner=False)
 def _client_dropbox():
     """Client Dropbox autenticato con refresh token (non scade mai)."""
+    import dropbox
     return dropbox.Dropbox(
         oauth2_refresh_token=st.secrets["dropbox_refresh_token"],
         app_key=st.secrets["dropbox_app_key"],
@@ -627,6 +610,7 @@ def _client_dropbox():
 @st.cache_data(ttl=60, show_spinner=False)
 def _lista_pdf_dropbox(url_cartella_condivisa: str):
     """Elenca i PDF presenti in una cartella Dropbox condivisa tramite link pubblico."""
+    import dropbox
     dbx = _client_dropbox()
     link = dropbox.files.SharedLink(url=url_cartella_condivisa)
     risultato = dbx.files_list_folder(path="", shared_link=link)
@@ -646,6 +630,7 @@ def _scarica_pdf_da_percorso(percorso_file: str) -> bytes:
 
 def _genera_miniature(pdf_bytes: bytes, dpi: int = 100):
     """Genera un'immagine PNG (bytes) per ogni pagina del PDF."""
+    import fitz
     miniature = []
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     zoom = dpi / 72
@@ -659,6 +644,7 @@ def _genera_miniature(pdf_bytes: bytes, dpi: int = 100):
 
 def _genera_pagina_alta_risoluzione(pdf_bytes: bytes, indice_pagina: int, dpi: int = 200) -> bytes:
     """Renderizza una singola pagina del PDF a risoluzione più alta, per lo zoom."""
+    import fitz
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     zoom = dpi / 72
     matrix = fitz.Matrix(zoom, zoom)
@@ -675,6 +661,7 @@ def _mostra_pagina_ingrandita(immagine_bytes, numero_pagina):
 
 def _rimuovi_pagine(pdf_bytes: bytes, pagine_da_eliminare: list) -> bytes:
     """Restituisce un nuovo PDF (bytes) senza le pagine indicate (indici 0-based)."""
+    import fitz
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     doc.delete_pages(pagine_da_eliminare)
     output = doc.tobytes()
@@ -699,6 +686,7 @@ def _trasforma_nome_file(nome_originale: str, aggiungi_v: bool) -> str:
 
 def _file_esiste_su_drive(nome_file: str, folder_id: str, credentials) -> bool:
     """True se esiste già un file con questo nome nella cartella Drive indicata."""
+    from googleapiclient.discovery import build
     servizio = build("drive", "v3", credentials=credentials)
     nome_escaped = nome_file.replace("'", "\\'")
     query = f"name = '{nome_escaped}' and '{folder_id}' in parents and trashed = false"
@@ -708,6 +696,8 @@ def _file_esiste_su_drive(nome_file: str, folder_id: str, credentials) -> bool:
 
 def _carica_su_drive(pdf_bytes: bytes, nome_file: str, folder_id: str, credentials) -> str:
     """Carica il PDF nella cartella Drive indicata. Restituisce l'ID del file caricato."""
+    from googleapiclient.http import MediaIoBaseUpload
+    from googleapiclient.discovery import build
     servizio = build("drive", "v3", credentials=credentials)
     metadata = {"name": nome_file, "parents": [folder_id]}
     media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf", resumable=False)
@@ -966,7 +956,7 @@ def _s21_y_da_bottom(bottom: float, offset: float = 0.0, alza: float = 1.5) -> f
     return S21_PAGE_H - (bottom + offset - alza)
 
 
-def _s21_centro_box(c: rl_canvas.Canvas, box: tuple, offset: float, testo: str = "X",
+def _s21_centro_box(c: "rl_canvas.Canvas", box: tuple, offset: float, testo: str = "X",
                      font_name: str = "Helvetica-Bold", font_size: float = 10.0, sposta: float = 0.0):
     """Disegna un segno di spunta (√) vettoriale centrato nella casella, al posto
     della vecchia "X" scritta come testo. Il parametro 'testo' non è più usato
@@ -991,7 +981,7 @@ def _s21_centro_box(c: rl_canvas.Canvas, box: tuple, offset: float, testo: str =
     c.restoreState()
 
 
-def _s21_testo_centrato_colonna(c: rl_canvas.Canvas, testo: str, col: tuple, top: float, bottom: float,
+def _s21_testo_centrato_colonna(c: "rl_canvas.Canvas", testo: str, col: tuple, top: float, bottom: float,
                                  offset: float, font_name: str = "Helvetica", font_size: float = 9.5,
                                  sposta: float = 0.0):
     x0, x1 = col
@@ -1129,7 +1119,7 @@ def anni_teocratici_per_menu(df_tutti: pd.DataFrame) -> list:
     return sorted(anni, reverse=True)
 
 
-def _s21_disegna_pannello(c: rl_canvas.Canvas, offset: float, dati: dict, righe_anno: dict,
+def _s21_disegna_pannello(c: "rl_canvas.Canvas", offset: float, dati: dict, righe_anno: dict,
                            anno_teocratico=None, mostra_equazione_crediti: bool = True):
     c.setFillColorRGB(*S21_COLORE_NERO)
     c.setFont("Helvetica", S21_FONT_VALORI)
@@ -1254,6 +1244,8 @@ def _s21_dati_da_riga_anagrafica(riga: dict) -> dict:
 
 
 def genera_pdf_s21_singolo(riga_anagrafica: dict, df_tutti: pd.DataFrame, anno_corrente: int) -> bytes:
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas as rl_canvas
     nome = riga_anagrafica.get("Cognome e Nome", "")
     dati = _s21_dati_da_riga_anagrafica(riga_anagrafica)
 
@@ -1287,6 +1279,8 @@ def genera_pdf_s21_singolo(riga_anagrafica: dict, df_tutti: pd.DataFrame, anno_c
 
 
 def genera_pdf_s21_multiplo(righe_anagrafica: list, df_tutti: pd.DataFrame, anno_corrente: int) -> bytes:
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas as rl_canvas
     writer = PdfWriter()
     template_reader = PdfReader(PERCORSO_MODULO_S21)
 
@@ -1336,6 +1330,7 @@ def _s21_ripulisci_data(testo: str) -> str:
 
 
 def _s21_estrai_dati_pdf(sorgente) -> dict:
+    import pdfplumber
     pannelli = []
     almeno_un_valore = False
 
@@ -1535,6 +1530,8 @@ def genera_zip_s21(righe_anagrafica: list, df_tutti: pd.DataFrame, anno_corrente
 
 def genera_pdf_s21_riepilogo(titolo: str, nomi: list, df_tutti: pd.DataFrame, anno_corrente: int,
                               parola_chiave_tipo: str = None, etichetta_conteggio: str = "proclamatori") -> bytes:
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas as rl_canvas
     anno_precedente = anno_corrente - 1
     dati = _s21_dati_riepilogo(titolo)
     if parola_chiave_tipo:
@@ -2137,6 +2134,11 @@ def genera_pdf_riepilogo_attivita(blocchi: list, etichetta_periodo: str, etichet
                                    composizione_gruppo: dict = None,
                                    dettagli_gruppo: dict = None,
                                    etichetta_dati_periodo: str = None) -> bytes:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
     buf = io.BytesIO()
     if comparazione_gruppi is not None:
         doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.6 * cm, bottomMargin=0.6 * cm,
@@ -2643,6 +2645,7 @@ def vai_a_home_reset_importa_s21():
 if st.query_params.get("drive_auth") == "1" and st.query_params.get("code"):
     _redirect_uri_drive = "https://gestioneseg-test.streamlit.app/?drive_auth=1"
     try:
+        import httpx
         _risposta_oauth = httpx.post(
             "https://oauth2.googleapis.com/token",
             data={
@@ -3728,6 +3731,7 @@ def _form_modifica_rapporto_consegnato(dati_selezione: dict):
 
 
 def mostra_registrazioni():
+    from st_keyup import st_keyup
     st.title("Rapporti consegnati")
 
     col_home, col_menu = st.columns(2)
@@ -4579,6 +4583,9 @@ def _gruppi_ordina_membri(membri: list) -> list:
 # PAGINA: GRUPPI DI SERVIZIO (Excel con margini stretti)
 # ─────────────────────────────────────────────────────────────────
 def genera_excel_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False) -> bytes:
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl import Workbook
+    from openpyxl.utils import get_column_letter
     df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
     nomi_gruppi = sorted(gruppi.keys())
 
@@ -5175,7 +5182,7 @@ S88_CAMPI_RECT = {
 S88_MESI_ORDINE_SERVIZIO = [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8]
 
 
-def _s88_testo_centrato(c: rl_canvas.Canvas, testo: str, rect: tuple,
+def _s88_testo_centrato(c: "rl_canvas.Canvas", testo: str, rect: tuple,
                           font_name: str = "Helvetica", font_size: float = 9.0):
     x0, y0, x1, y1 = rect
     largo_testo = c.stringWidth(testo, font_name, font_size)
@@ -5214,6 +5221,8 @@ def _s88_calcola_dati(df_presenze: pd.DataFrame, tipo_adunanza: str, anno_teocra
 
 
 def genera_pdf_s88(df_presenze: pd.DataFrame) -> bytes:
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas as rl_canvas
     oggi = datetime.now()
     anno_corrente = anno_teocratico_di(f"{oggi.year}-{oggi.month:02d}")
     anno_precedente = anno_corrente - 1
@@ -6884,6 +6893,7 @@ def _form_modifica_rapporto_tutti(dati_selezione: dict):
 # Pagina: Storico rapporti consegnati
 # ─────────────────────────────────────────────────────────────────
 def mostra_storico_proclamatori():
+    from st_keyup import st_keyup
     st.title("Storico rapporti consegnati")
     st.button("🏠 Torna alla Home", key="home_da_storico", use_container_width=True,
               on_click=vai_a, args=("home",))
@@ -7363,7 +7373,7 @@ def esporta_domande_in_annunci(nomi_ordinati: list, etichetta_mese: str) -> tupl
 # PAGINA: DOMANDE DI PIONIERE AUSILIARIO (S-205b)
 # ─────────────────────────────────────────────────────────────────
 
-def _s205b_testo(c: rl_canvas.Canvas, testo: str, rect: tuple,
+def _s205b_testo(c: "rl_canvas.Canvas", testo: str, rect: tuple,
                   font_name: str = "Helvetica", font_size: float = 10.5, pad_sx: float = 3.0):
     """Scrive un testo allineato a sinistra, appoggiato sopra la riga puntinata del modulo."""
     if not testo:
@@ -7374,7 +7384,7 @@ def _s205b_testo(c: rl_canvas.Canvas, testo: str, rect: tuple,
     c.drawString(x0 + pad_sx, y, testo)
 
 
-def _s205b_testo_centrato(c: rl_canvas.Canvas, testo: str, rect: tuple,
+def _s205b_testo_centrato(c: "rl_canvas.Canvas", testo: str, rect: tuple,
                            font_name: str = "Helvetica", font_size: float = 10.0):
     """Scrive un testo centrato orizzontalmente (usato per le iniziali di approvazione)."""
     if not testo:
@@ -7387,7 +7397,7 @@ def _s205b_testo_centrato(c: rl_canvas.Canvas, testo: str, rect: tuple,
     c.drawString(x, y, testo)
 
 
-def _s205b_segna_casella(c: rl_canvas.Canvas, rect: tuple,
+def _s205b_segna_casella(c: "rl_canvas.Canvas", rect: tuple,
                           font_name: str = "Helvetica-Bold", font_size: float = 12.0):
     x0, y0, x1, y1 = rect
     testo = "X"
@@ -7400,6 +7410,8 @@ def _s205b_segna_casella(c: rl_canvas.Canvas, rect: tuple,
 
 def genera_pdf_s205b(riga: dict) -> bytes:
     """Compila il modulo S-205b a partire da una riga del foglio 'Pionieri Ausiliario'."""
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas as rl_canvas
     nome = str(riga.get("Nome e Cognome", "")).strip()
     mese = str(riga.get("Mese di", "")).strip()
     ore = str(riga.get("Ore", "")).strip()
