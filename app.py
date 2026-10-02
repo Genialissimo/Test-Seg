@@ -8851,6 +8851,10 @@ def mostra_calendario_impegni_grid():
         div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] {
             align-items: center !important;
         }
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        div[class*="st-key-calgrid_riepilogo_row_"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
+            margin-top: -12px !important;
+        }
     </style>
     """, unsafe_allow_html=True)
     
