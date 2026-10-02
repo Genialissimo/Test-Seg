@@ -8884,14 +8884,14 @@ def mostra_calendario_impegni_grid():
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
     with st.container(key="calgrid_card_wrapper"):
-        # --- CAMPO DI RICERCA PRIMA DEL SELETTORE ANNO ---
+        # --- CAMPO DI RICERCA COMPATTO ---
         st.text_input(
-            "Cerca",
+            "",
             key="calgrid_cerca",
             placeholder="🔍 Cerca...",
             label_visibility="collapsed",
         )
-        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 2px;'></div>", unsafe_allow_html=True)
 
         anno_corrente_reale = date.today().year
         anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
@@ -8915,7 +8915,7 @@ def mostra_calendario_impegni_grid():
             )
         with col_sel_anno:
             st.selectbox(
-                "Anno",
+                "",
                 anni_disponibili,
                 index=indice_anno_corrente,
                 key="calgrid_anno_select",
