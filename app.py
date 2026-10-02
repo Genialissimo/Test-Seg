@@ -8772,7 +8772,7 @@ setInterval(evidenziaGiornoOdierno, 1000);
 def vai_a_home_reset_calendario_impegni():
     for chiave in ("calimp_editor", "calimp_conferma_elimina", "calimp_mese_filtro",
                   "calgrid_attivo", "calgrid_giorno_selezionato", "calgrid_anno", 
-                  "calgrid_mese", "calgrid_anno_select", "calgrid_mostra_tutto"):
+                  "calgrid_mese", "calgrid_anno_select", "calgrid_mostra_tutto", "calgrid_cerca"):
         st.session_state.pop(chiave, None)
     vai_a("home")
 
@@ -8863,6 +8863,7 @@ def mostra_calendario_impegni_grid():
                 st.session_state.calgrid_mostra_tutto = True
                 st.session_state.pop("calgrid_giorno_selezionato", None)
                 st.session_state.pop("calimp_editor", None)
+                st.session_state.pop("calgrid_cerca", None)
                 st.rerun()
 
     if not st.session_state.get("calgrid_attivo"):
@@ -8873,6 +8874,7 @@ def mostra_calendario_impegni_grid():
         st.session_state.pop("calgrid_giorno_selezionato", None)
         st.session_state.pop("calimp_editor", None)
         st.session_state.pop("calgrid_mostra_tutto", None)
+        st.session_state.pop("calgrid_cerca", None)
 
     st.session_state["calgrid_anno_select"] = st.session_state.calgrid_anno
 
@@ -8882,6 +8884,15 @@ def mostra_calendario_impegni_grid():
     primo_giorno_settimana, giorni_nel_mese = calendar.monthrange(anno, mese)
 
     with st.container(key="calgrid_card_wrapper"):
+        # --- CAMPO DI RICERCA PRIMA DEL SELETTORE ANNO ---
+        st.text_input(
+            "Cerca",
+            key="calgrid_cerca",
+            placeholder="🔍 Cerca...",
+            label_visibility="collapsed",
+        )
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+
         anno_corrente_reale = date.today().year
         anni_disponibili = list(range(anno_corrente_reale - 10, anno_corrente_reale + 15))
         if st.session_state.calgrid_anno not in anni_disponibili:
@@ -8896,13 +8907,21 @@ def mostra_calendario_impegni_grid():
             st.session_state.pop("calimp_editor", None)
             st.session_state.pop("calgrid_mostra_tutto", None)
 
-        st.selectbox(
-            "Anno",
-            anni_disponibili,
-            index=indice_anno_corrente,
-            key="calgrid_anno_select",
-            on_change=_aggiorna_anno_calgrid,
-        )
+        col_lbl_anno, col_sel_anno = st.columns([1, 3])
+        with col_lbl_anno:
+            st.markdown(
+                "<div style='padding-top: 10px; font-weight: 600;'>Anno</div>",
+                unsafe_allow_html=True,
+            )
+        with col_sel_anno:
+            st.selectbox(
+                "Anno",
+                anni_disponibili,
+                index=indice_anno_corrente,
+                key="calgrid_anno_select",
+                on_change=_aggiorna_anno_calgrid,
+                label_visibility="collapsed",
+            )
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
@@ -8975,6 +8994,7 @@ def mostra_calendario_impegni_grid():
                             ):
                                 st.session_state.calgrid_giorno_selezionato = giorno
                                 st.session_state.pop("calgrid_mostra_tutto", None)
+                                st.session_state.pop("calgrid_cerca", None)
                                 if ha_impegni:
                                     st.session_state.pop("calimp_editor", None)
                                 else:
@@ -9001,8 +9021,20 @@ def mostra_calendario_impegni_grid():
     with st.container(key="calgrid_riepilogo_section"):
         mostra_tutto = st.session_state.get("calgrid_mostra_tutto", False)
         giorno_sel = st.session_state.get("calgrid_giorno_selezionato")
-        
-        if mostra_tutto:
+        query_cerca = st.session_state.get("calgrid_cerca", "").strip().lower()
+
+        if query_cerca:
+            st.markdown(
+                f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
+                f"🔍 Risultati ricerca per: «{st.session_state.get('calgrid_cerca')}»</div>",
+                unsafe_allow_html=True,
+            )
+            tutti_i_dati = _calgrid_carica_tutti_impegni()
+            lista_impegni_da_mostrare = [
+                r for r in tutti_i_dati
+                if query_cerca in str(r.get("Oggetto", "")).lower() or query_cerca in str(r.get("Descrizione", "")).lower()
+            ]
+        elif mostra_tutto:
             st.markdown(
                 f"<div style='text-align: left; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700;'>"
                 f"🗓️ Riepilogo completo di tutte le scadenze (ordinate per data)</div>",
@@ -9102,46 +9134,41 @@ def mostra_calendario_impegni_grid():
                                 "numero_riga_foglio": rf,
                             }
                             st.rerun()
+
 # --- SCRIPT TOUCH SWIPE PER CALGRID ---
-    components.html(
-        """
-    <script>
-    const doc = window.parent.document;
-    function attivaCalGridSwipe() {
-        const card = doc.querySelector('div[class*="st-key-calgrid_card_wrapper"]');
-        if (card && !card.dataset.swipeAttivo) {
-            card.dataset.swipeAttivo = "true";
-            let startX = 0, startY = 0;
-            card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
-            card.addEventListener('touchmove', e => {
-                if (!startX || !startY) return;
-                let diffX = e.touches[0].clientX - startX;
-                let diffY = e.touches[0].clientY - startY;
-                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) { if (e.cancelable) e.preventDefault(); }
-            }, {passive: false});
-            card.addEventListener('touchend', e => {
-                if (!startX || !startY) return;
-                let diffX = e.changedTouches[0].clientX - startX;
-                let diffY = e.changedTouches[0].clientY - startY;
-                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-                    if (diffX < 0) {
-                        const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
-                        if (btnNext) btnNext.click();
-                    } else {
-                        const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
-                        if (btnPrev) btnPrev.click();
-                    }
+components.html(
+    """
+<script>
+const doc = window.parent.document;
+function attivaCalGridSwipe() {
+    const card = doc.querySelector('div[class*="st-key-calgrid_card_wrapper"]');
+    if (card && !card.dataset.swipeAttivo) {
+        card.dataset.swipeAttivo = "true";
+        let startX = 0, startY = 0;
+        card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: true});
+        card.addEventListener('touchend', e => {
+            if (!startX || !startY) return;
+            let diffX = e.changedTouches[0].clientX - startX;
+            let diffY = e.changedTouches[0].clientY - startY;
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                if (diffX < 0) {
+                    const btnNext = doc.querySelector('div[class*="st-key-calgrid_next"] button');
+                    if (btnNext) btnNext.click();
+                } else {
+                    const btnPrev = doc.querySelector('div[class*="st-key-calgrid_prev"] button');
+                    if (btnPrev) btnPrev.click();
                 }
-                startX = 0; startY = 0;
-            }, {passive: true});
-        }
+            }
+            startX = 0; startY = 0;
+        }, {passive: true});
     }
-    setInterval(attivaCalGridSwipe, 300);
-    </script>
-    """,
-        height=0,
-        width=0,
-    )
+}
+setInterval(attivaCalGridSwipe, 300);
+</script>
+""",
+    height=0,
+    width=0,
+)
 
 # ─────────────────────────────────────────────────────────────────
 # ROUTING COMPLETO — Accessibile solo per Amministratori
