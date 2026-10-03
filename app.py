@@ -448,6 +448,55 @@ def _impegni_dot_class(giorni: int) -> str:
     return "dot-green"
 
 
+def _impegni_intervallo_date(riga) -> tuple:
+    """(data_inizio, data_fine) di un impegno, oppure None se la Scadenza non e' leggibile.
+    La Scadenza e' l'ultimo giorno; la Data Iniziale e' il primo. Se la Data Iniziale
+    manca, non e' leggibile o e' successiva alla Scadenza, l'impegno vale un solo giorno."""
+    try:
+        fine = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
+    except Exception:
+        return None
+    try:
+        inizio = datetime.strptime(str(riga.get("Data Iniziale", "")).strip(), "%d/%m/%Y").date()
+    except Exception:
+        inizio = fine
+    if inizio > fine:
+        inizio = fine
+    return inizio, fine
+
+
+def _impegni_etichetta_date(riga) -> str:
+    """'25/06/2027 - 27/06/2027' per piu' giorni, '25/06/2027' per un giorno solo."""
+    intervallo = _impegni_intervallo_date(riga)
+    if intervallo is None:
+        return str(riga.get("Scadenza", "")).strip()
+    inizio, fine = intervallo
+    if inizio == fine:
+        return fine.strftime("%d/%m/%Y")
+    return f"{inizio.strftime('%d/%m/%Y')} - {fine.strftime('%d/%m/%Y')}"
+
+
+def _impegni_distribuisci_nel_mese(df, anno: int, mese: int, riga_intestazione: int) -> dict:
+    """{giorno: [righe]} con ogni impegno ripetuto su TUTTI i giorni del mese compresi
+    tra Data Iniziale e Scadenza (cosi' un impegno di 3 giorni colora 3 giorni)."""
+    risultato = {}
+    primo = date(anno, mese, 1)
+    ultimo = date(anno, mese, calendar.monthrange(anno, mese)[1])
+    df = df.reset_index(drop=True)
+    for idx, riga in df.iterrows():
+        intervallo = _impegni_intervallo_date(riga)
+        if intervallo is None:
+            continue
+        da, a = max(intervallo[0], primo), min(intervallo[1], ultimo)
+        if da > a:
+            continue
+        riga_dict = riga.to_dict()
+        riga_dict["_riga_foglio"] = riga_intestazione + 1 + idx
+        for giorno in range(da.day, a.day + 1):
+            risultato.setdefault(giorno, []).append(riga_dict)
+    return risultato
+
+
 def _impegni_calcola_promemoria(df_impegni: pd.DataFrame) -> list:
     """Ritorna la lista degli impegni non ancora Fatti con il promemoria attivo
     (scaduti, oppure entro una delle soglie di preavviso scelte per quell'impegno),
@@ -8614,17 +8663,7 @@ def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
     df, err = leggi_foglio_come_df(workbook, NOME_FOGLIO_IMPEGNI, RIGA_INTESTAZIONE_IMPEGNI)
     if err or df.empty:
         return risultato
-    df = df.reset_index(drop=True)
-    for idx, riga in df.iterrows():
-        try:
-            scadenza_date = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
-        except Exception:
-            continue
-        if scadenza_date.year == anno and scadenza_date.month == mese:
-            riga_dict = riga.to_dict()
-            riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_IMPEGNI + 1 + idx
-            risultato.setdefault(scadenza_date.day, []).append(riga_dict)
-    return risultato
+    return _impegni_distribuisci_nel_mese(df, anno, mese, RIGA_INTESTAZIONE_IMPEGNI)
 
 
 def _impgrid_carica_tutti_impegni() -> list:
@@ -8889,8 +8928,12 @@ def mostra_impegni_scadenze():
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = []
+            gia_inseriti = set()
             for g in sorted(impegni_del_mese.keys()):
-                lista_impegni_da_mostrare.extend(impegni_del_mese[g])
+                for r_giorno in impegni_del_mese[g]:
+                    if r_giorno["_riga_foglio"] not in gia_inseriti:   # un impegno su piu' giorni compare una volta
+                        gia_inseriti.add(r_giorno["_riga_foglio"])
+                        lista_impegni_da_mostrare.append(r_giorno)
 
         if not lista_impegni_da_mostrare:
             st.caption("Nessun impegno trovato per questo periodo.")
@@ -8910,7 +8953,7 @@ def mostra_impegni_scadenze():
                 is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
                 url_link = str(riga_dict.get("Collega Link", "") or "").strip()
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
-                etichetta_bottone = f"**{scadenza_str}** — {oggetto}"
+                etichetta_bottone = f"**{_impegni_etichetta_date(riga_dict)}**  \n{oggetto}"
 
                 with st.container(key=f"impgrid_riepilogo_row_{rf}"):
                     col_chk, col_link, col_item = st.columns([1, 1, 10])
@@ -9094,17 +9137,7 @@ def _calgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
                                    RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI)
     if err or df.empty:
         return risultato
-    df = df.reset_index(drop=True)
-    for idx, riga in df.iterrows():
-        try:
-            scadenza_date = datetime.strptime(str(riga.get("Scadenza", "")).strip(), "%d/%m/%Y").date()
-        except Exception:
-            continue
-        if scadenza_date.year == anno and scadenza_date.month == mese:
-            riga_dict = riga.to_dict()
-            riga_dict["_riga_foglio"] = RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI + 1 + idx
-            risultato.setdefault(scadenza_date.day, []).append(riga_dict)
-    return risultato
+    return _impegni_distribuisci_nel_mese(df, anno, mese, RIGA_INTESTAZIONE_CALENDARIO_IMPEGNI)
 
 
 def _calgrid_carica_tutti_impegni() -> list:
@@ -9380,8 +9413,12 @@ def mostra_calendario_impegni_grid():
                 unsafe_allow_html=True,
             )
             lista_impegni_da_mostrare = []
+            gia_inseriti = set()
             for g in sorted(impegni_del_mese.keys()):
-                lista_impegni_da_mostrare.extend(impegni_del_mese[g])
+                for r_giorno in impegni_del_mese[g]:
+                    if r_giorno["_riga_foglio"] not in gia_inseriti:   # un impegno su piu' giorni compare una volta
+                        gia_inseriti.add(r_giorno["_riga_foglio"])
+                        lista_impegni_da_mostrare.append(r_giorno)
 
         if not lista_impegni_da_mostrare:
             st.caption("Nessun impegno trovato per questo periodo.")
@@ -9401,7 +9438,7 @@ def mostra_calendario_impegni_grid():
                 is_fatto = stato_val in ["x", "fatto", "completato", "si", "sì", "true", "eseguito", "ok"]
                 url_link = str(riga_dict.get("Collega Link", "") or "").strip()
                 ha_link = bool(url_link and (url_link.startswith("http") or "://" in url_link))
-                etichetta_bottone = f"**{scadenza_str}** — {oggetto}"
+                etichetta_bottone = f"**{_impegni_etichetta_date(riga_dict)}**  \n{oggetto}"
 
                 with st.container(key=f"calgrid_riepilogo_row_{rf}"):
                     col_chk, col_link, col_item = st.columns([1, 1, 10])
