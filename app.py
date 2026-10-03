@@ -18,11 +18,6 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Fragment: un widget dentro la funzione ri-esegue solo quella funzione, non tutta l'app.
-# Se la versione di Streamlit non lo supporta diventa un decoratore neutro.
-import inspect as _inspect
-_fragment = getattr(st, "fragment", None) or getattr(st, "experimental_fragment", None) or (lambda f: f)
-
 DRIVE_FOLDER_ID = "1FA6I6CG0W_X8nXKfsctgQAhIErW4Khm0"
 DROPBOX_SHARED_FOLDER_URL = "https://www.dropbox.com/scl/fo/ym54mob5amc2dt1vx1dhb/h?rlkey=rj3mrgng1jexuubhkdrrufpsw&st=a0i2p5qq&dl=0"
 
@@ -3735,180 +3730,72 @@ def _form_modifica_rapporto_consegnato(dati_selezione: dict):
                     chiave_stato_modifica="rapporto_modifica_globale")
 
 
-def _inverti_flag(chiave: str):
-    """Callback del pulsante-nome (versioni vecchie di Streamlit): inverte un flag."""
-    st.session_state[chiave] = not st.session_state.get(chiave, False)
+def _imposta_flag(chiave: str, valore: bool):
+    """Callback dei pulsanti: imposta un flag in session_state PRIMA del rerun."""
+    st.session_state[chiave] = valore
 
 
-# st.expander con evento di apertura (Streamlit recente): permette il caricamento "lazy"
-_EXPANDER_LAZY = "on_change" in _inspect.signature(st.expander).parameters
+@st.dialog("Rapporto consegnato")
+def _dialog_rapporto_consegnato(nome: str, df: pd.DataFrame):
+    """Finestra a comparsa con il rapporto della persona (X in alto a destra per chiudere).
+    Un solo form per tutti: i dati della persona toccata vengono caricati qui dentro."""
+    st.subheader(nome)
 
-
-def _expander_lazy(etichetta: str, chiave: str):
-    """Si apre toccando il NOME e il contenuto viene disegnato solo da aperto.
-    Ritorna (contenitore, aperto).
-    - Streamlit recente: st.expander nativo con on_change="rerun" e .open
-    - Versioni piu' vecchie: il nome e' un pulsante che mostra/nasconde il contenuto"""
-    if _EXPANDER_LAZY:
-        exp = st.expander(etichetta, key=chiave, on_change="rerun")
-        return exp, bool(exp.open)
-    st.button(etichetta, key=f"btn_{chiave}", use_container_width=True,
-              on_click=_inverti_flag, args=(chiave,))
-    return st.container(), bool(st.session_state.get(chiave, False))
-
-
-@_fragment
-def _registrazioni_lista(df, df_anagrafica):
-    from st_keyup import st_keyup
-    ricerca = st_keyup("🔍 Cerca per nome", placeholder="Digita per filtrare…", key="ricerca_dinamica")
-
-    def e_attivo(valore: str) -> bool:
-        return (valore or "").strip().lower().startswith("a")
-
-    colonna_stato = "Attivi / Inattivi" if "Attivi / Inattivi" in df_anagrafica.columns else None
-    colonna_gruppo = "Gruppo" if "Gruppo" in df_anagrafica.columns else None
-    stato_per_nome = {}
-    gruppo_per_nome = {}
-    if colonna_stato or colonna_gruppo:
-        for _, riga in df_anagrafica.iterrows():
-            n = str(riga.get("Cognome e Nome", "")).strip()
-            if not n:
-                continue
-            if colonna_stato:
-                stato_per_nome[n] = riga.get(colonna_stato, "")
-            if colonna_gruppo:
-                gruppo_per_nome[n] = str(riga.get(colonna_gruppo, "")).strip()
-
-    nomi = sorted(n for n in df_anagrafica["Cognome e Nome"].astype(str).str.strip().unique() if n)
-
-    if colonna_stato:
-        nomi = [n for n in nomi if e_attivo(stato_per_nome.get(n, ""))]
-
-    testo_ricerca = ricerca.strip().lower()
-    if testo_ricerca:
-        nomi = [n for n in nomi if testo_ricerca in n.lower()]
-
-    if not nomi:
-        st.info("Nessun Proclamatore corrisponde alla ricerca.")
-        return
-
-    # Raggruppamento fatto UNA volta (prima: un filtro su tutto il foglio per ogni persona)
-    righe_per_nome = {}
-    conteggi = {}
     if "Cognome e Nome" in df.columns:
-        serie_nomi_df = df["Cognome e Nome"].astype(str).str.strip().str.lower()
-        righe_per_nome = {k: g for k, g in df.groupby(serie_nomi_df.values, sort=False)}
-        for nome in nomi:
-            conteggi[nome] = len(righe_per_nome.get(nome.lower(), ()))
+        righe_persona = df[df["Cognome e Nome"].astype(str).str.strip().str.lower() == nome.lower()]
     else:
-        for nome in nomi:
-            conteggi[nome] = 0
+        righe_persona = df.iloc[0:0]
 
-    filtro_stato_rapporto = st.radio(
-        "Filtro rapporti",
-        ["Tutti", "🔴 Da consegnare", "🟢 Consegnati"],
-        horizontal=True,
-        label_visibility="collapsed",
-        key="registrazioni_filtro_stato",
-    )
-    if filtro_stato_rapporto == "🔴 Da consegnare":
-        nomi = [n for n in nomi if conteggi.get(n, 0) == 0]
-    elif filtro_stato_rapporto == "🟢 Consegnati":
-        nomi = [n for n in nomi if conteggi.get(n, 0) >= 1]
-
-    if not nomi:
-        st.info("Nessun Proclamatore corrisponde al filtro selezionato.")
+    if righe_persona.empty:
+        st.info("Nessun rapporto consegnato per questo mese.")
         return
 
-    gruppi = {}
-    for n in nomi:
-        g = gruppo_per_nome.get(n, "") or "(Senza gruppo)"
-        gruppi.setdefault(g, []).append(n)
-    for g in gruppi:
-        gruppi[g].sort()
+    # Piu' rapporti per la stessa persona: piccola scelta della riga da modificare
+    indici = list(righe_persona.index)
+    if len(indici) > 1:
+        colonna_etichetta = next(
+            (c for c in df.columns if c.strip().lower() != "cognome e nome"), None)
 
-    def _riga_proclamatore_rapporto(nome: str):
-        conteggio = conteggi.get(nome, 0)
-        pallino = "🟢" if conteggio == 1 else "🟡" if conteggio >= 2 else "🔴"
+        def _etichetta(idx):
+            testo = f"Rapporto {indici.index(idx) + 1}"
+            if colonna_etichetta:
+                extra = str(df.loc[idx, colonna_etichetta]).strip()
+                if extra:
+                    testo += f" – {extra}"
+            return testo
 
-        box, aperto = _expander_lazy(f"{pallino}  {nome}", f"exp_rapp_{nome}")
-        with box:
-            if not aperto:
-                return
-            righe_persona = righe_per_nome.get(nome.lower())
-            if righe_persona is None:
-                righe_persona = df.iloc[0:0]
+        idx_originale = st.radio("Rapporti di questa persona", indici,
+                                 format_func=_etichetta, key=f"dlg_rapp_sel_{nome}")
+    else:
+        idx_originale = indici[0]
 
-            if righe_persona.empty:
-                st.caption("Nessun rapporto consegnato per questo mese.")
-                return
+    numero_riga_foglio = RIGA_INTESTAZIONE_RISPOSTE + 1 + idx_originale
 
-            colonne_tabella = [c for c in df.columns if c.strip().lower() != "cognome e nome"]
-            evento_tabella = st.dataframe(
-                righe_persona[colonne_tabella],
-                hide_index=True,
-                use_container_width=True,
-                on_select="rerun",
-                selection_mode="single-row",
-                key=f"tabella_rapp_{nome}",
-            )
+    # Form di modifica (Salva / Annulla chiudono la finestra con un rerun completo)
+    _form_rapporto(df, df.loc[idx_originale].to_dict(), numero_riga_foglio,
+                   chiave=str(numero_riga_foglio))
 
-            righe_sel = evento_tabella.selection.rows if evento_tabella and evento_tabella.selection else []
-            idx_originale = None
-            if righe_sel:
-                sel_idx = righe_sel[0]
-                if sel_idx < len(righe_persona):
-                    idx_originale = righe_persona.index[sel_idx]
+    # Eliminazione con conferma (i click restano dentro la finestra)
+    chiave_conferma_elim = f"rapp_elim_{nome}"
+    st.button("🗑️ Elimina rapporto", key=f"dlg_elim_{nome}", use_container_width=True,
+              disabled=sola_lettura(), on_click=_imposta_flag, args=(chiave_conferma_elim, True))
 
-            chiave_conferma_elim = f"rapp_elim_{nome}"
-
-            col_mod, col_elim = st.columns(2)
-            with col_mod:
-                if st.button("✏️ Modifica riga selezionata", key=f"btn_mod_{nome}",
-                            disabled=idx_originale is None, use_container_width=True):
-                    numero_riga_foglio = RIGA_INTESTAZIONE_RISPOSTE + 1 + idx_originale
-                    st.session_state.rapporto_modifica_globale = {
-                        "df": df,
-                        "riga_dict": df.loc[idx_originale].to_dict(),
-                        "numero_riga_foglio": numero_riga_foglio,
-                        "nome": nome,
-                    }
+    if st.session_state.get(chiave_conferma_elim, False):
+        st.warning("Confermi l'eliminazione di questo rapporto? L'operazione non è reversibile.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✔ Sì, elimina", key=f"dlg_elim_si_{nome}", type="primary",
+                         use_container_width=True):
+                ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_RISPOSTE, numero_riga_foglio)
+                if ok:
+                    pulisci_cache_foglio(workbook, NOME_FOGLIO_RISPOSTE, RIGA_INTESTAZIONE_RISPOSTE)
+                    st.session_state[chiave_conferma_elim] = False
                     st.rerun()
-            with col_elim:
-                if st.button("🗑️ Elimina riga selezionata", key=f"btn_elim_{nome}",
-                            disabled=(idx_originale is None) or sola_lettura(), use_container_width=True):
-                    st.session_state[chiave_conferma_elim] = True
-                    st.rerun()
-
-            if st.session_state.get(chiave_conferma_elim, False) and idx_originale is not None:
-                numero_riga_foglio = RIGA_INTESTAZIONE_RISPOSTE + 1 + idx_originale
-                st.warning("Confermi l'eliminazione di questo rapporto? L'operazione non è reversibile.")
-                col_si, col_no = st.columns(2)
-                with col_si:
-                    if st.button("✔ Sì, elimina", key=f"btn_conf_si_{nome}",
-                                   type="primary", use_container_width=True):
-                        ok, err_elim = elimina_riga_foglio(workbook, NOME_FOGLIO_RISPOSTE, numero_riga_foglio)
-                        if ok:
-                            pulisci_cache_foglio(workbook, NOME_FOGLIO_RISPOSTE, RIGA_INTESTAZIONE_RISPOSTE)
-                            st.session_state[chiave_conferma_elim] = False
-                            st.success("✔ Rapporto eliminato.")
-                            st.rerun()
-                        else:
-                            st.error(err_elim)
-                with col_no:
-                    if st.button("No, annulla", key=f"btn_conf_no_{nome}", use_container_width=True):
-                        st.session_state[chiave_conferma_elim] = False
-                        st.rerun()
-
-            if len(righe_persona) > 1:
-                st.divider()
-
-    for gruppo in sorted(gruppi.keys()):
-        if gruppi[gruppo]:
-            st.markdown(f"#### 👤 {gruppo}")
-            for nome in gruppi[gruppo]:
-                _riga_proclamatore_rapporto(nome)
-            st.divider()
+                else:
+                    st.error(err_elim)
+        with col_no:
+            st.button("No, annulla", key=f"dlg_elim_no_{nome}", use_container_width=True,
+                      on_click=_imposta_flag, args=(chiave_conferma_elim, False))
 
 
 def mostra_registrazioni():
@@ -3980,7 +3867,85 @@ def mostra_registrazioni():
         st.info("Nessun Proclamatore trovato in Anagrafica.")
         return
 
-    _registrazioni_lista(df, df_anagrafica)
+    ricerca = st_keyup("🔍 Cerca per nome", placeholder="Digita per filtrare…", key="ricerca_dinamica")
+
+    def e_attivo(valore: str) -> bool:
+        return (valore or "").strip().lower().startswith("a")
+
+    colonna_stato = "Attivi / Inattivi" if "Attivi / Inattivi" in df_anagrafica.columns else None
+    colonna_gruppo = "Gruppo" if "Gruppo" in df_anagrafica.columns else None
+    stato_per_nome = {}
+    gruppo_per_nome = {}
+    if colonna_stato or colonna_gruppo:
+        for _, riga in df_anagrafica.iterrows():
+            n = str(riga.get("Cognome e Nome", "")).strip()
+            if not n:
+                continue
+            if colonna_stato:
+                stato_per_nome[n] = riga.get(colonna_stato, "")
+            if colonna_gruppo:
+                gruppo_per_nome[n] = str(riga.get(colonna_gruppo, "")).strip()
+
+    nomi = sorted(n for n in df_anagrafica["Cognome e Nome"].astype(str).str.strip().unique() if n)
+
+    if colonna_stato:
+        nomi = [n for n in nomi if e_attivo(stato_per_nome.get(n, ""))]
+
+    testo_ricerca = ricerca.strip().lower()
+    if testo_ricerca:
+        nomi = [n for n in nomi if testo_ricerca in n.lower()]
+
+    if not nomi:
+        st.info("Nessun Proclamatore corrisponde alla ricerca.")
+        return
+
+    conteggi = {}
+    if "Cognome e Nome" in df.columns:
+        serie_nomi_df = df["Cognome e Nome"].astype(str).str.strip().str.lower()
+        for nome in nomi:
+            conteggi[nome] = (serie_nomi_df == nome.lower()).sum()
+    else:
+        for nome in nomi:
+            conteggi[nome] = 0
+
+    filtro_stato_rapporto = st.radio(
+        "Filtro rapporti",
+        ["Tutti", "🔴 Da consegnare", "🟢 Consegnati"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="registrazioni_filtro_stato",
+    )
+    if filtro_stato_rapporto == "🔴 Da consegnare":
+        nomi = [n for n in nomi if conteggi.get(n, 0) == 0]
+    elif filtro_stato_rapporto == "🟢 Consegnati":
+        nomi = [n for n in nomi if conteggi.get(n, 0) >= 1]
+
+    if not nomi:
+        st.info("Nessun Proclamatore corrisponde al filtro selezionato.")
+        return
+
+    gruppi = {}
+    for n in nomi:
+        g = gruppo_per_nome.get(n, "") or "(Senza gruppo)"
+        gruppi.setdefault(g, []).append(n)
+    for g in gruppi:
+        gruppi[g].sort()
+
+    def _riga_proclamatore_rapporto(nome: str):
+        conteggio = conteggi.get(nome, 0)
+        pallino = "🟢" if conteggio == 1 else "🟡" if conteggio >= 2 else "🔴"
+
+        # Niente tabella per persona: il nome e' un pulsante che apre il form con i suoi dati
+        if st.button(f"{pallino}  {nome}", key=f"apri_rapp_{nome}", use_container_width=True):
+            st.session_state[f"rapp_elim_{nome}"] = False
+            _dialog_rapporto_consegnato(nome, df)
+
+    for gruppo in sorted(gruppi.keys()):
+        if gruppi[gruppo]:
+            st.markdown(f"#### 👤 {gruppo}")
+            for nome in gruppi[gruppo]:
+                _riga_proclamatore_rapporto(nome)
+            st.divider()
 
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: ANAGRAFICHE
@@ -6930,9 +6895,38 @@ def _form_modifica_rapporto_tutti(dati_selezione: dict):
 # ─────────────────────────────────────────────────────────────────
 # Pagina: Storico rapporti consegnati
 # ─────────────────────────────────────────────────────────────────
-@_fragment
-def _storico_lista(df_anagrafica, df_tutti, anni_presenti):
+def mostra_storico_proclamatori():
     from st_keyup import st_keyup
+    st.title("Storico rapporti consegnati")
+    st.button("🏠 Torna alla Home", key="home_da_storico", use_container_width=True,
+              on_click=vai_a, args=("home",))
+    st.caption(f"Rapporti storici letti dal foglio «{NOME_FOGLIO_TUTTI}» "
+               f"(intestazione riga {RIGA_INTESTAZIONE_TUTTI}).")
+
+    if not collegato:
+        st.warning("⚠️  Nessun foglio dati collegato.")
+        return
+
+    if "storico_modifica" not in st.session_state:
+        st.session_state.storico_modifica = None
+
+    if st.session_state.storico_modifica is not None:
+        _form_modifica_rapporto_tutti(st.session_state.storico_modifica)
+        return
+
+    df_anagrafica, err_anagrafica = leggi_foglio_come_df(
+        workbook, NOME_FOGLIO_ANAGRAFICA, RIGA_INTESTAZIONE_ANAGRAFICA)
+    if err_anagrafica:
+        st.error(err_anagrafica)
+        return
+
+    df_tutti, err_tutti = leggi_foglio_tutti(workbook)
+    if err_tutti:
+        st.error(err_tutti)
+        return
+
+    anni_presenti = anni_teocratici_per_menu(df_tutti)
+
     def formatta_anno_teocratico(valore):
         try:
             val = int(float(valore))
@@ -6981,17 +6975,6 @@ def _storico_lista(df_anagrafica, df_tutti, anni_presenti):
     if testo_ricerca:
         nomi = [n for n in nomi if testo_ricerca in n.lower()]
 
-    # Preparazione fatta UNA volta per esecuzione (prima: filtro + apply su tutto
-    # il foglio "Tutti" per ogni singola persona, a ogni lettera digitata).
-    righe_per_nome = {}
-    if not df_tutti.empty and "Nome" in df_tutti.columns and "Mese/Anno" in df_tutti.columns:
-        mappa_anni = {m: anno_teocratico_di(m) for m in df_tutti["Mese/Anno"].unique()}
-        df_anno = df_tutti[df_tutti["Mese/Anno"].map(mappa_anni) == anno_scelto]
-        if not df_anno.empty:
-            df_anno = df_anno.sort_values("Mese/Anno")
-            chiavi_nome = df_anno["Nome"].astype(str).str.strip().str.lower().values
-            righe_per_nome = {k: g for k, g in df_anno.groupby(chiavi_nome, sort=False)}
-
     def calcola_stato_proclamatore(nome: str) -> str:
         st_anag = stato_anagrafica_per_nome.get(nome, "").strip().upper()
 
@@ -6999,25 +6982,30 @@ def _storico_lista(df_anagrafica, df_tutti, anni_presenti):
             return "inattivo"
 
         col_partecipazione = "Ha partecipato al ministero"
-        righe_anno_corrente = righe_per_nome.get(nome.lower())
+        righe_p = df_tutti[df_tutti["Nome"].astype(str).str.strip().str.lower() == nome.lower()]
 
-        if righe_anno_corrente is not None and col_partecipazione in righe_anno_corrente.columns:
-            valori_no = [
-                str(v).strip().lower() in ["no", "false", "0"]
-                for v in righe_anno_corrente[col_partecipazione]
-            ]
+        if not righe_p.empty and col_partecipazione in righe_p.columns:
+            righe_anno_corrente = righe_p[
+                righe_p["Mese/Anno"].apply(anno_teocratico_di) == anno_scelto
+            ].sort_values("Mese/Anno")
 
-            consecutivi_no = 0
-            for e_no in reversed(valori_no):
-                if e_no:
-                    consecutivi_no += 1
-                else:
-                    break
+            if not righe_anno_corrente.empty:
+                valori_no = [
+                    str(v).strip().lower() in ["no", "false", "0"]
+                    for v in righe_anno_corrente[col_partecipazione]
+                ]
 
-            if consecutivi_no >= 6:
-                return "inattivo"
-            elif any(valori_no):
-                return "irregolare"
+                consecutivi_no = 0
+                for e_no in reversed(valori_no):
+                    if e_no:
+                        consecutivi_no += 1
+                    else:
+                        break
+
+                if consecutivi_no >= 6:
+                    return "inattivo"
+                elif any(valori_no):
+                    return "irregolare"
 
         return "attivo"
 
@@ -7063,13 +7051,11 @@ def _storico_lista(df_anagrafica, df_tutti, anni_presenti):
         indicatore = "🔺 " if st_proc == "inattivo" else "⚠️ " if st_proc == "irregolare" else "🟢 "
         etichetta = f"{indicatore}{nome}"
 
-        box, aperto = _expander_lazy(etichetta, f"exp_storico_{nome}")
-        with box:
-            if not aperto:
-                return
-            righe_persona = righe_per_nome.get(nome.strip().lower())
-            if righe_persona is None:
-                righe_persona = df_tutti.iloc[0:0]
+        with st.expander(etichetta):
+            righe_persona = df_tutti[df_tutti["Nome"].str.strip().str.lower() == nome.strip().lower()]
+            righe_persona = righe_persona[
+                righe_persona["Mese/Anno"].apply(anno_teocratico_di) == anno_scelto
+            ]
             colonne_tabella = ["Anno di servizio", "Ha partecipato al ministero", "Studi Biblici",
                                 "Pioniere ausiliario", "Ore", "Cred. Ore", "Osservazioni"]
             if righe_persona.empty:
@@ -7167,41 +7153,6 @@ def _storico_lista(df_anagrafica, df_tutti, anni_presenti):
             for nome in gruppi[gruppo]:
                 _riga_proclamatore(nome)
             st.divider()
-
-
-def mostra_storico_proclamatori():
-    from st_keyup import st_keyup
-    st.title("Storico rapporti consegnati")
-    st.button("🏠 Torna alla Home", key="home_da_storico", use_container_width=True,
-              on_click=vai_a, args=("home",))
-    st.caption(f"Rapporti storici letti dal foglio «{NOME_FOGLIO_TUTTI}» "
-               f"(intestazione riga {RIGA_INTESTAZIONE_TUTTI}).")
-
-    if not collegato:
-        st.warning("⚠️  Nessun foglio dati collegato.")
-        return
-
-    if "storico_modifica" not in st.session_state:
-        st.session_state.storico_modifica = None
-
-    if st.session_state.storico_modifica is not None:
-        _form_modifica_rapporto_tutti(st.session_state.storico_modifica)
-        return
-
-    df_anagrafica, err_anagrafica = leggi_foglio_come_df(
-        workbook, NOME_FOGLIO_ANAGRAFICA, RIGA_INTESTAZIONE_ANAGRAFICA)
-    if err_anagrafica:
-        st.error(err_anagrafica)
-        return
-
-    df_tutti, err_tutti = leggi_foglio_tutti(workbook)
-    if err_tutti:
-        st.error(err_tutti)
-        return
-
-    anni_presenti = anni_teocratici_per_menu(df_tutti)
-
-    _storico_lista(df_anagrafica, df_tutti, anni_presenti)
 
 # ─────────────────────────────────────────────────────────────────
 # CONTROLLO ACCESSO RISTRETTO (DA RUOLO O LINK DIRETTO)
