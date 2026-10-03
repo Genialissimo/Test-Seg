@@ -6902,8 +6902,17 @@ def _stile_pulsanti_nome_a_sinistra():
     st.markdown("""
     <style>
         div[class*="st-key-apri_rapp_"] button,
-        div[class*="st-key-apri_storico_"] button {
+        div[class*="st-key-apri_rapp_"] button > div,
+        div[class*="st-key-apri_rapp_"] button span,
+        div[class*="st-key-apri_storico_"] button,
+        div[class*="st-key-apri_storico_"] button > div,
+        div[class*="st-key-apri_storico_"] button span {
             justify-content: flex-start !important;
+            text-align: left !important;
+        }
+        div[class*="st-key-apri_rapp_"] button [data-testid="stMarkdownContainer"],
+        div[class*="st-key-apri_storico_"] button [data-testid="stMarkdownContainer"] {
+            width: 100% !important;
             text-align: left !important;
         }
         div[class*="st-key-apri_rapp_"] button p,
