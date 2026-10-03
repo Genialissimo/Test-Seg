@@ -8615,8 +8615,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
                                             disabled=(bloccato or modo != "modifica"))
 
     if elimina and modo == "modifica":
-        st.session_state[f"{prefisso}_conferma_elimina"] = editor
-        st.rerun()
+        st.session_state[f"{prefisso}_conferma_elimina"] = editor   # la conferma compare subito sotto
 
     if invia:
         oggetto_pulito = oggetto.strip()
@@ -8655,6 +8654,29 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             else:
                 st.error(err_salva)
 
+    # Conferma ed eliminazione: prima il tasto 🗑️ Elimina impostava solo un flag che nessuno leggeva
+    chiave_flag_elim = f"{prefisso}_conferma_elimina"
+    conferma = st.session_state.get(chiave_flag_elim)
+    if (conferma and modo == "modifica"
+            and conferma.get("numero_riga_foglio") == editor.get("numero_riga_foglio")):
+        st.warning(f"Confermi l'eliminazione di «{e.get('Oggetto', '')}»? L'operazione non è reversibile.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✔ Sì, elimina", key=f"{prefisso}_elim_si_{chiave}", type="primary",
+                         use_container_width=True, disabled=bloccato):
+                ok_el, err_el = elimina_riga_foglio(workbook_pagina, nome_foglio,
+                                                    editor["numero_riga_foglio"])
+                if ok_el:
+                    pulisci_cache_foglio(workbook_pagina, nome_foglio, riga_intestazione)
+                    st.session_state[f"{prefisso}_editor"] = None
+                    st.session_state[chiave_flag_elim] = None
+                    st.rerun()      # rerun completo: l'impegno non c'e' piu' e la finestra si chiude
+                else:
+                    st.error(err_el)
+        with col_no:
+            st.button("No, annulla", key=f"{prefisso}_elim_no_{chiave}", use_container_width=True,
+                      on_click=_imposta_flag, args=(chiave_flag_elim, None))
+
 
 def _impgrid_carica_impegni_mese(anno: int, mese: int) -> dict:
     risultato = {}
@@ -8691,6 +8713,7 @@ def _impgrid_carica_tutti_impegni() -> list:
 
 
 def mostra_impegni_scadenze():
+    st.session_state["impegni_conferma_elimina"] = None   # una conferma rimasta in sospeso non deve riapparire
     st.title("📋 Impegni e scadenze")
 
     # --- HEADER SUPERIORE STICKY (TOOLBAR + RICERCA) ---
@@ -9166,6 +9189,7 @@ def _calgrid_carica_tutti_impegni() -> list:
 
 
 def mostra_calendario_impegni_grid():
+    st.session_state["calimp_conferma_elimina"] = None   # una conferma rimasta in sospeso non deve riapparire
     if st.session_state.get("email_logged") != EMAIL_CALENDARIO_IMPEGNI:
         st.warning("⚠️ Questa sezione è riservata.")
         st.button(
