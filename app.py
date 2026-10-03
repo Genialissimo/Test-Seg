@@ -3579,10 +3579,10 @@ def mostra_home():
         "📖 Rapporti": [
             ("📖", "bg-orange", "Rapporti consegnati", "Visualizza e modifica i rapporti di servizio consegnati.", "registrazioni", badge_rapporti),
             ("📚", "bg-blue",   "Storico rapporti", "Storico dei rapporti di servizio per Proclamatore.", "storico", ""),
-            ("📇", "bg-cyan",   "Cartoline di registrazione", "Genera le cartoline S-21 per i Proclamatori scelti.", "cartoline", ""),
+            ("📇", "bg-cyan",   "Elabora cartoline di registrazione", "Genera le cartoline S-21 per i Proclamatori scelti.", "cartoline", ""),
             ("🏢", "bg-amber",  "Rapporto per la Filiale", "Dati statistici mensili (tipo modulo S-10).", "filiale", ""),
             ("📊", "bg-blue",   "Riepilogo attività e statistiche", "Report su ore, studi e crediti per Proclamatore o per categoria.", "riepilogo_statistiche", ""),
-            ("📥", "bg-orange", "Importa da S-21", "Importa ore/studi da una S-21 ricevuta (Proclamatore trasferito).", "importa_s21", ""),
+            ("📥", "bg-orange", "Inserisci/Importa storico S-21", "Importa ore/studi da una S-21 ricevuta (Proclamatore trasferito).", "importa_s21", ""),
         ],
         "🗂️ Anagrafiche": [
             ("🗂️", "bg-green",  "Anagrafiche", "Gestisci i dati dei Proclamatori.", "anagrafiche", badge_anagrafica),
@@ -5696,7 +5696,7 @@ def mostra_importa_s21():
                 "tipo": str(riga.get("Tipo", "")).strip()
             }
 
-        scelta_etichetta = st.selectbox("Abbina al Proclamatore:", opzioni_proclamatori, key="s21_man_persona")
+        scelta_etichetta = st.selectbox("Abbina al Proclamatore:", opzioni_proclamatori, key="s21_man_persona", placeholder="Scegli un'opzione")
         nuova_persona_flag = (scelta_etichetta == opzione_nuova)
 
         if nuova_persona_flag:
@@ -5716,7 +5716,7 @@ def mostra_importa_s21():
             "Tipo Servizio (opzionale):",
             opzioni_tipo_servizio,
             index=idx_tipo,
-            key=f"s21_man_tipo_servizio_{nome_finale}"
+            key=f"s21_man_tipo_servizio_{nome_finale}", placeholder="Scegli un'opzione"
         )
 
         pion_aus_disabilitato = (tipo_servizio_scelto != "Proclamatore")
@@ -5730,7 +5730,7 @@ def mostra_importa_s21():
                 "Sorvegliante del gruppo:",
                 gruppi_disponibili,
                 index=idx_gruppo,
-                key=f"s21_man_gruppo_{nome_finale}"
+                key=f"s21_man_gruppo_{nome_finale}", placeholder="Scegli un'opzione"
             )
         with col_st:
             st.text_input("Stato", value="Attivo", disabled=True, key="s21_man_stato_vis")
@@ -6010,7 +6010,7 @@ def mostra_importa_s21():
     if not df_anagrafica.empty:
         altri = [n for n in df_anagrafica["Cognome e Nome"].tolist() if n not in opzioni]
         opzioni += altri
-    scelta_nome = st.selectbox("Abbina al Proclamatore:", opzioni, key="importa_s21_persona_scelta")
+    scelta_nome = st.selectbox("Abbina al Proclamatore:", opzioni, key="importa_s21_persona_scelta", placeholder="Scegli un'opzione")
 
     gruppi_disponibili = sorted({g.strip() for g in df_anagrafica.get("Gruppo", pd.Series(dtype=str))
                                   if g and g.strip() and g.strip().lower() != "trasferiti"})
@@ -6030,7 +6030,7 @@ def mostra_importa_s21():
         col_a, col_b = st.columns(2)
         with col_a:
             gruppo_nuovo = st.selectbox("Gruppo di servizio", gruppi_disponibili,
-                                         key="importa_s21_nuovo_gruppo") if gruppi_disponibili else \
+                                         key="importa_s21_nuovo_gruppo", placeholder="Scegli un'opzione") if gruppi_disponibili else \
                 st.text_input("Gruppo di servizio", key="importa_s21_nuovo_gruppo_testo")
         with col_b:
             st.caption("Stato")
@@ -6068,7 +6068,7 @@ def mostra_importa_s21():
                                if gruppo_attuale in gruppi_disponibili else 0)
             gruppo_scelto = st.selectbox("Nuovo gruppo di servizio", gruppi_disponibili,
                                           index=indice_default if gruppi_disponibili else 0,
-                                          key="importa_s21_gruppo_riattivazione") if gruppi_disponibili else \
+                                          key="importa_s21_gruppo_riattivazione", placeholder="Scegli un'opzione") if gruppi_disponibili else \
                 st.text_input("Nuovo gruppo di servizio", value=gruppo_attuale,
                                key="importa_s21_gruppo_riattivazione_testo")
             aggiornamento_anagrafica = dict(riga_anagrafica_esistente)
@@ -8248,8 +8248,23 @@ def vai_a_home_reset_impegni_scadenze():
     vai_a("home")
 
 def vai_a_impegni_nuovo():
-    st.session_state.impegni_editor = {"modo": "nuovo"}
-    vai_a("impegni")
+    """Dalla Home: apre Impegni e Scadenze con il form 'nuovo impegno' gia' aperto,
+    con la data di oggi in Data Iniziale e Scadenza."""
+    oggi = date.today()
+    data_str = oggi.strftime("%d/%m/%Y")
+    # La pagina azzera il proprio stato alla prima visita (impgrid_attivo): lo
+    # impostiamo qui, altrimenti l'editor appena creato verrebbe cancellato.
+    st.session_state.impgrid_anno = oggi.year
+    st.session_state.impgrid_mese = oggi.month
+    st.session_state.impgrid_attivo = True
+    for chiave in ("impgrid_giorno_selezionato", "impgrid_mostra_tutto", "impgrid_cerca"):
+        st.session_state.pop(chiave, None)
+    st.session_state.impegni_editor = {
+        "modo": "nuovo",
+        "riga": {"Data Iniziale": data_str, "Scadenza": data_str},
+    }
+    # La pagina nel router si chiama "impegni_scadenze" ("impegni" non esiste)
+    vai_a("impegni_scadenze")
 
 @st.dialog("Gestione Impegno")
 def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pagina, nome_foglio,
