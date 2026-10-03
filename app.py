@@ -4387,8 +4387,58 @@ def mostra_riepilogo_attivita():
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: CARTOLINE DI REGISTRAZIONE (S-21)
 # ─────────────────────────────────────────────────────────────────
+def _pulsante_condividi_file(dati: bytes, nome_file: str, mime: str = "application/pdf",
+                             etichetta: str = "📤 Condividi / Salva"):
+    """Pulsante che apre il foglio di condivisione NATIVO del telefono (Salva su File, Mail,
+    WhatsApp, AirDrop…) restando dentro l'app. st.download_button su iPhone porta invece a una
+    schermata del file da cui non si torna indietro. Se il dispositivo non supporta la
+    condivisione di file (es. computer), il pulsante scarica semplicemente il file."""
+    b64 = base64.b64encode(dati).decode("ascii")
+    nome_js = nome_file.replace("\\", "\\\\").replace('"', '\\"')
+    html = """
+<style>
+  body { margin: 0; font-family: "Source Sans Pro", -apple-system, system-ui, sans-serif; }
+  button { width: 100%; height: 44px; border: 0; border-radius: 8px; background: #ff4b4b;
+           color: #fff; font-size: 16px; cursor: pointer; }
+  button:active { background: #e03e3e; }
+  #msg { color: #b00020; font-size: 13px; margin-top: 4px; }
+</style>
+<button id="b">__ETICHETTA__</button>
+<div id="msg"></div>
+<script>
+  const B64 = "__B64__", NOME = "__NOME__", MIME = "__MIME__";
+  const msg = document.getElementById('msg');
+  document.getElementById('b').addEventListener('click', async function () {
+    msg.textContent = '';
+    try {
+      const bin = atob(B64), arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const file = new File([arr], NOME, { type: MIME });
+      let nav = navigator;
+      try { if (window.parent && window.parent.navigator) nav = window.parent.navigator; } catch (e) {}
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], title: NOME });
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url; a.download = NOME;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;   // l'utente ha chiuso il foglio di condivisione
+      msg.textContent = 'Condivisione non riuscita: usa il pulsante Scarica qui sotto.';
+    }
+  });
+</script>
+"""
+    html = (html.replace("__B64__", b64).replace("__NOME__", nome_js)
+                .replace("__MIME__", mime).replace("__ETICHETTA__", etichetta))
+    components.html(html, height=70)
+
+
 @st.cache_data(show_spinner=False, max_entries=8)
-def _pdf_a_immagini(pdf_bytes: bytes, dpi: int = 150) -> list:
+def _pdf_a_immagini(pdf_bytes: bytes, dpi: int = 200) -> list:
     """Renderizza ogni pagina del PDF come PNG (stesso approccio delle altre anteprime dell'app)."""
     import fitz
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -4398,17 +4448,111 @@ def _pdf_a_immagini(pdf_bytes: bytes, dpi: int = 150) -> list:
     return immagini
 
 
+def _inietta_zoom_immagini_dialog():
+    """Pizzica con due dita per ingrandire, trascina per spostarti, doppio tocco per
+    ingrandire/riportare a misura. Vale per le immagini della finestra aperta.
+    Con la pagina a misura (zoom 1) il dito scorre la finestra normalmente."""
+    components.html("""
+<script>
+(function () {
+  const doc = window.parent.document;
+  const SCALA_MAX = 5, SCALA_DOPPIO_TOCCO = 2.5;
+
+  function attiva(img) {
+    if (img.dataset.zoomAttivo) return;
+    img.dataset.zoomAttivo = '1';
+    img.parentElement.style.overflow = 'hidden';
+    img.style.transformOrigin = '0 0';
+    img.style.touchAction = 'pan-x pan-y';
+
+    let s = 1, tx = 0, ty = 0;
+    let pinch = null, pan = null, mosso = false, eraPinch = false, ultimoTap = 0, tapX = 0, tapY = 0;
+
+    function origine() {                       // angolo in alto a sinistra a scala 1
+      const r = img.getBoundingClientRect();
+      return { L: r.left - tx, T: r.top - ty };
+    }
+    function applica() {
+      const w = img.offsetWidth, h = img.offsetHeight;
+      s = Math.min(SCALA_MAX, Math.max(1, s));
+      tx = Math.min(0, Math.max(w - w * s, tx));
+      ty = Math.min(0, Math.max(h - h * s, ty));
+      img.style.transform = s === 1 ? '' : 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+    }
+    function mezzo(t) { return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 }; }
+    function dist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+
+    img.addEventListener('touchstart', function (e) {
+      if (e.touches.length === 2) {
+        const o = origine(), m = mezzo(e.touches);
+        pinch = { d0: dist(e.touches), s0: s, cx: (m.x - o.L - tx) / s, cy: (m.y - o.T - ty) / s };
+        pan = null; eraPinch = true; e.preventDefault();
+      } else if (e.touches.length === 1) {
+        mosso = false; eraPinch = false;
+        const t = e.touches[0];
+        pan = { x: t.clientX, y: t.clientY, tx0: tx, ty0: ty };
+      }
+    }, { passive: false });
+
+    img.addEventListener('touchmove', function (e) {
+      if (pinch && e.touches.length === 2) {
+        const o = origine(), m = mezzo(e.touches);
+        s = pinch.s0 * dist(e.touches) / pinch.d0;
+        s = Math.min(SCALA_MAX, Math.max(1, s));
+        tx = m.x - o.L - pinch.cx * s;
+        ty = m.y - o.T - pinch.cy * s;
+        applica(); e.preventDefault();
+      } else if (pan && e.touches.length === 1) {
+        const t = e.touches[0], dx = t.clientX - pan.x, dy = t.clientY - pan.y;
+        if (Math.abs(dx) + Math.abs(dy) > 8) mosso = true;
+        if (s > 1) { tx = pan.tx0 + dx; ty = pan.ty0 + dy; applica(); e.preventDefault(); }
+      }
+    }, { passive: false });
+
+    function fine(e) {
+      if (e.touches.length < 2) pinch = null;
+      if (e.touches.length === 1 && s > 1) {
+        const t = e.touches[0];
+        pan = { x: t.clientX, y: t.clientY, tx0: tx, ty0: ty };
+      }
+      if (e.touches.length === 0) {
+        pan = null;
+        if (!mosso && !eraPinch && e.changedTouches.length === 1) {   // doppio tocco
+          const c = e.changedTouches[0], ora = Date.now();
+          if (ora - ultimoTap < 300 && Math.hypot(c.clientX - tapX, c.clientY - tapY) < 30) {
+            if (s > 1) { s = 1; tx = 0; ty = 0; }
+            else { const o = origine(); s = SCALA_DOPPIO_TOCCO; tx = c.clientX - o.L - (c.clientX - o.L) * s; ty = c.clientY - o.T - (c.clientY - o.T) * s; }
+            applica(); ultimoTap = 0;
+          } else { ultimoTap = ora; tapX = c.clientX; tapY = c.clientY; }
+        }
+      }
+    }
+    img.addEventListener('touchend', fine, { passive: true });
+    img.addEventListener('touchcancel', function () { pinch = null; pan = null; }, { passive: true });
+  }
+
+  function cerca() { doc.querySelectorAll('div[data-testid="stDialog"] img').forEach(attiva); }
+  cerca();
+  [300, 900, 2000].forEach(function (ms) { setTimeout(cerca, ms); });
+})();
+</script>
+""", height=0)
+
+
 @st.dialog("Anteprima PDF", width="large")
 def _dialog_anteprima_pdf(pdf_bytes: bytes, nome_file: str):
-    """Mostra subito il PDF. Il pulsante in alto lo salva o lo condivide dal telefono
-    (Salva su File, Mail, WhatsApp, ...). La X in alto a destra chiude l'anteprima."""
-    st.download_button("⬇️ Scarica / Condividi PDF", data=pdf_bytes, file_name=nome_file,
-                       mime="application/pdf", key="dlg_download_pdf", type="primary",
-                       use_container_width=True)
+    """Mostra subito il PDF. Il pulsante in alto apre la condivisione del telefono
+    (Salva su File, Mail, WhatsApp, ...) senza uscire dall'app. La X chiude l'anteprima."""
+    _pulsante_condividi_file(pdf_bytes, nome_file, "application/pdf", "📤 Condividi / Salva PDF")
     immagini = _pdf_a_immagini(pdf_bytes)
     for numero, immagine in enumerate(immagini, 1):
         st.image(immagine, caption=f"Pagina {numero} di {len(immagini)}" if len(immagini) > 1 else None,
                  use_container_width=True)
+    _inietta_zoom_immagini_dialog()
+    st.caption("Pizzica con due dita o tocca due volte per ingrandire. "
+               "Se la condivisione non funziona puoi scaricare il file (su iPhone si apre a schermo intero).")
+    st.download_button("⬇️ Scarica il file", data=pdf_bytes, file_name=nome_file,
+                       mime="application/pdf", key="dlg_download_pdf", use_container_width=True)
 
 
 def mostra_cartoline_registrazione():
