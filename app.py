@@ -4427,7 +4427,7 @@ def _pulsante_condividi_file(dati: bytes, nome_file: str, mime: str = "applicati
       }
     } catch (e) {
       if (e && e.name === 'AbortError') return;   // l'utente ha chiuso il foglio di condivisione
-      msg.textContent = 'Condivisione non riuscita: usa il pulsante Scarica qui sotto.';
+      msg.textContent = 'Condivisione non riuscita: riprova.';
     }
   });
 </script>
@@ -4549,10 +4549,7 @@ def _dialog_anteprima_pdf(pdf_bytes: bytes, nome_file: str):
         st.image(immagine, caption=f"Pagina {numero} di {len(immagini)}" if len(immagini) > 1 else None,
                  use_container_width=True)
     _inietta_zoom_immagini_dialog()
-    st.caption("Pizzica con due dita o tocca due volte per ingrandire. "
-               "Se la condivisione non funziona puoi scaricare il file (su iPhone si apre a schermo intero).")
-    st.download_button("⬇️ Scarica il file", data=pdf_bytes, file_name=nome_file,
-                       mime="application/pdf", key="dlg_download_pdf", use_container_width=True)
+    st.caption("Pizzica con due dita o tocca due volte per ingrandire.")
 
 
 def mostra_cartoline_registrazione():
