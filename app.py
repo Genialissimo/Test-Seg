@@ -3663,7 +3663,7 @@ def _form_rapporto(df: pd.DataFrame, riga_esistente: dict, numero_riga_foglio: i
                 indice = opzioni.index(valore_attuale) if valore_attuale in opzioni else 0
                 valori_inseriti[colonna] = st.selectbox(colonna, opzioni, index=indice,
                                                         key=f"campo_{colonna}_{chiave}",
-                                                        disabled=bloccato)
+                                                        disabled=bloccato, placeholder="Scegli un'opzione")
             elif chiave_norm in colonne_numeriche:
                 try:
                     default_num = float(str(valore_attuale).replace(",", ".")) if valore_attuale else 0.0
@@ -3940,6 +3940,7 @@ def mostra_registrazioni():
             st.session_state[f"rapp_elim_{nome}"] = False
             _dialog_rapporto_consegnato(nome, df)
 
+    _stile_pulsanti_nome_a_sinistra()
     for gruppo in sorted(gruppi.keys()):
         if gruppi[gruppo]:
             st.markdown(f"#### 👤 {gruppo}")
@@ -3981,7 +3982,7 @@ def _form_anagrafica(df: pd.DataFrame, riga_esistente: dict = None, numero_riga_
         sesso_default = ("Maschio" if sesso_corrente.upper().startswith("M")
                           else "Femmina" if sesso_corrente.upper().startswith("F") else "Maschio")
         sesso = st.selectbox("Sesso", OPZIONI_SESSO, index=OPZIONI_SESSO.index(sesso_default),
-                              key=f"sesso_{chiave}", disabled=bloccato)
+                              key=f"sesso_{chiave}", disabled=bloccato, placeholder="Scegli un'opzione")
 
         eta_battesimo = calcola_eta_dettagliata(e.get("Data Battesimo", ""))
         if eta_battesimo:
@@ -4000,14 +4001,14 @@ def _form_anagrafica(df: pd.DataFrame, riga_esistente: dict = None, numero_riga_
             incarico_corrente = "(nessuno)"
         incarico = st.selectbox("Incarico", OPZIONI_INCARICO,
                                  index=OPZIONI_INCARICO.index(incarico_corrente),
-                                 key=f"incarico_{chiave}", disabled=bloccato)
+                                 key=f"incarico_{chiave}", disabled=bloccato, placeholder="Scegli un'opzione")
 
         tipo_corrente = e.get("Tipo", "") or "Proclamatore"
         if tipo_corrente not in OPZIONI_TIPO:
             tipo_corrente = "Proclamatore"
         tipo = st.selectbox("Tipo di servizio", OPZIONI_TIPO,
                              index=OPZIONI_TIPO.index(tipo_corrente), key=f"tipo_{chiave}",
-                             disabled=bloccato)
+                             disabled=bloccato, placeholder="Scegli un'opzione")
         pr_dal = None
         if tipo in ("Pioniere Regolare", "Pioniere speciale", "Missionario sul campo"):
             pr_dal = st.date_input(f"{tipo} dal", value=parse_data(e.get("PR dal", "")),
@@ -4022,7 +4023,7 @@ def _form_anagrafica(df: pd.DataFrame, riga_esistente: dict = None, numero_riga_
         scelta_gruppo = st.selectbox("Gruppo", elenco_gruppo or ["➕ Nuovo…"],
                                       index=(elenco_gruppo.index(gruppo_corrente)
                                              if gruppo_corrente in elenco_gruppo else 0),
-                                      key=f"gruppo_{chiave}", disabled=bloccato)
+                                      key=f"gruppo_{chiave}", disabled=bloccato, placeholder="Scegli un'opzione")
         if scelta_gruppo == "➕ Nuovo…":
             scelta_gruppo = st.text_input("Nome del nuovo gruppo", key=f"gruppo_nuovo_{chiave}",
                                           disabled=bloccato)
@@ -4034,7 +4035,7 @@ def _form_anagrafica(df: pd.DataFrame, riga_esistente: dict = None, numero_riga_
             elenco_au = [au_corrente] + elenco_au
         scelta_au = st.selectbox("A/U", elenco_au or ["➕ Nuovo…"],
                                   index=(elenco_au.index(au_corrente) if au_corrente in elenco_au else 0),
-                                  key=f"au_{chiave}", disabled=bloccato)
+                                  key=f"au_{chiave}", disabled=bloccato, placeholder="Scegli un'opzione")
         if scelta_au == "➕ Nuovo…":
             scelta_au = st.text_input("Nuovo valore A/U", key=f"au_nuovo_{chiave}", disabled=bloccato)
 
@@ -4053,7 +4054,7 @@ def _form_anagrafica(df: pd.DataFrame, riga_esistente: dict = None, numero_riga_
             attivi_inattivi_corrente = "A"
         etichetta_stato = st.selectbox("Stato", list(ETICHETTE_ATTIVI_INATTIVI.values()),
                                         index=OPZIONI_ATTIVI_INATTIVI.index(attivi_inattivi_corrente),
-                                        key=f"stato_{chiave}", disabled=bloccato)
+                                        key=f"stato_{chiave}", disabled=bloccato, placeholder="Scegli un'opzione")
         attivi_inattivi = {v: k for k, v in ETICHETTE_ATTIVI_INATTIVI.items()}[etichetta_stato]
         dal = st.date_input("Inattivo Da", value=parse_data(e.get("Inattivo dal", "")),
                              format="DD/MM/YYYY", min_value=datetime(1900, 1, 1), key=f"dal_{chiave}",
@@ -4069,7 +4070,7 @@ def _form_anagrafica(df: pd.DataFrame, riga_esistente: dict = None, numero_riga_
         scelta_trasf = st.selectbox("Trasf.", elenco_trasf or ["➕ Nuovo…"],
                                      index=(elenco_trasf.index(trasf_corrente)
                                             if trasf_corrente in elenco_trasf else 0),
-                                     key=f"trasf_{chiave}", disabled=bloccato)
+                                     key=f"trasf_{chiave}", disabled=bloccato, placeholder="Scegli un'opzione")
         if scelta_trasf == "➕ Nuovo…":
             scelta_trasf = st.text_input("Nuovo valore Trasf.", key=f"trasf_nuovo_{chiave}",
                                          disabled=bloccato)
@@ -4286,7 +4287,7 @@ def mostra_riepilogo_attivita():
     anno_scelto = st.selectbox(
         "Seleziona anno teocratico",
         anni_presenti,
-        format_func=lambda a: f"{a} – {a + 1} (set {a} → ago {a + 1})",
+        format_func=lambda a: f"{a} – {a + 1} (set {a} → ago {a + 1})", placeholder="Scegli un'opzione",
     )
 
     with st.expander("📊 Riepilogo attività", expanded=True, key="riepilogo_expander_aperto"):
@@ -4307,11 +4308,11 @@ def mostra_riepilogo_attivita():
         if "Gruppo" in df.columns:
             gruppi_disponibili += sorted({g.strip() for g in df["Gruppo"].astype(str) if g.strip()})
         gruppo_scelto = st.selectbox("Gruppo", gruppi_disponibili, key="riepilogo_gruppo",
-                                      disabled=(tipo_vista == "Sintetico compara gruppi"))
+                                      disabled=(tipo_vista == "Sintetico compara gruppi"), placeholder="Scegli un'opzione")
 
         categoria_scelta = st.selectbox("Categoria", list(CATEGORIE_RIEPILOGO_ATTIVITA.keys()),
                                          key="riepilogo_categoria",
-                                         disabled=(tipo_vista == "Sintetico compara gruppi"))
+                                         disabled=(tipo_vista == "Sintetico compara gruppi"), placeholder="Scegli un'opzione")
 
         if tipo_vista == "Sintetico compara gruppi":
             st.caption("Questa vista confronta tutti i gruppi in tutte le categorie: "
@@ -4415,7 +4416,7 @@ def mostra_cartoline_registrazione():
     anno_scelto = st.selectbox(
         "Seleziona anno teocratico",
         anni_presenti,
-        format_func=lambda a: f"{a} – {a + 1} (set {a} → ago {a + 1})",
+        format_func=lambda a: f"{a} – {a + 1} (set {a} → ago {a + 1})", placeholder="Scegli un'opzione",
     )
 
     df_lista = df.reset_index(drop=True)
@@ -4949,7 +4950,7 @@ def mostra_gruppi_servizio():
                 gruppi_esistenti = sorted({g.strip() for g in df["Gruppo"].astype(str) if g.strip()}) \
                     if "Gruppo" in df.columns else []
                 opzioni = gruppi_esistenti + ["➕ Nuovo sorvegliante…"]
-                scelta = st.selectbox("Sorvegliante di gruppo", opzioni, key="gruppi_scelta_sorvegliante")
+                scelta = st.selectbox("Sorvegliante di gruppo", opzioni, key="gruppi_scelta_sorvegliante", placeholder="Scegli un'opzione")
                 nuovo_nome_gruppo = ""
                 if scelta == "➕ Nuovo sorvegliante…":
                     nuovo_nome_gruppo = st.text_input("Nome del nuovo sorvegliante", key="gruppi_nuovo_nome")
@@ -5306,7 +5307,7 @@ def _presenze_campi_form(chiave_prefix: str, data_default, tipo_default: str,
         st.warning("Nessun giorno di adunanza configurato — impostalo nella card ⚙️ Impostazioni "
                    "in Home per attivare il controllo sulla data.")
 
-    tipo_adunanza = st.selectbox("Tipo di adunanza", TIPI_ADUNANZA, key=chiave_tipo, disabled=disabled)
+    tipo_adunanza = st.selectbox("Tipo di adunanza", TIPI_ADUNANZA, key=chiave_tipo, disabled=disabled, placeholder="Scegli un'opzione")
 
     col_p, col_z = st.columns(2)
     with col_p:
@@ -5491,7 +5492,7 @@ def mostra_presenze_adunanze():
         "Mese/Anno",
         options=mesi_disponibili,
         label_visibility="collapsed",
-        key="select_anno_mese"
+        key="select_anno_mese", placeholder="Scegli un'opzione"
     )
 
     if "presenze_tabella_versione" not in st.session_state:
@@ -6259,7 +6260,7 @@ def mostra_impostazioni():
             giorni_scelti[tipo] = st.multiselect(f"Giorni — {tipo}", GIORNI_SETTIMANA_IT,
                                                  default=giorni_attuali.get(tipo, []),
                                                  key=f"impostazioni_giorni_{tipo}",
-                                                 disabled=sola_lettura())
+                                                 disabled=sola_lettura(), placeholder="Scegli una o più opzioni")
 
         tutti_vuoti = not any(giorni_scelti.values())
         if st.button("✔ Salva impostazione", type="primary", use_container_width=True,
@@ -6522,7 +6523,7 @@ def _form_utente(editor: dict, df_utenti: pd.DataFrame):
         if ruolo_corrente not in OPZIONI_RUOLO_UTENTE:
             ruolo_corrente = OPZIONI_RUOLO_UTENTE[0]
         ruolo_scelto = st.selectbox("Ruolo", OPZIONI_RUOLO_UTENTE,
-                                     index=OPZIONI_RUOLO_UTENTE.index(ruolo_corrente))
+                                     index=OPZIONI_RUOLO_UTENTE.index(ruolo_corrente), placeholder="Scegli un'opzione")
 
         id_telegram = st.text_input("ID Telegram (opzionale)", value=e.get("Id telegram", ""),
                                     help="Verrà usato in futuro per l'invio di notifiche.")
@@ -6774,7 +6775,7 @@ def mostra_rapporto_filiale():
         mesi_disponibili,
         index=indice_default,
         format_func=lambda am: f"{MESI_ITALIANI[am[1]]} {am[0]}",
-        key="filiale_mese_scelto",
+        key="filiale_mese_scelto", placeholder="Scegli un'opzione",
     )
     anno_scelto, mese_scelto = scelta_mese
 
@@ -6850,12 +6851,12 @@ def _form_modifica_rapporto_tutti(dati_selezione: dict):
         if valore_tipo and valore_tipo not in opzioni_tipo:
             opzioni_tipo = [valore_tipo] + opzioni_tipo
         indice_tipo = opzioni_tipo.index(valore_tipo) if valore_tipo in opzioni_tipo else 0
-        tipo_servizio = st.selectbox("Ha servito come", opzioni_tipo, index=indice_tipo, disabled=bloccato)
+        tipo_servizio = st.selectbox("Ha servito come", opzioni_tipo, index=indice_tipo, disabled=bloccato, placeholder="Scegli un'opzione")
 
         opzioni_ministero = ["Si", "No"]
         valore_ministero = grezza[2] if grezza[2] in opzioni_ministero else "No"
         ministero = st.selectbox("Ha partecipato al ministero", opzioni_ministero,
-                                  index=opzioni_ministero.index(valore_ministero), disabled=bloccato)
+                                  index=opzioni_ministero.index(valore_ministero), disabled=bloccato, placeholder="Scegli un'opzione")
 
         ore = st.number_input("Ore", value=a_float_it(grezza[4]), step=1.0, disabled=bloccato)
         cred_ore = st.number_input("Cred. Ore", value=a_float_it(grezza[5]), step=1.0, disabled=bloccato)
@@ -6895,6 +6896,93 @@ def _form_modifica_rapporto_tutti(dati_selezione: dict):
 # ─────────────────────────────────────────────────────────────────
 # Pagina: Storico rapporti consegnati
 # ─────────────────────────────────────────────────────────────────
+def _stile_pulsanti_nome_a_sinistra():
+    """Testo dei pulsanti-nome (Rapporti consegnati e Storico) allineato a sinistra.
+    Streamlit non ha un parametro nativo per l'allineamento del testo dei pulsanti."""
+    st.markdown("""
+    <style>
+        div[class*="st-key-apri_rapp_"] button,
+        div[class*="st-key-apri_storico_"] button {
+            justify-content: flex-start !important;
+            text-align: left !important;
+        }
+        div[class*="st-key-apri_rapp_"] button p,
+        div[class*="st-key-apri_storico_"] button p {
+            text-align: left !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+@st.dialog("Storico rapporti")
+def _dialog_storico_persona(nome: str, indicatore: str, df_tutti: pd.DataFrame, anno_scelto: int):
+    """Finestra a comparsa con la tabella dei rapporti della persona per l'anno
+    teocratico scelto (X in alto a destra per chiudere)."""
+    st.subheader(f"{indicatore}{nome}")
+
+    righe_persona = df_tutti[df_tutti["Nome"].str.strip().str.lower() == nome.strip().lower()]
+    righe_persona = righe_persona[
+        righe_persona["Mese/Anno"].apply(anno_teocratico_di) == anno_scelto
+    ]
+    colonne_tabella = ["Anno di servizio", "Ha partecipato al ministero", "Studi Biblici",
+                       "Pioniere ausiliario", "Ore", "Cred. Ore", "Osservazioni"]
+    if righe_persona.empty:
+        st.caption("Nessun rapporto trovato per l'anno teocratico selezionato.")
+        return
+
+    righe_persona = righe_persona.sort_values("Mese/Anno")
+    totale_ore = sum(a_float_it(v) for v in righe_persona["Ore"])
+    totale_cred = sum(a_float_it(v) for v in righe_persona["Cred. Ore"])
+    riga_totale = pd.DataFrame([{
+        "Anno di servizio": "Totale",
+        "Ha partecipato al ministero": None,
+        "Studi Biblici": "",
+        "Pioniere ausiliario": None,
+        "Ore": formatta_numero_it(totale_ore),
+        "Cred. Ore": formatta_numero_it(totale_cred),
+        "Osservazioni": "",
+    }])
+    tabella_completa = pd.concat(
+        [righe_persona[colonne_tabella], riga_totale[colonne_tabella]], ignore_index=True
+    )
+    evento_tabella = st.dataframe(
+        tabella_completa,
+        hide_index=True,
+        use_container_width=True,
+        on_select="rerun",
+        selection_mode="single-row",
+        key=f"storico_tabella_{nome}",
+        column_config={
+            "Anno di servizio": st.column_config.TextColumn(width="small"),
+            "Ha partecipato al ministero": st.column_config.CheckboxColumn(
+                "Ha partecipato al ministero", width="small", disabled=True),
+            "Studi Biblici": st.column_config.TextColumn(width="small"),
+            "Pioniere ausiliario": st.column_config.CheckboxColumn(
+                "Pioniere ausiliario", width="small", disabled=True),
+            "Ore": st.column_config.TextColumn(width="small"),
+            "Cred. Ore": st.column_config.TextColumn(width="small"),
+            "Osservazioni": st.column_config.TextColumn(width="large"),
+        },
+    )
+
+    righe_sel = evento_tabella.selection.rows if evento_tabella and evento_tabella.selection else []
+    if righe_sel:
+        posizione = righe_sel[0]
+        if posizione < len(righe_persona):
+            idx_originale = righe_persona.index[posizione]
+            riga_dati = df_tutti.loc[idx_originale]
+            mese_leggibile = riga_dati["Anno di servizio"]
+            if st.button(f"✏️ Modifica «{mese_leggibile}»", key=f"storico_modifica_btn_{nome}_{posizione}",
+                         use_container_width=True):
+                st.session_state.storico_modifica = {
+                    "nome": nome,
+                    "mese_leggibile": mese_leggibile,
+                    "riga_foglio": int(riga_dati["RigaFoglio"]),
+                    "grezza": list(riga_dati["_grezza"]),
+                }
+                st.rerun()   # rerun completo: chiude la finestra e apre il form di correzione
+
+
 def mostra_storico_proclamatori():
     from st_keyup import st_keyup
     st.title("Storico rapporti consegnati")
@@ -6939,7 +7027,7 @@ def mostra_storico_proclamatori():
         anno_scelto = st.selectbox(
             "Anno teocratico",
             anni_presenti,
-            format_func=formatta_anno_teocratico,
+            format_func=formatta_anno_teocratico, placeholder="Scegli un'opzione",
         )
     with col_ricerca:
         ricerca = st_keyup("🔍 Cerca per nome", placeholder="Digita per filtrare…", key="ricerca_storico_proclamatori")
@@ -7049,68 +7137,12 @@ def mostra_storico_proclamatori():
     def _riga_proclamatore(nome: str):
         st_proc = mappa_stati.get(nome, "attivo")
         indicatore = "🔺 " if st_proc == "inattivo" else "⚠️ " if st_proc == "irregolare" else "🟢 "
-        etichetta = f"{indicatore}{nome}"
 
-        with st.expander(etichetta):
-            righe_persona = df_tutti[df_tutti["Nome"].str.strip().str.lower() == nome.strip().lower()]
-            righe_persona = righe_persona[
-                righe_persona["Mese/Anno"].apply(anno_teocratico_di) == anno_scelto
-            ]
-            colonne_tabella = ["Anno di servizio", "Ha partecipato al ministero", "Studi Biblici",
-                                "Pioniere ausiliario", "Ore", "Cred. Ore", "Osservazioni"]
-            if righe_persona.empty:
-                st.caption("Nessun rapporto trovato per l'anno teocratico selezionato.")
-            else:
-                righe_persona = righe_persona.sort_values("Mese/Anno")
-                totale_ore = sum(a_float_it(v) for v in righe_persona["Ore"])
-                totale_cred = sum(a_float_it(v) for v in righe_persona["Cred. Ore"])
-                riga_totale = pd.DataFrame([{
-                    "Anno di servizio": "Totale",
-                    "Ha partecipato al ministero": None,
-                    "Studi Biblici": "",
-                    "Pioniere ausiliario": None,
-                    "Ore": formatta_numero_it(totale_ore),
-                    "Cred. Ore": formatta_numero_it(totale_cred),
-                    "Osservazioni": "",
-                }])
-                tabella_completa = pd.concat(
-                    [righe_persona[colonne_tabella], riga_totale[colonne_tabella]], ignore_index=True
-                )
-                evento_tabella = st.dataframe(
-                    tabella_completa,
-                    hide_index=True,
-                    use_container_width=True,
-                    on_select="rerun",
-                    selection_mode="single-row",
-                    key=f"storico_tabella_{nome}",
-                    column_config={
-                        "Anno di servizio": st.column_config.TextColumn(width="small"),
-                        "Ha partecipato al ministero": st.column_config.CheckboxColumn(
-                            "Ha partecipato al ministero", width="small", disabled=True),
-                        "Studi Biblici": st.column_config.TextColumn(width="small"),
-                        "Pioniere ausiliario": st.column_config.CheckboxColumn(
-                            "Pioniere ausiliario", width="small", disabled=True),
-                        "Ore": st.column_config.TextColumn(width="small"),
-                        "Cred. Ore": st.column_config.TextColumn(width="small"),
-                        "Osservazioni": st.column_config.TextColumn(width="large"),
-                    },
-                )
+        # Niente tabella per persona: il nome e' un pulsante che apre la finestra con i suoi rapporti
+        if st.button(f"{indicatore}{nome}", key=f"apri_storico_{nome}", use_container_width=True):
+            _dialog_storico_persona(nome, indicatore, df_tutti, anno_scelto)
 
-                righe_sel = evento_tabella.selection.rows if evento_tabella and evento_tabella.selection else []
-                if righe_sel:
-                    posizione = righe_sel[0]
-                    if posizione < len(righe_persona):
-                        idx_originale = righe_persona.index[posizione]
-                        riga_dati = df_tutti.loc[idx_originale]
-                        mese_leggibile = riga_dati["Anno di servizio"]
-                        if st.button(f"✏️ Modifica «{mese_leggibile}»", key=f"storico_modifica_btn_{nome}_{posizione}"):
-                            st.session_state.storico_modifica = {
-                                "nome": nome,
-                                "mese_leggibile": mese_leggibile,
-                                "riga_foglio": int(riga_dati["RigaFoglio"]),
-                                "grezza": list(riga_dati["_grezza"]),
-                            }
-                            st.rerun()
+    _stile_pulsanti_nome_a_sinistra()
 
     for gruppo in sorted(gruppi.keys()):
         if gruppi[gruppo]:
@@ -7575,7 +7607,7 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
         else:
             indice_nome = 0  # Vuoto di default pronto per scrivere
 
-        nome_scelto = st.selectbox("Nome e Cognome *", opzioni_nomi, index=indice_nome, disabled=bloccato)
+        nome_scelto = st.selectbox("Nome e Cognome *", opzioni_nomi, index=indice_nome, disabled=bloccato, placeholder="Scegli un'opzione")
 
         opzioni_mesi = [f"{MESI_ITALIANI[m]} {a}" for a, m in _domande_mesi_anno_teocratico()]
         mese_attuale = e.get("Mese di", "")
@@ -7589,14 +7621,14 @@ def _form_domanda_pioniere(editor: dict, nomi_anagrafica: list):
             mese_riferimento_lbl = f"{MESI_ITALIANI[mese_rif]} {anno_rif}"
             indice_mese = opzioni_mesi.index(mese_riferimento_lbl) if mese_riferimento_lbl in opzioni_mesi else 0
 
-        mese_scelto = st.selectbox("Mese di *", opzioni_mesi, index=indice_mese, disabled=bloccato)
+        mese_scelto = st.selectbox("Mese di *", opzioni_mesi, index=indice_mese, disabled=bloccato, placeholder="Scegli un'opzione")
 
         ore_correnti = e.get("Ore", "") or OPZIONI_ORE_PIONIERE_AUSILIARIO[0]
         if ore_correnti not in OPZIONI_ORE_PIONIERE_AUSILIARIO:
             ore_correnti = OPZIONI_ORE_PIONIERE_AUSILIARIO[0]
         ore_scelte = st.selectbox("Requisito delle ore", OPZIONI_ORE_PIONIERE_AUSILIARIO,
                                    index=OPZIONI_ORE_PIONIERE_AUSILIARIO.index(ore_correnti),
-                                   disabled=bloccato)
+                                   disabled=bloccato, placeholder="Scegli un'opzione")
 
         continuativo = st.checkbox(
             "Continua fino a diversa comunicazione (pioniere ausiliario continuativo)",
@@ -7737,7 +7769,7 @@ def mostra_domande_pioniere_ausiliario():
         mesi_disponibili,
         index=indice_mese_default,
         format_func=lambda am: f"{MESI_ITALIANI[am[1]]} {am[0]}",
-        key="domande_mese_scelto",
+        key="domande_mese_scelto", placeholder="Scegli un'opzione",
     )
     etichetta_mese_scelto = f"{MESI_ITALIANI[mese_scelto_tupla[1]]} {mese_scelto_tupla[0]}"
 
@@ -8315,7 +8347,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
         if categoria_corrente and categoria_corrente not in opzioni_categoria:
             opzioni_categoria = [categoria_corrente] + opzioni_categoria
         indice_cat = opzioni_categoria.index(categoria_corrente) if categoria_corrente in opzioni_categoria else 0
-        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato)
+        scelta_categoria = st.selectbox("Categoria", opzioni_categoria, index=indice_cat, disabled=bloccato, placeholder="Scegli un'opzione")
         nuova_categoria_testo = ""
         if scelta_categoria == "➕ Nuova categoria…":
             nuova_categoria_testo = st.text_input("Nome della nuova categoria", disabled=bloccato)
@@ -8336,7 +8368,7 @@ def _form_impegno_dialog(editor: dict, categorie_disponibili: list, workbook_pag
             if v not in opzioni_preavviso:
                 opzioni_preavviso.append(v)
         preavviso_scelto = st.multiselect("Avvisami (giorni prima della scadenza)", opzioni_preavviso,
-                                         default=valori_preavviso_correnti, disabled=bloccato)
+                                         default=valori_preavviso_correnti, disabled=bloccato, placeholder="Scegli una o più opzioni")
 
         assegnato = st.text_input("Assegnato", value=e.get("Assegnato", ""), disabled=bloccato)
         fatto = st.checkbox("Fatto", value=_impegni_e_fatto(e.get("Fatto", "")) if '_impegni_e_fatto' in globals() else False, disabled=bloccato)
@@ -8523,7 +8555,7 @@ def mostra_impegni_scadenze():
                 index=indice_anno_corrente,
                 key="impgrid_anno_select",
                 on_change=_aggiorna_anno_impgrid,
-                label_visibility="collapsed",
+                label_visibility="collapsed", placeholder="Scegli un'opzione",
             )
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
@@ -9014,7 +9046,7 @@ def mostra_calendario_impegni_grid():
                 index=indice_anno_corrente,
                 key="calgrid_anno_select",
                 on_change=_aggiorna_anno_calgrid,
-                label_visibility="collapsed",
+                label_visibility="collapsed", placeholder="Scegli un'opzione",
             )
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
