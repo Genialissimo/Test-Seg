@@ -628,11 +628,16 @@ def _scarica_pdf_da_percorso(percorso_file: str) -> bytes:
     return resp.content
 
 
-def _genera_miniature(pdf_bytes: bytes, dpi: int = 100):
-    """Genera un'immagine PNG (bytes) per ogni pagina del PDF."""
+@st.cache_data(show_spinner=False, max_entries=4)
+def _genera_miniature(pdf_bytes: bytes, dpi: int = 200):
+    """Genera un'immagine PNG (bytes) per ogni pagina del PDF. Risoluzione alta per poter
+    ingrandire con le dita; oltre 8 pagine si scende a 150 dpi per non appesantire.
+    Il risultato e' in cache: spuntare un'opzione non rigenera piu' tutte le pagine."""
     import fitz
     miniature = []
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    if len(doc) > 8:
+        dpi = min(dpi, 150)
     zoom = dpi / 72
     matrix = fitz.Matrix(zoom, zoom)
     for pagina in doc:
@@ -640,23 +645,6 @@ def _genera_miniature(pdf_bytes: bytes, dpi: int = 100):
         miniature.append(pix.tobytes("png"))
     doc.close()
     return miniature
-
-
-def _genera_pagina_alta_risoluzione(pdf_bytes: bytes, indice_pagina: int, dpi: int = 200) -> bytes:
-    """Renderizza una singola pagina del PDF a risoluzione più alta, per lo zoom."""
-    import fitz
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    zoom = dpi / 72
-    matrix = fitz.Matrix(zoom, zoom)
-    pix = doc[indice_pagina].get_pixmap(matrix=matrix)
-    immagine = pix.tobytes("png")
-    doc.close()
-    return immagine
-
-
-@st.dialog("Anteprima pagina", width="large")
-def _mostra_pagina_ingrandita(immagine_bytes, numero_pagina):
-    st.image(immagine_bytes, caption=f"Pagina {numero_pagina}", use_container_width=True)
 
 
 def _rimuovi_pagine(pdf_bytes: bytes, pagine_da_eliminare: list) -> bytes:
@@ -4448,30 +4436,38 @@ def _pdf_a_immagini(pdf_bytes: bytes, dpi: int = 200) -> list:
     return immagini
 
 
-def _inietta_zoom_immagini_dialog():
+def _inietta_zoom_immagini(selettore: str = 'div[data-testid="stDialog"] img'):
     """Pizzica con due dita per ingrandire, trascina per spostarti, doppio tocco per
-    ingrandire/riportare a misura. Vale per le immagini della finestra aperta.
-    Con la pagina a misura (zoom 1) il dito scorre la finestra normalmente."""
-    components.html("""
+    ingrandire/riportare a misura. Vale per le immagini che corrispondono al selettore
+    (anche quelle che compaiono dopo). Con la pagina a misura (zoom 1) il dito scorre
+    la schermata normalmente."""
+    codice = """
 <script>
 (function () {
-  const doc = window.parent.document;
+  const win = window.parent, doc = win.document;
+  const SELETTORE = '__SELETTORE__';
   const SCALA_MAX = 5, SCALA_DOPPIO_TOCCO = 2.5;
+  const ISTANZA = Math.random().toString(36).slice(2);
+
+  win.__segZoomStop = win.__segZoomStop || {};
+  if (win.__segZoomStop[SELETTORE]) { try { win.__segZoomStop[SELETTORE](); } catch (e) {} }
 
   function attiva(img) {
-    if (img.dataset.zoomAttivo) return;
-    img.dataset.zoomAttivo = '1';
+    if (img.dataset.zoomIstanza === ISTANZA) return;
+    if (img.__zoomAbort) { try { img.__zoomAbort.abort(); } catch (e) {} }   // listener di un'istanza vecchia
+    const ctrl = new AbortController();
+    img.__zoomAbort = ctrl;
+    img.dataset.zoomIstanza = ISTANZA;
+    img.style.transform = '';
     img.parentElement.style.overflow = 'hidden';
     img.style.transformOrigin = '0 0';
     img.style.touchAction = 'pan-x pan-y';
+    const opz = function (passivo) { return { passive: passivo, signal: ctrl.signal }; };
 
     let s = 1, tx = 0, ty = 0;
     let pinch = null, pan = null, mosso = false, eraPinch = false, ultimoTap = 0, tapX = 0, tapY = 0;
 
-    function origine() {                       // angolo in alto a sinistra a scala 1
-      const r = img.getBoundingClientRect();
-      return { L: r.left - tx, T: r.top - ty };
-    }
+    function origine() { const r = img.getBoundingClientRect(); return { L: r.left - tx, T: r.top - ty }; }
     function applica() {
       const w = img.offsetWidth, h = img.offsetHeight;
       s = Math.min(SCALA_MAX, Math.max(1, s));
@@ -4492,13 +4488,12 @@ def _inietta_zoom_immagini_dialog():
         const t = e.touches[0];
         pan = { x: t.clientX, y: t.clientY, tx0: tx, ty0: ty };
       }
-    }, { passive: false });
+    }, opz(false));
 
     img.addEventListener('touchmove', function (e) {
       if (pinch && e.touches.length === 2) {
         const o = origine(), m = mezzo(e.touches);
-        s = pinch.s0 * dist(e.touches) / pinch.d0;
-        s = Math.min(SCALA_MAX, Math.max(1, s));
+        s = Math.min(SCALA_MAX, Math.max(1, pinch.s0 * dist(e.touches) / pinch.d0));
         tx = m.x - o.L - pinch.cx * s;
         ty = m.y - o.T - pinch.cy * s;
         applica(); e.preventDefault();
@@ -4507,9 +4502,9 @@ def _inietta_zoom_immagini_dialog():
         if (Math.abs(dx) + Math.abs(dy) > 8) mosso = true;
         if (s > 1) { tx = pan.tx0 + dx; ty = pan.ty0 + dy; applica(); e.preventDefault(); }
       }
-    }, { passive: false });
+    }, opz(false));
 
-    function fine(e) {
+    img.addEventListener('touchend', function (e) {
       if (e.touches.length < 2) pinch = null;
       if (e.touches.length === 1 && s > 1) {
         const t = e.touches[0];
@@ -4517,26 +4512,44 @@ def _inietta_zoom_immagini_dialog():
       }
       if (e.touches.length === 0) {
         pan = null;
-        if (!mosso && !eraPinch && e.changedTouches.length === 1) {   // doppio tocco
+        if (!mosso && !eraPinch && e.changedTouches.length === 1) {          // doppio tocco
           const c = e.changedTouches[0], ora = Date.now();
           if (ora - ultimoTap < 300 && Math.hypot(c.clientX - tapX, c.clientY - tapY) < 30) {
             if (s > 1) { s = 1; tx = 0; ty = 0; }
-            else { const o = origine(); s = SCALA_DOPPIO_TOCCO; tx = c.clientX - o.L - (c.clientX - o.L) * s; ty = c.clientY - o.T - (c.clientY - o.T) * s; }
+            else { const o = origine(); s = SCALA_DOPPIO_TOCCO;
+                   tx = (c.clientX - o.L) * (1 - s); ty = (c.clientY - o.T) * (1 - s); }
             applica(); ultimoTap = 0;
           } else { ultimoTap = ora; tapX = c.clientX; tapY = c.clientY; }
         }
       }
-    }
-    img.addEventListener('touchend', fine, { passive: true });
-    img.addEventListener('touchcancel', function () { pinch = null; pan = null; }, { passive: true });
+    }, opz(true));
+    img.addEventListener('touchcancel', function () { pinch = null; pan = null; }, opz(true));
   }
 
-  function cerca() { doc.querySelectorAll('div[data-testid="stDialog"] img').forEach(attiva); }
-  cerca();
-  [300, 900, 2000].forEach(function (ms) { setTimeout(cerca, ms); });
+  function cerca() { doc.querySelectorAll(SELETTORE).forEach(attiva); }
+  let timer = null;
+  function pianifica() {
+    if (timer) return;
+    timer = setTimeout(function () {
+      timer = null;
+      if (!window.frameElement || !window.frameElement.isConnected) { stop(); return; }
+      cerca();
+    }, 150);
+  }
+  const osservatore = new MutationObserver(pianifica);
+  osservatore.observe(doc.body, { childList: true, subtree: true });
+  function stop() {
+    try { osservatore.disconnect(); } catch (e) {}
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (win.__segZoomStop[SELETTORE] === stop) delete win.__segZoomStop[SELETTORE];
+  }
+  win.__segZoomStop[SELETTORE] = stop;
+  window.addEventListener('pagehide', stop);
+  cerca(); pianifica();
 })();
 </script>
-""", height=0)
+"""
+    components.html(codice.replace("__SELETTORE__", selettore), height=0)
 
 
 @st.dialog("Anteprima PDF", width="large")
@@ -4548,7 +4561,7 @@ def _dialog_anteprima_pdf(pdf_bytes: bytes, nome_file: str):
     for numero, immagine in enumerate(immagini, 1):
         st.image(immagine, caption=f"Pagina {numero} di {len(immagini)}" if len(immagini) > 1 else None,
                  use_container_width=True)
-    _inietta_zoom_immagini_dialog()
+    _inietta_zoom_immagini()
     st.caption("Pizzica con due dita o tocca due volte per ingrandire.")
 
 
@@ -6577,7 +6590,8 @@ def mostra_impostazioni():
                         if "pagine_selezionate" not in st.session_state:
                             st.session_state.pagine_selezionate = set()
 
-                        st.caption(f"{len(miniature)} pagine trovate. Seleziona quelle da **eliminare**.")
+                        st.caption(f"{len(miniature)} pagine trovate. Seleziona quelle da **eliminare**. "
+                                   "Pizzica con due dita o tocca due volte per ingrandire.")
 
                         colonne_per_riga = 4
                         for riga_inizio in range(0, len(miniature), colonne_per_riga):
@@ -6587,10 +6601,8 @@ def mostra_impostazioni():
                                 if indice >= len(miniature):
                                     break
                                 with col:
-                                    st.image(miniature[indice], caption=f"Pagina {indice + 1}", use_container_width=True)
-                                    if st.button("🔍 Ingrandisci", key=f"zoom_pagina_{indice}", use_container_width=True):
-                                        immagine_hd = _genera_pagina_alta_risoluzione(pdf_bytes, indice, dpi=200)
-                                        _mostra_pagina_ingrandita(immagine_hd, indice + 1)
+                                    with st.container(key=f"pdfpag_{indice}"):
+                                        st.image(miniature[indice], caption=f"Pagina {indice + 1}", use_container_width=True)
                                     selezionata = st.checkbox(
                                         "Elimina",
                                         key=f"del_pagina_{indice}",
@@ -6600,6 +6612,8 @@ def mostra_impostazioni():
                                         st.session_state.pagine_selezionate.add(indice)
                                     else:
                                         st.session_state.pagine_selezionate.discard(indice)
+
+                        _inietta_zoom_immagini('div[class*="st-key-pdfpag_"] img')
 
                         n_da_eliminare = len(st.session_state.pagine_selezionate)
                         st.write(f"Pagine da eliminare: **{n_da_eliminare}** su {len(miniature)}")
