@@ -4387,6 +4387,30 @@ def mostra_riepilogo_attivita():
 # ─────────────────────────────────────────────────────────────────
 # PAGINA: CARTOLINE DI REGISTRAZIONE (S-21)
 # ─────────────────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False, max_entries=8)
+def _pdf_a_immagini(pdf_bytes: bytes, dpi: int = 150) -> list:
+    """Renderizza ogni pagina del PDF come PNG (stesso approccio delle altre anteprime dell'app)."""
+    import fitz
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    zoom = dpi / 72
+    immagini = [pagina.get_pixmap(matrix=fitz.Matrix(zoom, zoom)).tobytes("png") for pagina in doc]
+    doc.close()
+    return immagini
+
+
+@st.dialog("Anteprima PDF", width="large")
+def _dialog_anteprima_pdf(pdf_bytes: bytes, nome_file: str):
+    """Mostra subito il PDF. Il pulsante in alto lo salva o lo condivide dal telefono
+    (Salva su File, Mail, WhatsApp, ...). La X in alto a destra chiude l'anteprima."""
+    st.download_button("⬇️ Scarica / Condividi PDF", data=pdf_bytes, file_name=nome_file,
+                       mime="application/pdf", key="dlg_download_pdf", type="primary",
+                       use_container_width=True)
+    immagini = _pdf_a_immagini(pdf_bytes)
+    for numero, immagine in enumerate(immagini, 1):
+        st.image(immagine, caption=f"Pagina {numero} di {len(immagini)}" if len(immagini) > 1 else None,
+                 use_container_width=True)
+
+
 def mostra_cartoline_registrazione():
     st.title("📇 Cartoline di registrazione")
     contenitore_pulsanti = st.container()
@@ -4497,11 +4521,9 @@ def mostra_cartoline_registrazione():
         if pronto:
             tipo, dati_file, extra = pronto
             if tipo == "pdf":
-                st.download_button("⬇️ Scarica PDF", data=dati_file,
-                                    file_name=f"{_s21_nome_file_sicuro(extra)}.pdf",
-                                    mime="application/pdf", key="download_cartolina_pdf",
-                                    use_container_width=True,
-                                    on_click=lambda: st.session_state.pop("cartoline_pronto", None))
+                nome_pdf = f"{_s21_nome_file_sicuro(extra)}.pdf"
+                if st.button("👁️ Anteprima PDF", key="anteprima_cartolina_pdf", use_container_width=True):
+                    _dialog_anteprima_pdf(dati_file, nome_pdf)
             else:
                 st.download_button("⬇️ Scarica ZIP", data=dati_file,
                                     file_name=f"Schede_S21_{extra + 1}.zip",
@@ -4518,10 +4540,6 @@ def mostra_cartoline_registrazione():
 import io
 import base64
 import pandas as pd
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from xhtml2pdf import pisa
 
 ETICHETTE_STATO_GRUPPI = {"A": "🟢 Attivi", "I": "🔺 Inattivi", "TR": "↔️ Trasferiti"}
 
@@ -4752,6 +4770,7 @@ def _gruppi_tabella_html(df: pd.DataFrame, nome_gruppo: str, membri: list,
 
 def genera_pdf_da_html_gruppi_servizio(df: pd.DataFrame, includi_inattivi: bool = False,
                                         congregazione: str = "", rev: str = "1/1", data: str = "") -> bytes:
+    from xhtml2pdf import pisa
     df, gruppi = _gruppi_dati_filtrati(df, includi_inattivi=includi_inattivi)
     nomi_gruppi = sorted(gruppi.keys())
 
